@@ -32,7 +32,7 @@ interface AuthState {
 interface AuthContextType extends AuthState {
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
-  switchRole: (role: UserRole) => void;
+  switchRole: (_role: UserRole) => void;
   hasRole: (...roles: UserRole[]) => boolean;
   canAccess: (feature: string) => boolean;
 }
@@ -42,13 +42,14 @@ const FEATURE_ACCESS: Record<string, UserRole[]> = {
   inventory: ["owner", "manager"],
   "inventory.cost": ["owner", "manager"],
   analytics: ["owner", "manager", "viewer"],
-  "analytics.profit": ["owner"],
-  "analytics.cogs": ["owner"],
+  "analytics.profit": ["owner", "manager"],
+  "analytics.cogs": ["owner", "manager"],
+  "analytics.export": ["owner", "manager"],
   channels: ["owner", "manager"],
-  branches: ["owner"],
+  branches: ["owner", "manager"],
   settings: ["owner", "manager"],
   "settings.billing": ["owner"],
-  "settings.users": ["owner", "manager"],
+  "settings.users": ["owner"],
 };
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -62,7 +63,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
           const res = await api.get("/me");
           setState({ user: res.data.user, isAuthenticated: true, isLoading: false });
-        } catch (error) {
+        } catch (_error) {
           localStorage.removeItem("access_token");
           setState({ user: null, isAuthenticated: false, isLoading: false });
         }
@@ -100,10 +101,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // Preserved for demo purposes, but in a real app this would likely re-login or switch tenant
-  const switchRole = useCallback((role: UserRole) => {
-    console.warn("switchRole is disabled in API mode. Please login with the correct account.");
-  }, []);
+  // Role wajib mengikuti data backend/login.
+  const switchRole = useCallback((_role: UserRole) => {}, []);
 
   const hasRole = useCallback((...roles: UserRole[]) => {
     if (!state.user) return false;
@@ -129,3 +128,4 @@ export function useAuth() {
   if (!ctx) throw new Error("useAuth must be used within AuthProvider");
   return ctx;
 }
+

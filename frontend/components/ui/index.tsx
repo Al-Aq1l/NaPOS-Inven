@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Image from "next/image";
 import { cn } from "@/lib/utils";
 
 // ===== Button =====
@@ -125,12 +126,12 @@ export function Badge({
   ...props
 }: BadgeProps) {
   const variants = {
-    default: "bg-[var(--slate-100)] text-[var(--slate-600)] dark:bg-[var(--slate-800)] dark:text-[var(--slate-300)]",
-    success: "bg-[var(--success-50)] text-[var(--success-600)] dark:bg-green-900/30 dark:text-green-400",
-    warning: "bg-[var(--warning-50)] text-[var(--warning-600)] dark:bg-amber-900/30 dark:text-amber-400",
-    danger: "bg-[var(--danger-50)] text-[var(--danger-600)] dark:bg-red-900/30 dark:text-red-400",
-    info: "bg-[var(--info-50)] text-[var(--brand-600)] dark:bg-blue-900/30 dark:text-blue-400",
-    brand: "bg-[var(--brand-50)] text-[var(--brand-700)] dark:bg-blue-900/30 dark:text-blue-400",
+    default: "bg-[var(--slate-200)] text-[var(--slate-700)] border border-[var(--slate-300)] dark:bg-[var(--slate-700)] dark:text-[var(--slate-200)] dark:border-[var(--slate-600)]",
+    success: "bg-green-200 text-green-900 border border-green-400 dark:bg-green-900/70 dark:text-green-100 dark:border-green-600",
+    warning: "bg-amber-200 text-amber-900 border border-amber-400 dark:bg-amber-900/70 dark:text-amber-100 dark:border-amber-600",
+    danger: "bg-red-100 text-red-800 border border-red-300 dark:bg-red-900/60 dark:text-red-200 dark:border-red-700",
+    info: "bg-sky-200 text-sky-900 border border-sky-400 dark:bg-sky-900/70 dark:text-sky-100 dark:border-sky-600",
+    brand: "bg-[var(--brand-100)] text-[var(--brand-800)] border border-[var(--brand-300)] dark:bg-[var(--brand-900)] dark:text-[var(--brand-200)] dark:border-[var(--brand-700)]",
   };
 
   const dotColors = {
@@ -143,7 +144,7 @@ export function Badge({
   };
 
   const sizes = {
-    sm: "px-2 py-0.5 text-xs",
+    sm: "px-2.5 py-0.5 text-xs",
     md: "px-2.5 py-1 text-sm",
   };
 
@@ -396,10 +397,10 @@ export function Toast({ message, type = "info", visible }: ToastProps) {
   if (!visible) return null;
 
   const icons = {
-    success: "✓",
-    error: "✕",
-    info: "ℹ",
-    warning: "⚠",
+    success: "OK",
+    error: "X",
+    info: "i",
+    warning: "!",
   };
 
   const colors = {
@@ -448,9 +449,11 @@ export function Avatar({ name, src, size = "md", className }: AvatarProps) {
 
   if (src) {
     return (
-      <img
+      <Image
         src={src}
         alt={name}
+        width={48}
+        height={48}
         className={cn("rounded-full object-cover", sizes[size], className)}
       />
     );
@@ -568,3 +571,6 @@ export function DataTable<T>({
     </div>
   );
 }
+
+
+

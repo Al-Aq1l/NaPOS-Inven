@@ -16,10 +16,10 @@ export default function PricingPage() {
         {/* Header */}
         <div className="max-w-2xl mx-auto text-center mb-12">
           <h1 className="text-4xl sm:text-5xl font-extrabold text-[var(--text-primary)] tracking-tight">
-            Simple, transparent pricing
+            Paket Harga Transparan
           </h1>
           <p className="mt-4 text-lg text-[var(--text-secondary)]">
-            Start free. Scale as you grow. No hidden fees.
+            Mulai gratis. Naik kelas saat bisnis berkembang.
           </p>
           {/* Toggle */}
           <div className="mt-8 inline-flex items-center gap-3 bg-[var(--surface-raised)] border border-[var(--border)] rounded-full p-1">
@@ -30,7 +30,7 @@ export default function PricingPage() {
                 !annual ? "bg-[var(--brand-600)] text-white shadow-sm" : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
               )}
             >
-              Monthly
+              Bulanan
             </button>
             <button
               onClick={() => setAnnual(true)}
@@ -39,8 +39,8 @@ export default function PricingPage() {
                 annual ? "bg-[var(--brand-600)] text-white shadow-sm" : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
               )}
             >
-              Annual
-              <span className="ml-1.5 text-xs opacity-80">Save 20%</span>
+              Tahunan
+              <span className="ml-1.5 text-xs opacity-80">Hemat 20%</span>
             </button>
           </div>
         </div>
@@ -102,12 +102,12 @@ export default function PricingPage() {
                   <div className="w-px bg-[var(--border)]" />
                   <div className="text-center flex-1">
                     <p className="text-lg font-bold text-[var(--text-primary)]">{tier.userLimit}</p>
-                    <p className="text-xs text-[var(--text-tertiary)]">Users</p>
+                    <p className="text-xs text-[var(--text-tertiary)]">Pengguna</p>
                   </div>
                   <div className="w-px bg-[var(--border)]" />
                   <div className="text-center flex-1">
                     <p className="text-lg font-bold text-[var(--text-primary)]">{tier.branchLimit}</p>
-                    <p className="text-xs text-[var(--text-tertiary)]">Branch</p>
+                    <p className="text-xs text-[var(--text-tertiary)]">Cabang</p>
                   </div>
                 </div>
 
@@ -117,7 +117,7 @@ export default function PricingPage() {
                     variant={tier.highlighted ? "primary" : "outline"}
                     className="w-full"
                   >
-                    {tier.price === 0 ? "Get Started" : "Start Free Trial"}
+                    {tier.price === 0 ? "Mulai Sekarang" : "Coba Gratis"}
                     <ArrowRight className="w-4 h-4" />
                   </Button>
                 </Link>
@@ -139,9 +139,9 @@ export default function PricingPage() {
         {/* FAQ teaser */}
         <div className="mt-16 text-center">
           <p className="text-[var(--text-secondary)]">
-            Have questions?{" "}
+            Ada pertanyaan?{" "}
             <Link href="#" className="text-[var(--brand-600)] font-medium hover:underline">
-              Contact our sales team
+              Hubungi tim kami
             </Link>
           </p>
         </div>

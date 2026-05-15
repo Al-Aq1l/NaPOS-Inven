@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Mail, Lock, Eye, EyeOff } from "lucide-react";
 import { Button, Input } from "@/components/ui";
 import { useAuth } from "@/lib/auth-context";
+import axios from "axios";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -21,8 +22,12 @@ export default function LoginPage() {
     try {
       await login(email, password);
       router.push("/dashboard");
-    } catch (err: any) {
-      setError(err.response?.data?.message || err.response?.data?.errors?.email?.[0] || "Invalid credentials");
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err)) {
+        setError(err.response?.data?.message || err.response?.data?.errors?.email?.[0] || "Invalid credentials");
+      } else {
+        setError("Invalid credentials");
+      }
     }
   };
 
@@ -31,15 +36,19 @@ export default function LoginPage() {
     try {
       await login(`${role}@napos.id`, "password");
       router.push("/dashboard");
-    } catch (err: any) {
-      setError(err.response?.data?.message || err.response?.data?.errors?.email?.[0] || "Login failed");
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err)) {
+        setError(err.response?.data?.message || err.response?.data?.errors?.email?.[0] || "Login failed");
+      } else {
+        setError("Login failed");
+      }
     }
   };
 
   return (
     <div className="animate-fade-in">
-      <h1 className="text-2xl font-bold text-[var(--text-primary)]">Welcome back</h1>
-      <p className="mt-1 text-sm text-[var(--text-secondary)]">Sign in to your NAPOS account</p>
+      <h1 className="text-2xl font-bold text-[var(--text-primary)]">Selamat datang kembali</h1>
+      <p className="mt-1 text-sm text-[var(--text-secondary)]">Masuk ke akun NAPOS Anda</p>
 
       {error && (
         <div className="mt-4 p-3 bg-[var(--danger-50)] text-[var(--danger-600)] border border-[var(--danger-200)] rounded-lg text-sm">
@@ -83,7 +92,7 @@ export default function LoginPage() {
         </div>
 
         <Button type="submit" loading={isLoading} className="w-full">
-          Sign in
+          Masuk
         </Button>
       </form>
 
@@ -92,7 +101,7 @@ export default function LoginPage() {
         <div className="relative">
           <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-[var(--border)]" /></div>
           <div className="relative flex justify-center text-xs">
-            <span className="px-2 bg-[var(--background)] text-[var(--text-tertiary)]">Quick Demo Login</span>
+            <span className="px-2 bg-[var(--background)] text-[var(--text-tertiary)]">Login Demo Cepat</span>
           </div>
         </div>
         <div className="mt-4 grid grid-cols-2 gap-2">
@@ -117,3 +126,5 @@ export default function LoginPage() {
     </div>
   );
 }
+
+

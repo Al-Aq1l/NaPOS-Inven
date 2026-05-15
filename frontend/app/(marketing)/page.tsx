@@ -80,7 +80,7 @@ export default function LandingPage() {
               <div className="p-6">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                   {[
-                    { label: "Today Revenue", value: "Rp 12.4M", change: "+18.2%", color: "text-green-500" },
+                    { label: "Today Revenue", value: "Rp 11.4M", change: "+11.4%", color: "text-green-500" },
                     { label: "Transactions", value: "284", change: "+12 today", color: "text-blue-500" },
                     { label: "Low Stock Items", value: "7", change: "Alert", color: "text-amber-500" },
                     { label: "Active Channels", value: "4", change: "All synced", color: "text-green-500" },
@@ -137,7 +137,7 @@ export default function LandingPage() {
               { icon: ShoppingCart, title: "Hybrid POS Terminal", desc: "Works offline with IndexedDB. Syncs automatically when back online. Camera-based barcode scanning." },
               { icon: Package, title: "Smart Inventory", desc: "EOQ & ROP optimization with automated stock alerts. Know exactly when and how much to reorder." },
               { icon: BarChart3, title: "Real-time Analytics", desc: "Sales trends, peak hours, profit margins. Tier-based insights from basic to enterprise." },
-              { icon: Globe, title: "Omnichannel Sync", desc: "Aggregate orders from Shopee, Tokopedia, and your physical store in one unified dashboard." },
+              { icon: Globe, title: "Omnichannel Sync", desc: "Aggregate orders from marketplace channels and your physical store in one unified dashboard." },
               { icon: Building2, title: "Multi-Branch", desc: "Manage up to 5 locations with consolidated reporting and inter-branch stock transfers." },
               { icon: Shield, title: "Role-Based Access", desc: "Owner, Manager, Cashier, Viewer — each sees only what they need. Cashiers never see COGS." },
               { icon: Smartphone, title: "Mobile-First POS", desc: "Designed for floor staff using smartphones. Perfect for Stock Opname on the go." },

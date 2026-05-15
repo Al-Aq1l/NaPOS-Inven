@@ -25,7 +25,7 @@ class EnsureTenant
             return response()->json(['message' => 'User does not belong to any tenant.'], 403);
         }
 
-        if (! $user->tenant->is_active) {
+        if (! $user->tenant || ! $user->tenant->is_active) {
             return response()->json(['message' => 'Your business account has been suspended or is inactive.'], 403);
         }
 
