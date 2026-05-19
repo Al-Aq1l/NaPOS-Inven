@@ -48,7 +48,7 @@ export default function LandingPage() {
                 </Button>
               </Link>
               <Link href="/login">
-                <Button variant="outline" size="lg" className="min-w-[200px]">
+                <Button variant="outline" size="lg" className="min-w-[200px] hover:bg-blue-500 hover:text-white hover:border-blue-500 transition-all duration-300">
                   View Demo
                 </Button>
               </Link>
@@ -164,7 +164,7 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 bg-green-50 text-green-700 rounded-full text-sm font-medium mb-4 dark:bg-green-900/30 dark:text-green-400">
+              <div className="inline-flex items-center gap-2 px-3 py-1 bg-slate-800 text-emerald-400 border border-slate-700 rounded-full text-sm font-semibold mb-4 dark:bg-slate-900 dark:border-slate-800">
                 <Wifi className="w-3.5 h-3.5" /> Works Offline
               </div>
               <h2 className="text-3xl sm:text-4xl font-bold text-[var(--text-primary)] tracking-tight">
@@ -194,8 +194,8 @@ export default function LandingPage() {
               <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-6 shadow-[var(--shadow-lg)]">
                 <div className="flex items-center justify-between mb-6">
                   <h3 className="font-semibold text-[var(--text-primary)]">Sync Status</h3>
-                  <div className="flex items-center gap-2 px-2.5 py-1 bg-green-50 text-green-600 rounded-full text-xs font-medium dark:bg-green-900/30 dark:text-green-400">
-                    <span className="relative flex h-2 w-2"><span className="absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75 animate-ping"></span><span className="relative inline-flex h-2 w-2 rounded-full bg-green-500"></span></span>
+                  <div className="flex items-center gap-2 px-2.5 py-1 bg-slate-800 text-emerald-400 border border-slate-700 rounded-full text-xs font-semibold dark:bg-slate-900 dark:border-slate-800">
+                    <span className="relative flex h-2 w-2"><span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping"></span><span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500"></span></span>
                     Online
                   </div>
                 </div>
@@ -227,6 +227,47 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* About */}
+      <section id="about" className="py-20 lg:py-28 bg-[var(--surface-raised)]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
+            <div>
+              <div className="inline-flex items-center gap-2 px-3 py-1 bg-blue-100 text-blue-800 border border-blue-300 rounded-full text-sm font-semibold mb-4">
+                <Building2 className="w-3.5 h-3.5" /> About NaPOS
+              </div>
+              <h2 className="text-3xl sm:text-4xl font-bold text-[var(--text-primary)] tracking-tight">
+                Empowering Indonesian MSMEs with smart technology
+              </h2>
+              <p className="mt-4 text-lg text-[var(--text-secondary)] leading-relaxed">
+                NaPOS is a comprehensive SaaS platform designed specifically for Micro, Small, and Medium
+                Enterprises (MSMEs) in Indonesia. We combine Point-of-Sale, inventory management, and
+                omnichannel selling into one seamless experience.
+              </p>
+              <p className="mt-4 text-lg text-[var(--text-secondary)] leading-relaxed">
+                Our mission is to help businesses reduce capital waste through mathematical inventory
+                optimization (EOQ &amp; ROP), while providing enterprise-grade features at an affordable price.
+              </p>
+            </div>
+            <div className="space-y-4">
+              {[
+                { title: "Smart Inventory Optimization", desc: "EOQ and ROP calculations ensure you order the right amount at the right time, minimizing dead stock and maximizing capital efficiency." },
+                { title: "Hybrid Offline-Online POS", desc: "Never miss a sale — our POS works offline with IndexedDB and syncs seamlessly when back online with conflict resolution." },
+                { title: "Multi-Channel Integration", desc: "Manage physical stores and marketplace channels from a single unified dashboard with real-time stock synchronization." },
+                { title: "Role-Based Multi-Branch", desc: "Scale from 1 store to 5 locations with consolidated reporting, inter-branch transfers, and granular access controls." },
+              ].map(({ title, desc }) => (
+                <div
+                  key={title}
+                  className="p-5 bg-[var(--surface)] border border-[var(--border)] rounded-xl hover:shadow-[var(--shadow-md)] hover:border-[var(--brand-200)] transition-all duration-300"
+                >
+                  <h3 className="text-base font-semibold text-[var(--text-primary)] mb-1.5">{title}</h3>
+                  <p className="text-sm text-[var(--text-secondary)] leading-relaxed">{desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* CTA */}
       <section className="py-20 lg:py-28">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -244,7 +285,7 @@ export default function LandingPage() {
               </p>
               <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
                 <Link href="/register">
-                  <Button size="lg" className="min-w-[200px] bg-white text-[var(--brand-700)] hover:bg-blue-50">
+                  <Button size="lg" className="min-w-[200px] bg-white !text-blue-800 font-semibold hover:bg-blue-50 hover:!text-blue-900 border border-white/50">
                     Get Started Free
                     <ArrowRight className="w-4 h-4" />
                   </Button>

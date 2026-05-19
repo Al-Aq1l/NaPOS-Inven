@@ -1,30 +1,29 @@
 import Link from "next/link";
-import { Zap } from "lucide-react";
 
 export function Footer() {
   const links = {
     Product: [
-      { label: "Features", href: "#features" },
+      { label: "Features", href: "/#features" },
       { label: "Pricing", href: "/pricing" },
-      { label: "POS Terminal", href: "#" },
-      { label: "Inventory", href: "#" },
+      { label: "POS Terminal", href: "/#" },
+      { label: "Inventory", href: "/#" },
     ],
     Company: [
-      { label: "About", href: "#" },
-      { label: "Blog", href: "#" },
-      { label: "Careers", href: "#" },
-      { label: "Contact", href: "#" },
+      { label: "About", href: "/#about" },
+      { label: "Blog", href: "/#" },
+      { label: "Careers", href: "/#" },
+      { label: "Contact", href: "/#" },
     ],
     Support: [
-      { label: "Help Center", href: "#" },
-      { label: "API Docs", href: "#" },
-      { label: "Status", href: "#" },
-      { label: "Community", href: "#" },
+      { label: "Help Center", href: "/#" },
+      { label: "API Docs", href: "/#" },
+      { label: "Status", href: "/#" },
+      { label: "Community", href: "/#" },
     ],
     Legal: [
-      { label: "Privacy", href: "#" },
-      { label: "Terms", href: "#" },
-      { label: "Security", href: "#" },
+      { label: "Privacy", href: "/#" },
+      { label: "Terms", href: "/#" },
+      { label: "Security", href: "/#" },
     ],
   };
 
@@ -35,13 +34,15 @@ export function Footer() {
           {/* Brand */}
           <div className="col-span-2 md:col-span-1">
             <Link href="/" className="flex items-center gap-2 mb-4">
-              <div className="flex items-center justify-center w-8 h-8 bg-[var(--brand-600)] rounded-lg">
-                <Zap className="w-5 h-5 text-white" />
-              </div>
-              <span className="text-lg font-bold text-[var(--text-primary)]">NAPOS</span>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/NaPOS LOGO.png"
+                alt="NaPOS Logo"
+                className="h-8 w-auto object-contain"
+              />
             </Link>
             <p className="text-sm text-[var(--text-secondary)] leading-relaxed">
-              Smart Inventory & POS platform built for Indonesian MSMEs.
+              Smart Inventory &amp; POS platform built for Indonesian MSMEs.
             </p>
           </div>
 
