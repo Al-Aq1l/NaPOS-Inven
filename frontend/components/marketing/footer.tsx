@@ -4,7 +4,7 @@ export function Footer() {
   const links = {
     Product: [
       { label: "Features", href: "/#features" },
-      { label: "Pricing", href: "/pricing" },
+      { label: "Pricing", href: "/#pricing" },
       { label: "POS Terminal", href: "/#" },
       { label: "Inventory", href: "/#" },
     ],

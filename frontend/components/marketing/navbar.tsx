@@ -21,7 +21,7 @@ export function Navbar() {
 
   // Track active section via IntersectionObserver for hash links
   useEffect(() => {
-    const sectionIds = ["features", "about"];
+    const sectionIds = ["features", "pricing", "about"];
     const observers: IntersectionObserver[] = [];
 
     sectionIds.forEach((id) => {
@@ -54,7 +54,7 @@ export function Navbar() {
 
   const navLinks = [
     { label: "Features", href: "/#features" },
-    { label: "Pricing", href: "/pricing" },
+    { label: "Pricing", href: "/#pricing" },
     { label: "About", href: "/#about" },
   ];
 

@@ -79,14 +79,23 @@ export default function PricingPage() {
 
                 {/* Price */}
                 <div className="mb-6">
-                  {price === 0 ? (
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-4xl font-extrabold text-[var(--text-primary)]">Free</span>
+                  {tier.price === 0 ? (
+                    <div className="flex flex-col items-start gap-1">
+                      <span className="text-3xl sm:text-4xl font-extrabold text-[var(--text-primary)] tracking-tight leading-none">
+                        Free
+                      </span>
+                      <span className="text-xs font-semibold text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded w-max">
+                        selamanya
+                      </span>
                     </div>
                   ) : (
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-4xl font-extrabold text-[var(--text-primary)]">{formatIDR(price)}</span>
-                      <span className="text-sm text-[var(--text-tertiary)]">/mo</span>
+                    <div className="flex flex-col items-start gap-1">
+                      <span className="text-3xl sm:text-4xl font-extrabold text-[var(--text-primary)] tracking-tight leading-none">
+                        {formatIDR(price)}
+                      </span>
+                      <span className="text-xs font-semibold text-slate-500 bg-slate-100 dark:bg-slate-800/80 dark:text-slate-400 px-2 py-0.5 rounded w-max">
+                        per {annual ? "tahun" : "bulan"}
+                      </span>
                     </div>
                   )}
                 </div>

@@ -144,7 +144,10 @@ export default function BillingPage() {
                   <span className="font-semibold text-[var(--text-primary)]">{tier.name}</span>
                   {isCurrent && <Badge variant="brand" size="sm">Saat Ini</Badge>}
                 </div>
-                <p className="text-xl font-bold text-[var(--text-primary)]">{price === 0 ? "Gratis" : formatIDR(price)}</p>
+                <p className="text-xl font-bold text-[var(--text-primary)]">
+                  {tier.price === 0 ? "Gratis" : formatIDR(price)}
+                  {tier.price > 0 && <span className="text-xs font-normal text-[var(--text-tertiary)]"> /{annual ? "tahun" : "bln"}</span>}
+                </p>
                 <p className="text-xs text-[var(--text-tertiary)] mb-3">{tier.skuLimit === "unlimited" ? "unlimited" : tier.skuLimit} SKU - {tier.userLimit} pengguna</p>
                 <Button variant={isCurrent ? "secondary" : "outline"} size="sm" className="w-full" disabled={isCurrent}>
                   {isCurrent ? "Paket Saat Ini" : "Pilih"}
