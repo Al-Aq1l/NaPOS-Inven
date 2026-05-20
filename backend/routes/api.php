@@ -3,6 +3,7 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\InventoryOptimizationController;
 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
@@ -23,6 +24,7 @@ Route::middleware('auth:sanctum')->group(function () {
         });
 
         // Other tenant-aware routes
+        Route::get('/inventory/optimization', [InventoryOptimizationController::class, 'index']);
         Route::apiResource('branches', \App\Http\Controllers\BranchController::class);
         Route::apiResource('categories', \App\Http\Controllers\CategoryController::class);
         Route::apiResource('products', \App\Http\Controllers\ProductController::class);

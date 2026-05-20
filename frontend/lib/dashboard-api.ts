@@ -51,6 +51,22 @@ export interface ApiOrder {
   items?: ApiOrderItem[];
 }
 
+export interface InventoryOptimizationItem {
+  id: number;
+  name: string;
+  sku: string;
+  annualDemand: number;
+  PesananingCost: number;
+  holdingCostPerUnit: number;
+  eoq: number;
+  currentPesananQty: number;
+  leadWaktuDays: number;
+  avgDailyUsage: number;
+  safetyStock: number;
+  rop: number;
+  currentStock: number;
+}
+
 export async function fetchBranches() {
   const res = await api.get<ApiBranch[]>("/branches");
   return res.data;
@@ -68,5 +84,10 @@ export async function fetchProducts() {
 
 export async function fetchOrders() {
   const res = await api.get<ApiOrder[]>("/orders");
+  return res.data;
+}
+
+export async function fetchInventoryOptimization() {
+  const res = await api.get<InventoryOptimizationItem[]>("/inventory/optimization");
   return res.data;
 }

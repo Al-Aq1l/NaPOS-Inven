@@ -1,31 +1,72 @@
 "use client";
 
+import { useEffect, useMemo, useState } from "react";
 import { Card, Badge, StatCard } from "@/components/ui";
 import { formatIDR, formatNumber } from "@/lib/constants";
 import { Calculator, TrendingDown, AlertTriangle, Package, BarChart3 } from "lucide-react";
+import { fetchInventoryOptimization, type InventoryOptimizationItem } from "@/lib/dashboard-api";
+import { useAuth } from "@/lib/auth-context";
 
-interface EOQItem {
-  id: string; name: string; sku: string; annualDemand: number; PesananingCost: number;
-  holdingCostPerUnit: number; eoq: number; currentPesananQty: number; leadWaktuDays: number;
-  avgDailyUsage: number; safetyStock: number; rop: number; currentStock: number;
+const CACHE_KEY_PREFIX = "inventory_optimization_cache_v1";
+
+function readCachedItems(cacheKey: string) {
+  if (typeof window === "undefined") return [];
+  try {
+    const cached = window.localStorage.getItem(cacheKey);
+    return cached ? (JSON.parse(cached) as InventoryOptimizationItem[]) : [];
+  } catch {
+    return [];
+  }
 }
 
-const Item: EOQItem[] = [
-  { id: "1", name: "Cold Brew 1L", sku: "KOP-001", annualDemand: 2400, PesananingCost: 50000, holdingCostPerUnit: 8000, eoq: 173, currentPesananQty: 100, leadWaktuDays: 5, avgDailyUsage: 7, safetyStock: 14, rop: 49, currentStock: 44 },
-  { id: "2", name: "Pandan Rice 5kg", sku: "GUL-001", annualDemand: 3600, PesananingCost: 35000, holdingCostPerUnit: 3000, eoq: 291, currentPesananQty: 200, leadWaktuDays: 3, avgDailyUsage: 10, safetyStock: 20, rop: 50, currentStock: 16 },
-  { id: "3", name: "Mie Instan Box", sku: "MIE-001", annualDemand: 1800, PesananingCost: 75000, holdingCostPerUnit: 12000, eoq: 150, currentPesananQty: 120, leadWaktuDays: 7, avgDailyUsage: 5, safetyStock: 10, rop: 45, currentStock: 120 },
-  { id: "4", name: "Sparkling Water 330ml", sku: "SUS-001", annualDemand: 4800, PesananingCost: 40000, holdingCostPerUnit: 4000, eoq: 310, currentPesananQty: 150, leadWaktuDays: 4, avgDailyUsage: 13, safetyStock: 26, rop: 78, currentStock: 59 },
-  { id: "5", name: "Minyak Goreng 2L", sku: "MYK-001", annualDemand: 2000, PesananingCost: 45000, holdingCostPerUnit: 5000, eoq: 190, currentPesananQty: 100, leadWaktuDays: 5, avgDailyUsage: 6, safetyStock: 12, rop: 42, currentStock: 72 },
-  { id: "6", name: "Beras Premium 5kg", sku: "BRS-001", annualDemand: 1200, PesananingCost: 60000, holdingCostPerUnit: 10000, eoq: 120, currentPesananQty: 80, leadWaktuDays: 7, avgDailyUsage: 3, safetyStock: 6, rop: 27, currentStock: 25 },
-];
-
 export default function OptimizationPage() {
-  const needsRePesanan = Item.filter((i) => i.currentStock <= i.rop);
-  const potentialSavings = Item.reduce((sum, i) => {
+  const { user } = useAuth();
+  const cacheKey = `${CACHE_KEY_PREFIX}_${user?.tenant.id ?? "default"}`;
+  const [items, setItems] = useState<InventoryOptimizationItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+
+    async function load() {
+      const cachedItems = readCachedItems(cacheKey);
+      if (cachedItems.length > 0) {
+        setItems(cachedItems);
+        setLoading(false);
+        setRefreshing(true);
+      }
+
+      try {
+        setError(null);
+        const data = await fetchInventoryOptimization();
+        if (!active) return;
+        setItems(data);
+        window.localStorage.setItem(cacheKey, JSON.stringify(data));
+      } catch {
+        if (active) setError("Gagal memuat data optimasi stok.");
+      } finally {
+        if (active) {
+          setLoading(false);
+          setRefreshing(false);
+        }
+      }
+    }
+
+    load();
+    return () => {
+      active = false;
+    };
+  }, [cacheKey]);
+
+  const needsRePesanan = useMemo(() => items.filter((i) => i.currentStock <= i.rop), [items]);
+  const potentialSavings = useMemo(() => items.reduce((sum, i) => {
     const currentCost = (i.annualDemand / i.currentPesananQty) * i.PesananingCost + (i.currentPesananQty / 2) * i.holdingCostPerUnit;
     const optimalCost = (i.annualDemand / i.eoq) * i.PesananingCost + (i.eoq / 2) * i.holdingCostPerUnit;
     return sum + (currentCost - optimalCost);
-  }, 0);
+  }, 0), [items]);
+  const avgLeadTime = items.length ? items.reduce((sum, item) => sum + item.leadWaktuDays, 0) / items.length : 0;
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -33,13 +74,16 @@ export default function OptimizationPage() {
         <h1 className="text-2xl font-bold text-[var(--text-primary)]">Stok Barang Optimization</h1>
         <p className="text-sm text-[var(--text-secondary)] mt-1">Mathematical EOQ & ROP analysis based on historical sales data</p>
       </div>
+      {error && <Card className="text-sm text-[var(--danger-500)]">{error}</Card>}
+      {loading && <Card className="text-sm text-[var(--text-secondary)]">Memuat data optimasi stok...</Card>}
+      {refreshing && !loading && <p className="text-xs text-[var(--text-tertiary)]">Menyegarkan data terbaru...</p>}
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard label="Potential Savings" value={formatIDR(potentialSavings)} change="By Pilihing to EOQ" changeType="positive" icon={<Calculator className="w-5 h-5" />} />
         <StatCard label="Needs RePesanan" value={needsRePesanan.length.toString()} change="Di bawah ROP level" changeType="negative" icon={<AlertTriangle className="w-5 h-5" />} />
-        <StatCard label="Avg. Lead Waktu" value="5.2 days" change="Across all suppliers" changeType="neutral" icon={<TrendingDown className="w-5 h-5" />} />
-        <StatCard label="Item Analyzed" value={Item.length.toString()} change="With sufficient data" changeType="neutral" icon={<Package className="w-5 h-5" />} />
+        <StatCard label="Avg. Lead Waktu" value={`${avgLeadTime.toFixed(1)} days`} change="Across all suppliers" changeType="neutral" icon={<TrendingDown className="w-5 h-5" />} />
+        <StatCard label="Item Analyzed" value={items.length.toString()} change="With sufficient data" changeType="neutral" icon={<Package className="w-5 h-5" />} />
       </div>
 
       {/* Formulas Reference */}
@@ -65,8 +109,11 @@ export default function OptimizationPage() {
       {/* EOQ Analysis Cards */}
       <div>
         <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-4">Produk Analysis</h2>
+        {!loading && items.length === 0 && (
+          <Card className="text-sm text-[var(--text-secondary)]">Belum ada produk untuk dianalisis.</Card>
+        )}
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {Item.map((item) => {
+          {items.map((item) => {
             const beMenipisROP = item.currentStock <= item.rop;
                         return (
               <Card key={item.id} hover>
