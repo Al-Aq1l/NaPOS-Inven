@@ -15,6 +15,23 @@ class BranchController extends Controller
 
     public function store(Request $request)
     {
+        $tenant = auth()->user()->tenant;
+        if ($tenant) {
+            $planLimits = [
+                'starter' => 1,
+                'basic' => 1,
+                'growth' => 5,
+                'business' => 999,
+            ];
+            $maxBranches = $planLimits[strtolower($tenant->plan)] ?? 1;
+            $currentBranchCount = Branch::count();
+            if ($currentBranchCount >= $maxBranches) {
+                return response()->json([
+                    'message' => "Batas jumlah cabang paket Anda ({$maxBranches} Cabang) telah tercapai. Harap upgrade ke paket langganan yang lebih tinggi!"
+                ], 403);
+            }
+        }
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'address' => 'nullable|string',

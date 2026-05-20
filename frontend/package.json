@@ -9,13 +9,18 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@zxing/browser": "^0.2.0",
     "axios": "^1.16.1",
     "chart.js": "^4.5.1",
     "clsx": "^2.1.1",
+    "dexie": "^4.2.1",
     "framer-motion": "^12.39.0",
     "lucide-react": "^1.16.0",
+    "motion": "^12.39.0",
     "next": "16.2.6",
+    "qrcode.react": "^4.2.0",
     "react": "19.2.4",
+    "react-barcode": "^1.6.1",
     "react-chartjs-2": "^5.3.1",
     "react-dom": "19.2.4"
   },

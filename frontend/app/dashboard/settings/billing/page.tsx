@@ -2,11 +2,12 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
-import { Card, Badge, Button } from "@/components/ui";
+import { Card, Badge, Button, Toast } from "@/components/ui";
 import { PRICING_TIERS, formatIDR } from "@/lib/constants";
 import { CreditCard, Download, Clock, Shield, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { fetchBranches, fetchOrders, fetchProducts, type ApiOrder } from "@/lib/dashboard-api";
+import api from "@/lib/api";
 
 type InvoiceRow = {
   id: string;
@@ -28,6 +29,19 @@ export default function BillingPage() {
   const [userUsed, setUserUsed] = useState(1);
   const [branchUsed, setBranchUsed] = useState(0);
   const [orders, setOrders] = useState<ApiOrder[]>([]);
+
+  // Upgrade status & toast notification
+  const [upgrading, setUpgrading] = useState<string | null>(null);
+  const [toastMsg, setToastMsg] = useState("");
+  const [toastType, setToastType] = useState<"success" | "error" | "info" | "warning">("info");
+  const [toastVisible, setToastVisible] = useState(false);
+
+  const showToast = (msg: string, type: "success" | "error" | "info" | "warning" = "info") => {
+    setToastMsg(msg);
+    setToastType(type);
+    setToastVisible(true);
+    setTimeout(() => setToastVisible(false), 4000);
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -72,6 +86,8 @@ export default function BillingPage() {
 
   return (
     <div className="max-w-4xl space-y-6 animate-fade-in">
+      <Toast message={toastMsg} type={toastType} visible={toastVisible} />
+
       <div>
         <h1 className="text-2xl font-bold text-[var(--text-primary)]">Tagihan & Langganan</h1>
         <p className="text-sm text-[var(--text-secondary)] mt-1">Kelola paket, penggunaan, dan metode pembayaran</p>
@@ -149,7 +165,27 @@ export default function BillingPage() {
                   {tier.price > 0 && <span className="text-xs font-normal text-[var(--text-tertiary)]"> /{annual ? "tahun" : "bln"}</span>}
                 </p>
                 <p className="text-xs text-[var(--text-tertiary)] mb-3">{tier.skuLimit === "unlimited" ? "unlimited" : tier.skuLimit} SKU - {tier.userLimit} pengguna</p>
-                <Button variant={isCurrent ? "secondary" : "outline"} size="sm" className="w-full" disabled={isCurrent}>
+                <Button 
+                  variant={isCurrent ? "secondary" : "outline"} 
+                  size="sm" 
+                  className="w-full" 
+                  disabled={isCurrent || upgrading !== null}
+                  loading={upgrading === tier.key}
+                  onClick={async () => {
+                    try {
+                      setUpgrading(tier.key);
+                      const res = await api.post("/billing/upgrade", { plan: tier.key });
+                      showToast(res.data.message || "Paket berhasil ditingkatkan!", "success");
+                      setTimeout(() => {
+                        window.location.reload();
+                      }, 1200);
+                    } catch (err: any) {
+                      showToast(err.response?.data?.message || "Gagal mengubah paket.", "error");
+                    } finally {
+                      setUpgrading(null);
+                    }
+                  }}
+                >
                   {isCurrent ? "Paket Saat Ini" : "Pilih"}
                 </Button>
               </div>

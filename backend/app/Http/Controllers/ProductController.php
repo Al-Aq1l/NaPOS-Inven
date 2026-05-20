@@ -14,6 +14,23 @@ class ProductController extends Controller
 
     public function store(Request $request)
     {
+        $tenant = auth()->user()->tenant;
+        if ($tenant) {
+            $planLimits = [
+                'starter' => 30,
+                'basic' => 500,
+                'growth' => 5000,
+                'business' => 999999,
+            ];
+            $maxSku = $planLimits[strtolower($tenant->plan)] ?? 30;
+            $currentSkuCount = Product::count();
+            if ($currentSkuCount >= $maxSku) {
+                return response()->json([
+                    'message' => "Batas SKU paket Anda ({$maxSku} SKU) telah tercapai. Harap upgrade ke paket langganan yang lebih tinggi!"
+                ], 403);
+            }
+        }
+
         $validated = $request->validate([
             'category_id' => 'nullable|exists:categories,id',
             'sku' => 'nullable|string|max:255',

@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Order;
 use App\Models\OrderItem;
-use App\Models\Branch;
 use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -30,32 +29,55 @@ class OrderController extends Controller
         try {
             DB::beginTransaction();
 
+            $itemsByProduct = collect($validated['items'])
+                ->groupBy('product_id')
+                ->map(fn ($items) => $items->sum('quantity'));
+
+            $products = Product::whereIn('id', $itemsByProduct->keys())->get()->keyBy('id');
             $totalAmount = 0;
             $orderItemsData = [];
 
-            foreach ($validated['items'] as $item) {
-                $product = Product::findOrFail($item['product_id']);
+            foreach ($itemsByProduct as $productId => $quantity) {
+                $product = $products->get((int) $productId);
+                if (!$product) {
+                    DB::rollBack();
+                    return response()->json(['message' => 'Produk tidak ditemukan.'], 422);
+                }
+
                 $price = $product->sell_price;
-                $subtotal = $price * $item['quantity'];
+                $subtotal = $price * $quantity;
+
+                $pivot = DB::table('branch_product')
+                    ->where('branch_id', $validated['branch_id'])
+                    ->where('product_id', $product->id)
+                    ->lockForUpdate()
+                    ->first();
+
+                $currentStock = $pivot ? (int) $pivot->stock : 0;
+                if ($currentStock < $quantity) {
+                    DB::rollBack();
+                    return response()->json([
+                        'message' => "Stok {$product->name} di cabang ini tidak cukup.",
+                        'available_stock' => $currentStock,
+                        'requested_quantity' => $quantity,
+                    ], 422);
+                }
                 
                 $totalAmount += $subtotal;
 
                 $orderItemsData[] = [
                     'product_id' => $product->id,
-                    'quantity' => $item['quantity'],
+                    'quantity' => $quantity,
                     'price' => $price,
                     'subtotal' => $subtotal,
                 ];
 
-                // Reduce stock at the specific branch
-                $branchProduct = $product->branches()->where('branch_id', $validated['branch_id'])->first();
-                if ($branchProduct) {
-                    $newStock = $branchProduct->pivot->stock - $item['quantity'];
-                    $product->branches()->updateExistingPivot($validated['branch_id'], ['stock' => $newStock]);
-                } else {
-                    // Create entry if it doesn't exist (e.g. stock goes negative)
-                    $product->branches()->attach($validated['branch_id'], ['stock' => -$item['quantity']]);
-                }
+                DB::table('branch_product')
+                    ->where('id', $pivot->id)
+                    ->update([
+                        'stock' => $currentStock - $quantity,
+                        'updated_at' => now(),
+                    ]);
             }
 
             $order = Order::create([

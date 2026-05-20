@@ -56,14 +56,15 @@ export interface InventoryOptimizationItem {
   name: string;
   sku: string;
   annualDemand: number;
-  PesananingCost: number;
+  orderingCost: number;
   holdingCostPerUnit: number;
   eoq: number;
-  currentPesananQty: number;
-  leadWaktuDays: number;
+  currentOrderQty: number;
+  leadTimeDays: number;
   avgDailyUsage: number;
   safetyStock: number;
   rop: number;
+  suggested_rop: number;
   currentStock: number;
 }
 
@@ -87,7 +88,7 @@ export async function fetchOrders() {
   return res.data;
 }
 
-export async function fetchInventoryOptimization() {
-  const res = await api.get<InventoryOptimizationItem[]>("/inventory/optimization");
+export async function fetchInventoryOptimization(params?: { ordering_cost?: number; holding_cost_rate?: number }) {
+  const res = await api.get<InventoryOptimizationItem[]>("/inventory/optimization", { params });
   return res.data;
 }

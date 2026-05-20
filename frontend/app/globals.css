@@ -269,3 +269,95 @@ body {
     radial-gradient(ellipse at 80% 20%, rgba(99, 102, 241, 0.1) 0%, transparent 50%),
     radial-gradient(ellipse at 40% 80%, rgba(14, 165, 233, 0.08) 0%, transparent 50%);
 }
+
+/* ===== Thermal Receipt Print ===== */
+.receipt-print-area {
+  display: none !important;
+  position: fixed;
+  left: -9999px;
+  top: 0;
+}
+
+.receipt-paper {
+  width: 58mm;
+  color: #000;
+  background: #fff;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 10px;
+  line-height: 1.35;
+  padding: 3mm;
+}
+
+.receipt-title {
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+}
+
+.receipt-center {
+  text-align: center;
+}
+
+.receipt-line {
+  border-top: 1px dashed #000;
+  margin: 6px 0;
+}
+
+.receipt-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.receipt-row span:last-child {
+  text-align: right;
+}
+
+.receipt-item {
+  margin: 4px 0;
+}
+
+.receipt-total {
+  font-weight: 800;
+  font-size: 11px;
+}
+
+@media print {
+  @page {
+    size: 58mm 120mm;
+    margin: 0;
+  }
+
+  html,
+  body {
+    width: 58mm !important;
+    min-width: 58mm !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+  }
+
+  body * {
+    visibility: hidden !important;
+  }
+
+  .receipt-print-area,
+  .receipt-print-area * {
+    visibility: visible !important;
+  }
+
+  .receipt-print-area {
+    display: block !important;
+    position: static !important;
+    width: 58mm;
+    min-height: auto;
+    background: #fff;
+  }
+
+  .receipt-paper {
+    width: 58mm;
+    margin: 0;
+    padding: 3mm;
+    box-shadow: none;
+  }
+}
