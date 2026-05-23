@@ -1,6 +1,6 @@
-# NAPOS Frontend (Next.js)
+# NAPS Frontend (Next.js)
 
-Frontend dashboard NAPOS berbasis Next.js App Router.
+Frontend dashboard NAPS berbasis Next.js App Router.
 
 ## Requirement
 - Node.js 18+ (disarankan 20+)

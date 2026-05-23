@@ -1,6 +1,6 @@
-// ===== NAPOS Constants =====
+// ===== NAPS Constants =====
 
-export const APP_NAME = "NAPOS";
+export const APP_NAME = "NAPS";
 export const APP_DESCRIPTION = "Smart Inventory & POS untuk UMKM Indonesia";
 export const APP_TAGLINE = "Efisiensi Modal. Skalabilitas Omnichannel.";
 

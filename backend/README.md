@@ -1,6 +1,6 @@
-# NAPOS Backend (Laravel API)
+# NAPS Backend (Laravel API)
 
-Backend API untuk NAPOS (Smart Inventory & POS).
+Backend API untuk NAPS (Smart Inventory & POS).
 
 ## Requirement
 - PHP >= 8.2
@@ -60,6 +60,10 @@ Backend aktif di `http://127.0.0.1:8000`.
 - `GET /api/products`
 - `GET /api/orders`
 - `GET /api/users`
+- `POST /api/receipts/print`
+
+## Printer ESC/POS
+NAPS mendukung cetak struk thermal langsung lewat backend menggunakan ESC/POS. Panduan konfigurasi printer ada di [PRINTING.md](./PRINTING.md).
 
 ## Troubleshooting
 - Jika seeder gagal karena data lama, jalankan ulang:

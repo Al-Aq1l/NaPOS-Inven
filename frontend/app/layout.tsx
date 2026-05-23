@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "NAPOS — Smart Inventory & POS",
+  title: "NAPS — Smart Inventory & POS",
   description: "The all-in-one POS & inventory platform built for Indonesian MSMEs. Capital efficiency, omnichannel scalability.",
   keywords: ["POS", "inventory", "MSME", "Indonesia", "retail", "F&B", "point of sale"],
 };

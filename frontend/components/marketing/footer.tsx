@@ -37,7 +37,7 @@ export function Footer() {
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src="/NaPOS LOGO.png"
-                alt="NaPOS Logo"
+                alt="NAPS Logo"
                 className="h-8 w-auto object-contain"
               />
             </Link>
@@ -68,7 +68,7 @@ export function Footer() {
 
         <div className="mt-12 pt-8 border-t border-[var(--border)] flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-sm text-[var(--text-tertiary)]">
-            © {new Date().getFullYear()} NAPOS. All rights reserved.
+            © {new Date().getFullYear()} NAPS. All rights reserved.
           </p>
           <div className="flex items-center gap-4">
             <span className="text-xs text-[var(--text-tertiary)]">Made with ❤️ in Indonesia</span>

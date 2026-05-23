@@ -48,7 +48,7 @@ export default function LoginPage() {
   return (
     <div className="animate-fade-in">
       <h1 className="text-2xl font-bold text-[var(--text-primary)]">Selamat datang kembali</h1>
-      <p className="mt-1 text-sm text-[var(--text-secondary)]">Masuk ke akun NAPOS Anda</p>
+      <p className="mt-1 text-sm text-[var(--text-secondary)]">Masuk ke akun NAPS Anda</p>
 
       {error && (
         <div className="mt-4 p-3 bg-[var(--danger-50)] text-[var(--danger-600)] border border-[var(--danger-200)] rounded-lg text-sm">

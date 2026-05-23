@@ -46,6 +46,16 @@ function getBranchStocks(item: ApiProduct) {
   }, {});
 }
 
+function parseCashAmount(value: string) {
+  const normalized = value.trim().toLowerCase().replace(/\s/g, "").replace(",", ".");
+  if (normalized.endsWith("k")) {
+    const amount = Number(normalized.slice(0, -1));
+    return Number.isFinite(amount) ? Math.round(amount * 1000) : 0;
+  }
+
+  return Number(normalized.replace(/\D/g, ""));
+}
+
 function mapProdukFromApi(item: ApiProduct, branchId: number | null): Produk {
   const branchStocks = getBranchStocks(item);
   const fallbackStock = Object.values(branchStocks).reduce((sum, stock) => sum + stock, 0);
@@ -105,6 +115,10 @@ export default function POSPage() {
   const [receiptId, setReceiptId] = useState("ORD-1001");
   const [receiptTime, setReceiptTime] = useState("");
   const [receiptMethod, setReceiptMethod] = useState<"cash" | "qris" | "transfer">("cash");
+  const [receiptPrinting, setReceiptPrinting] = useState(false);
+  const [cashPaid, setCashPaid] = useState("");
+  const [receiptCashPaid, setReceiptCashPaid] = useState(0);
+  const [receiptChange, setReceiptChange] = useState(0);
   
   // State Offline-First Sync
   const [isOnline, setIsOnline] = useState(true);
@@ -438,6 +452,10 @@ export default function POSPage() {
   const total = subtotal + tax;
   const itemCount = cart.reduce((sum, c) => sum + c.quantity, 0);
   const activeBranchName = branches.find((branch) => branch.id === selectedBranchId)?.name ?? "-";
+  const cashPaidAmount = parseCashAmount(cashPaid);
+  const cashChange = Math.max(0, cashPaidAmount - total);
+  const isCashEnough = cashPaidAmount >= total;
+  const cashShortcuts = [10000, 20000, 50000, 100000];
   const paymentMethodLabels = {
     cash: "Tunai",
     qris: "QRIS",
@@ -451,13 +469,21 @@ export default function POSPage() {
       return;
     }
     if (cart.length === 0) return;
+    if (method === "cash" && !isCashEnough) {
+      showToast("Nominal uang tunai masih kurang.", "error");
+      return;
+    }
 
     setPaymentOpen(false);
     setLoading(true);
 
     const generatedId = `ORD-${Math.floor(1000 + Math.random() * 9000)}`;
     const nowTime = new Date().toLocaleTimeString("id-ID");
+    const paidAmount = method === "cash" ? cashPaidAmount : total;
+    const changeAmount = method === "cash" ? paidAmount - total : 0;
     setReceiptMethod(method);
+    setReceiptCashPaid(paidAmount);
+    setReceiptChange(changeAmount);
 
     if (navigator.onLine) {
       // PROSES ONLINE: Langsung POST ke API Laravel
@@ -542,14 +568,52 @@ export default function POSPage() {
     }
   };
 
-  const handlePrintReceipt = () => {
-    window.print();
+  const handlePrintReceipt = async () => {
+    if (cart.length === 0 || receiptPrinting) return;
+
+    setReceiptPrinting(true);
+
+    try {
+      await api.post("/receipts/print", {
+        receipt_id: receiptId,
+        receipt_time: receiptTime || "-",
+        branch_name: activeBranchName,
+        cashier_name: user?.name ?? "-",
+        customer_name: customerName || "Pelanggan Umum",
+        payment_method_label: paymentMethodLabels[receiptMethod],
+        cash_paid: receiptMethod === "cash" ? receiptCashPaid : null,
+        change: receiptMethod === "cash" ? receiptChange : null,
+        subtotal,
+        tax,
+        total,
+        is_offline: receiptId.includes("Offline"),
+        items: cart.map((item) => ({
+          name: item.name,
+          quantity: item.quantity,
+          price: item.price,
+          subtotal: item.quantity * item.price,
+        })),
+      });
+
+      showToast("Struk dikirim ke printer ESC/POS.", "success");
+    } catch (err: unknown) {
+      console.error("Gagal print ESC/POS:", err);
+      const message = typeof err === "object" && err !== null && "response" in err
+        ? (err as { response?: { data?: { error?: string } } }).response?.data?.error
+        : undefined;
+      showToast(message ?? "Gagal mencetak ESC/POS. Cek konfigurasi printer.", "error");
+    } finally {
+      setReceiptPrinting(false);
+    }
   };
 
   const handleNewOrder = () => {
     setReceiptOpen(false);
     setCart([]);
     setCustomerName("");
+    setCashPaid("");
+    setReceiptCashPaid(0);
+    setReceiptChange(0);
   };
 
   return (
@@ -557,7 +621,7 @@ export default function POSPage() {
       <div className="receipt-print-area hidden print:block" aria-hidden="true">
         <div className="receipt-paper">
           <div className="receipt-center">
-            <p className="receipt-title">NAPOS</p>
+            <p className="receipt-title">NAPS</p>
             <p>Smart Inventory & POS</p>
             <p>Cabang: {activeBranchName}</p>
           </div>
@@ -584,6 +648,18 @@ export default function POSPage() {
             <span>Bayar</span>
             <span>{paymentMethodLabels[receiptMethod]}</span>
           </div>
+          {receiptMethod === "cash" && (
+            <>
+              <div className="receipt-row">
+                <span>Diterima</span>
+                <span>{formatIDR(receiptCashPaid)}</span>
+              </div>
+              <div className="receipt-row">
+                <span>Kembali</span>
+                <span>{formatIDR(receiptChange)}</span>
+              </div>
+            </>
+          )}
 
           <div className="receipt-line" />
 
@@ -916,27 +992,78 @@ export default function POSPage() {
             onChange={(e) => setCustomerName(e.target.value)}
           />
 
-          <p className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider">Pilih Metode</p>
-          <div className="grid grid-cols-3 gap-3">
-            {[
-              { icon: Banknote, label: "Tunai", val: "cash" as const, color: "hover:border-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/20" },
-              { icon: QrCode, label: "QRIS", val: "qris" as const, color: "hover:border-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950/20" },
-              { icon: CreditCard, label: "Kartu / Transfer", val: "transfer" as const, color: "hover:border-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/20" },
-            ].map(({ icon: Icon, label, val, color }) => (
-              <button
-                key={label}
-                onClick={() => executePayment(val)}
-                className={cn(
-                  "flex flex-col items-center gap-2.5 p-4 border border-[var(--border)] rounded-2xl transition-all duration-200 cursor-pointer active:scale-95 text-center",
-                  color
-                )}
-              >
-                <div className="p-2 bg-[var(--surface-raised)] rounded-xl">
-                  <Icon className="w-5 h-5 text-[var(--text-secondary)]" />
+          <div className="space-y-3">
+            <p className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider">Pembayaran Tunai</p>
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-raised)]/45 p-4 space-y-3">
+              <div className="grid grid-cols-2 gap-2">
+                <Button variant="outline" size="sm" className="h-9 text-xs" onClick={() => setCashPaid(String(total))}>
+                  Uang Pas
+                </Button>
+                {cashShortcuts.map((amount) => (
+                  <Button
+                    key={amount}
+                    variant="outline"
+                    size="sm"
+                    className="h-9 text-xs"
+                    onClick={() => setCashPaid(String(amount))}
+                  >
+                    {amount / 1000}k
+                  </Button>
+                ))}
+              </div>
+
+              <Input
+                label="Uang Diterima"
+                placeholder="Contoh: 15000 atau 15k"
+                value={cashPaid}
+                onChange={(e) => setCashPaid(e.target.value)}
+              />
+
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                <div className="rounded-xl bg-[var(--surface)] border border-[var(--border)] p-3">
+                  <p className="text-[var(--text-secondary)]">Kurang</p>
+                  <p className={cn("mt-1 font-black", isCashEnough ? "text-[var(--success-600)]" : "text-[var(--danger-500)]")}>
+                    {isCashEnough ? formatIDR(0) : formatIDR(total - cashPaidAmount)}
+                  </p>
                 </div>
-                <span className="text-xs font-bold text-[var(--text-primary)]">{label}</span>
-              </button>
-            ))}
+                <div className="rounded-xl bg-[var(--surface)] border border-[var(--border)] p-3">
+                  <p className="text-[var(--text-secondary)]">Kembalian</p>
+                  <p className="mt-1 font-black text-[var(--text-primary)]">{formatIDR(cashChange)}</p>
+                </div>
+              </div>
+
+              <Button
+                className="w-full h-10 text-xs font-bold"
+                onClick={() => executePayment("cash")}
+                disabled={!isCashEnough}
+              >
+                <Banknote className="w-4 h-4" /> Bayar Tunai
+              </Button>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <p className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider">Metode Non Tunai</p>
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                { icon: QrCode, label: "QRIS", val: "qris" as const, color: "hover:border-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950/20" },
+                { icon: CreditCard, label: "Kartu / Transfer", val: "transfer" as const, color: "hover:border-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/20" },
+              ].map(({ icon: Icon, label, val, color }) => (
+                <button
+                  key={label}
+                  onClick={() => executePayment(val)}
+                  className={cn(
+                    "flex flex-col items-center gap-2.5 p-4 border border-[var(--border)] rounded-2xl transition-all duration-200 cursor-pointer active:scale-95 text-center",
+                    color
+                  )}
+                >
+                  <div className="p-2 bg-[var(--surface-raised)] rounded-xl">
+                    <Icon className="w-5 h-5 text-[var(--text-secondary)]" />
+                  </div>
+                  <span className="text-xs font-bold text-[var(--text-primary)]">{label}</span>
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </Modal>
@@ -977,11 +1104,23 @@ export default function POSPage() {
                 )}
               </span>
             </div>
+            {receiptMethod === "cash" && (
+              <>
+                <div className="flex justify-between">
+                  <span className="text-[var(--text-secondary)]">Uang Diterima</span>
+                  <span className="font-bold text-[var(--text-primary)]">{formatIDR(receiptCashPaid)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-[var(--text-secondary)]">Kembalian</span>
+                  <span className="font-bold text-[var(--text-primary)]">{formatIDR(receiptChange)}</span>
+                </div>
+              </>
+            )}
           </div>
           
           <div className="grid grid-cols-2 gap-3">
-            <Button variant="outline" size="sm" icon={<Printer className="w-3.5 h-3.5" />} className="h-9 text-xs" onClick={handlePrintReceipt}>
-              Cetak Struk
+            <Button variant="outline" size="sm" icon={<Printer className="w-3.5 h-3.5" />} className="h-9 text-xs" onClick={handlePrintReceipt} disabled={receiptPrinting}>
+              {receiptPrinting ? "Mencetak..." : "Cetak Struk"}
             </Button>
             <Button variant="outline" size="sm" icon={<Send className="w-3.5 h-3.5" />} className="h-9 text-xs">
               WhatsApp Nota

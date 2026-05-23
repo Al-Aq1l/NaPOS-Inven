@@ -31,6 +31,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::apiResource('categories', \App\Http\Controllers\CategoryController::class);
         Route::apiResource('products', \App\Http\Controllers\ProductController::class);
         Route::apiResource('orders', \App\Http\Controllers\OrderController::class)->except(['update', 'destroy']);
+        Route::post('/receipts/print', [\App\Http\Controllers\ReceiptPrintController::class, 'store']);
         
         // Stock Transfers
         Route::apiResource('transfers', \App\Http\Controllers\StockTransferController::class)->except(['update', 'destroy']);

@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* ===== NAPOS Design System ===== */
+/* ===== NAPS Design System ===== */
 
 :root {
   /* — Brand Colors — */
@@ -279,7 +279,8 @@ body {
 }
 
 .receipt-paper {
-  width: 58mm;
+  width: 48mm;
+  box-sizing: border-box;
   color: #000;
   background: #fff;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
@@ -306,15 +307,25 @@ body {
 .receipt-row {
   display: flex;
   justify-content: space-between;
-  gap: 8px;
+  gap: 4px;
+  break-inside: avoid;
+}
+
+.receipt-row span:first-child {
+  min-width: 0;
 }
 
 .receipt-row span:last-child {
   text-align: right;
+  flex-shrink: 0;
+  max-width: 28mm;
+  overflow-wrap: anywhere;
 }
 
 .receipt-item {
   margin: 4px 0;
+  break-inside: avoid;
+  page-break-inside: avoid;
 }
 
 .receipt-total {
@@ -324,7 +335,7 @@ body {
 
 @media print {
   @page {
-    size: 58mm 120mm;
+    size: 58mm 210mm;
     margin: 0;
   }
 
@@ -332,9 +343,11 @@ body {
   body {
     width: 58mm !important;
     min-width: 58mm !important;
+    max-width: 58mm !important;
     margin: 0 !important;
     padding: 0 !important;
     background: #fff !important;
+    overflow: visible !important;
   }
 
   body * {
@@ -348,16 +361,23 @@ body {
 
   .receipt-print-area {
     display: block !important;
-    position: static !important;
+    position: fixed !important;
+    left: 0 !important;
+    top: 0 !important;
     width: 58mm;
+    max-width: 58mm;
     min-height: auto;
     background: #fff;
+    z-index: 99999;
   }
 
   .receipt-paper {
-    width: 58mm;
+    width: 48mm;
+    max-width: 48mm;
+    box-sizing: border-box;
     margin: 0;
-    padding: 3mm;
+    padding: 2mm 1.5mm;
     box-shadow: none;
+    break-inside: avoid;
   }
 }

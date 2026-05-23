@@ -189,7 +189,7 @@ export default function StokBarangPage() {
   }, 0);
 
   const handleGenerateBarcode = async (product: Produk) => {
-    const generatedCode = `NAPOS-${product.id.padStart(6, "0")}`;
+    const generatedCode = `NAPS-${product.id.padStart(6, "0")}`;
 
     try {
       setGeneratingBarcode(product.id);

@@ -33,7 +33,7 @@ function SidebarContent({
         <div className="flex items-center justify-center w-8 h-8 bg-[var(--brand-600)] rounded-lg">
           <Zap className="w-5 h-5 text-white" />
         </div>
-        <span className="text-lg font-bold text-[var(--text-primary)]">NAPOS</span>
+        <span className="text-lg font-bold text-[var(--text-primary)]">NAPS</span>
       </div>
       <div className="px-4 py-3 border-b border-[var(--border)] space-y-1.5">
         <p className="text-sm font-semibold text-[var(--text-primary)] leading-snug break-words">{user.tenant.name}</p>

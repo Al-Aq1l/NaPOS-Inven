@@ -198,7 +198,7 @@ export default function LandingPage() {
               Everything you need to run your business
             </h2>
             <p className="mt-4 text-xl text-slate-600 dark:text-slate-400">
-              From point-of-sale to inventory optimization, NAPOS handles it all.
+              From point-of-sale to inventory optimization, NAPS handles it all.
             </p>
           </motion.div>
 
@@ -502,14 +502,14 @@ export default function LandingPage() {
               transition={{ duration: 0.7 }}
             >
               <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800/50 rounded-full text-sm font-bold mb-6">
-                <Building2 className="w-4 h-4" /> About NaPOS
+                <Building2 className="w-4 h-4" /> About NAPS
               </div>
               <h2 className="text-4xl sm:text-5xl font-extrabold text-slate-900 dark:text-white tracking-tight leading-tight">
                 Empowering Indonesian MSMEs with smart technology
               </h2>
               <div className="mt-6 space-y-6 text-lg text-slate-600 dark:text-slate-400 leading-relaxed">
                 <p>
-                  NaPOS is a comprehensive SaaS platform designed specifically for Micro, Small, and Medium
+                  NAPS is a comprehensive SaaS platform designed specifically for Micro, Small, and Medium
                   Enterprises (MSMEs) in Indonesia. We combine Point-of-Sale, inventory management, and
                   omnichannel selling into one seamless experience.
                 </p>
@@ -569,7 +569,7 @@ export default function LandingPage() {
                 Ready to grow your business?
               </h2>
               <p className="mt-6 text-xl text-blue-100 max-w-2xl mx-auto leading-relaxed">
-                Join thousands of Indonesian MSMEs using NAPOS to optimize inventory and boost sales.
+                Join thousands of Indonesian MSMEs using NAPS to optimize inventory and boost sales.
               </p>
               <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
                 <Link href="/register">
