@@ -1,26 +1,31 @@
+"use client";
+
 import Link from "next/link";
+import { useLanguage } from "@/lib/language-context";
 
 export function Footer() {
+  const { t } = useLanguage();
+
   const links = {
-    Product: [
-      { label: "Features", href: "/#features" },
-      { label: "Pricing", href: "/#pricing" },
+    [t("footerProduct")]: [
+      { label: t("navFeatures"), href: "/#features" },
+      { label: t("navPricing"), href: "/#pricing" },
       { label: "POS Terminal", href: "/#" },
       { label: "Inventory", href: "/#" },
     ],
-    Company: [
-      { label: "About", href: "/#about" },
+    [t("footerCompany")]: [
+      { label: t("navAbout"), href: "/#about" },
       { label: "Blog", href: "/#" },
       { label: "Careers", href: "/#" },
       { label: "Contact", href: "/#" },
     ],
-    Support: [
+    [t("footerResources")]: [
       { label: "Help Center", href: "/#" },
       { label: "API Docs", href: "/#" },
       { label: "Status", href: "/#" },
       { label: "Community", href: "/#" },
     ],
-    Legal: [
+    [t("footerLegal")]: [
       { label: "Privacy", href: "/#" },
       { label: "Terms", href: "/#" },
       { label: "Security", href: "/#" },
@@ -42,7 +47,7 @@ export function Footer() {
               />
             </Link>
             <p className="text-sm text-[var(--text-secondary)] leading-relaxed">
-              Smart Inventory &amp; POS platform built for Indonesian MSMEs.
+              {t("footerDesc")}
             </p>
           </div>
 
@@ -68,7 +73,7 @@ export function Footer() {
 
         <div className="mt-12 pt-8 border-t border-[var(--border)] flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-sm text-[var(--text-tertiary)]">
-            © {new Date().getFullYear()} NAPS. All rights reserved.
+            © {new Date().getFullYear()} NAPS. {t("footerRights")}
           </p>
           <div className="flex items-center gap-4">
             <span className="text-xs text-[var(--text-tertiary)]">Made with ❤️ in Indonesia</span>

@@ -3,15 +3,17 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, X } from "lucide-react";
+import { Menu, X, Languages } from "lucide-react";
 import { Button } from "@/components/ui";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/lib/language-context";
 
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [activeSection, setActiveSection] = useState("");
   const pathname = usePathname();
+  const { language, setLanguage, t } = useLanguage();
 
   useEffect(() => {
     const handler = () => setScrolled(window.scrollY > 20);
@@ -53,9 +55,9 @@ export function Navbar() {
   }, []);
 
   const navLinks = [
-    { label: "Features", href: "/#features" },
-    { label: "Pricing", href: "/#pricing" },
-    { label: "About", href: "/#about" },
+    { label: t("navFeatures"), href: "/#features" },
+    { label: t("navPricing"), href: "/#pricing" },
+    { label: t("navAbout"), href: "/#about" },
   ];
 
   const isActive = (href: string) => {
@@ -105,13 +107,25 @@ export function Navbar() {
 
           {/* Desktop CTA — Right */}
           <div className="hidden md:flex items-center gap-2 flex-shrink-0">
+            {/* Language Switcher */}
+            <button
+              onClick={() => setLanguage(language === "en" ? "id" : "en")}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-blue-600 hover:bg-blue-50 transition-all duration-300 cursor-pointer mr-1"
+              title={language === "en" ? "Switch to Indonesian" : "Ubah ke Bahasa Inggris"}
+            >
+              <Languages className="w-3.5 h-3.5 text-slate-400 mr-1" />
+              <span className={language === "en" ? "font-bold text-blue-600" : ""}>EN</span>
+              <span className="text-slate-300">/</span>
+              <span className={language === "id" ? "font-bold text-blue-600" : ""}>ID</span>
+            </button>
+
             <Link href="/login">
               <Button
                 variant="ghost"
                 size="sm"
                 className="rounded-lg text-slate-600 hover:text-white hover:bg-blue-500 transition-all duration-300"
               >
-                Log in
+                {t("navLogin")}
               </Button>
             </Link>
             <Link href="/register">
@@ -119,7 +133,7 @@ export function Navbar() {
                 size="sm"
                 className="rounded-lg shadow-[0_2px_12px_rgba(59,130,246,0.3)] hover:shadow-[0_4px_20px_rgba(59,130,246,0.4)] transition-all duration-300 hover:-translate-y-0.5"
               >
-                Start Free
+                {t("navStartFree")}
               </Button>
             </Link>
           </div>
@@ -158,15 +172,32 @@ export function Navbar() {
                   {link.label}
                 </Link>
               ))}
+              
+              {/* Mobile Language Switcher */}
+              <div className="flex items-center justify-between px-3.5 py-2">
+                <span className="text-xs font-semibold text-slate-500 flex items-center gap-1.5">
+                  <Languages className="w-3.5 h-3.5 text-slate-400" />
+                  Language / Bahasa
+                </span>
+                <button
+                  onClick={() => setLanguage(language === "en" ? "id" : "en")}
+                  className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-semibold text-slate-600 hover:bg-blue-500/10 hover:text-blue-700 transition-all cursor-pointer"
+                >
+                  <span className={language === "en" ? "font-bold text-blue-600" : ""}>EN</span>
+                  <span className="text-slate-300">/</span>
+                  <span className={language === "id" ? "font-bold text-blue-600" : ""}>ID</span>
+                </button>
+              </div>
+
               <hr className="my-2 border-slate-200/40" />
               <Link href="/login" onClick={() => setMobileOpen(false)}>
                 <Button variant="ghost" size="sm" className="w-full rounded-lg">
-                  Log in
+                  {t("navLogin")}
                 </Button>
               </Link>
               <Link href="/register" onClick={() => setMobileOpen(false)}>
                 <Button size="sm" className="w-full rounded-lg">
-                  Start Free
+                  {t("navStartFree")}
                 </Button>
               </Link>
             </div>

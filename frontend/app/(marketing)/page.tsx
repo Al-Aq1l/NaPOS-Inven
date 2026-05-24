@@ -11,6 +11,7 @@ import { Button } from "@/components/ui";
 import { motion } from "framer-motion";
 import { PRICING_TIERS, formatIDR } from "@/lib/constants";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/lib/language-context";
 
 const fadeIn = {
   hidden: { opacity: 0, y: 20 },
@@ -29,6 +30,8 @@ const staggerContainer = {
 
 export default function LandingPage() {
   const [annual, setAnnual] = useState(false);
+  const { t } = useLanguage();
+
   return (
     <div className="bg-slate-50 dark:bg-slate-950 overflow-hidden font-sans">
       {/* Hero */}
@@ -66,41 +69,40 @@ export default function LandingPage() {
             {/* Badge */}
             <motion.div variants={fadeIn} className="inline-flex items-center gap-2 px-4 py-2 bg-white/60 backdrop-blur-md border border-blue-200/50 rounded-full text-sm font-medium text-blue-700 shadow-sm mb-8 dark:bg-blue-900/30 dark:border-blue-700/50 dark:text-blue-300">
               <Zap className="w-4 h-4 text-amber-500" />
-              Built for Indonesian MSMEs
+              {t("heroBadge")}
             </motion.div>
 
             {/* Headline */}
             <motion.h1 variants={fadeIn} className="text-5xl sm:text-6xl lg:text-7xl font-extrabold text-slate-900 dark:text-white tracking-tight leading-[1.1] drop-shadow-sm">
-              Capital Efficiency.{" "}
+              {t("heroTitlePart1")}{" "}
               <span className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent">
-                Omnichannel Scalability.
+                {t("heroTitlePart2")}
               </span>
             </motion.h1>
 
             {/* Subtitle */}
             <motion.p variants={fadeIn} className="mt-8 text-lg sm:text-xl text-slate-600 dark:text-slate-300 leading-relaxed max-w-2xl mx-auto">
-              The all-in-one POS & inventory platform that helps your business sell smarter,
-              manage stock with mathematical precision, and scale across every channel.
+              {t("heroSubtitle")}
             </motion.p>
 
             {/* CTAs */}
             <motion.div variants={fadeIn} className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
               <Link href="/register">
                 <Button size="lg" className="min-w-[200px] h-14 text-base bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/30 transition-all hover:scale-105">
-                  Start Free Trial
+                  {t("heroCtaStart")}
                   <ArrowRight className="w-5 h-5 ml-2" />
                 </Button>
               </Link>
               <Link href="/login">
                 <Button variant="outline" size="lg" className="min-w-[200px] h-14 text-base bg-white/50 backdrop-blur-sm border-slate-300 hover:bg-white dark:bg-slate-800/50 dark:border-slate-700 dark:hover:bg-slate-800 transition-all hover:scale-105">
-                  View Demo
+                  {t("heroCtaDemo")}
                 </Button>
               </Link>
             </motion.div>
 
             {/* Trust */}
             <motion.p variants={fadeIn} className="mt-8 text-sm text-slate-500 font-medium">
-              Free forever for 1 store · No credit card required · Setup in 2 minutes
+              {t("heroTrust")}
             </motion.p>
           </motion.div>
 
@@ -130,10 +132,10 @@ export default function LandingPage() {
               <div className="relative p-6 sm:p-8">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                   {[
-                    { label: "Today Revenue", value: "Rp 11.4M", change: "+11.4%", color: "text-emerald-500", bg: "bg-emerald-50 dark:bg-emerald-500/10" },
-                    { label: "Transactions", value: "284", change: "+12 today", color: "text-blue-500", bg: "bg-blue-50 dark:bg-blue-500/10" },
-                    { label: "Low Stock Items", value: "7", change: "Alert", color: "text-amber-500", bg: "bg-amber-50 dark:bg-amber-500/10" },
-                    { label: "Active Channels", value: "4", change: "All synced", color: "text-emerald-500", bg: "bg-emerald-50 dark:bg-emerald-500/10" },
+                    { label: t("statRevenue"), value: "Rp 11.4M", change: "+11.4%", color: "text-emerald-500", bg: "bg-emerald-50 dark:bg-emerald-500/10" },
+                    { label: t("statTransactions"), value: "284", change: t("statToday"), color: "text-blue-500", bg: "bg-blue-50 dark:bg-blue-500/10" },
+                    { label: t("statLowStock"), value: "7", change: t("statAlert"), color: "text-amber-500", bg: "bg-amber-50 dark:bg-amber-500/10" },
+                    { label: t("statActiveChannels"), value: "4", change: t("statAllSynced"), color: "text-emerald-500", bg: "bg-emerald-50 dark:bg-emerald-500/10" },
                   ].map((stat, idx) => (
                     <motion.div
                       key={stat.label}
@@ -185,7 +187,7 @@ export default function LandingPage() {
 
       {/* Features */}
       <section id="features" className="py-24 relative">
-        <div className="absolute inset-0 bg-slate-100/50 dark:bg-slate-900/50 skew-y-3 transform origin-top-left -z-10" />
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-blue-50/40 to-transparent dark:via-blue-950/10 -z-10" />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
           <motion.div
             initial="hidden"
@@ -195,24 +197,24 @@ export default function LandingPage() {
             className="max-w-3xl mx-auto text-center mb-16"
           >
             <h2 className="text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-              Everything you need to run your business
+              {t("featuresTitle")}
             </h2>
             <p className="mt-4 text-xl text-slate-600 dark:text-slate-400">
-              From point-of-sale to inventory optimization, NAPS handles it all.
+              {t("featuresSubtitle")}
             </p>
           </motion.div>
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
             {[
-              { icon: ShoppingCart, title: "Hybrid POS Terminal", desc: "Works offline with IndexedDB. Syncs automatically when back online. Camera-based barcode scanning." },
-              { icon: Package, title: "Smart Inventory", desc: "EOQ & ROP optimization with automated stock alerts. Know exactly when and how much to reorder." },
-              { icon: BarChart3, title: "Real-time Analytics", desc: "Sales trends, peak hours, profit margins. Tier-based insights from basic to enterprise." },
-              { icon: Globe, title: "Omnichannel Sync", desc: "Aggregate orders from marketplace channels and your physical store in one unified dashboard." },
-              { icon: Building2, title: "Multi-Branch", desc: "Manage up to 5 locations with consolidated reporting and inter-branch stock transfers." },
-              { icon: Shield, title: "Role-Based Access", desc: "Owner, Manager, Cashier, Viewer — each sees only what they need. Cashiers never see COGS." },
-              { icon: Smartphone, title: "Mobile-First POS", desc: "Designed for floor staff using smartphones. Perfect for Stock Opname on the go." },
-              { icon: Calculator, title: "Capital Efficiency", desc: "Reduce dead stock with mathematical optimization. EOQ ensures you order the right amount." },
-              { icon: Bell, title: "Smart Alerts", desc: "Stock below reorder point? Marketplace order pending? Get notified instantly via toast and push." },
+              { icon: ShoppingCart, title: t("feat1Title"), desc: t("feat1Desc") },
+              { icon: Package, title: t("feat2Title"), desc: t("feat2Desc") },
+              { icon: BarChart3, title: t("feat3Title"), desc: t("feat3Desc") },
+              { icon: Globe, title: t("feat4Title"), desc: t("feat4Desc") },
+              { icon: Building2, title: t("feat5Title"), desc: t("feat5Desc") },
+              { icon: Shield, title: t("feat6Title"), desc: t("feat6Desc") },
+              { icon: Smartphone, title: t("feat7Title"), desc: t("feat7Desc") },
+              { icon: Calculator, title: t("feat8Title"), desc: t("feat8Desc") },
+              { icon: Bell, title: t("feat9Title"), desc: t("feat9Desc") },
             ].map(({ icon: Icon, title, desc }, i) => (
               <motion.div
                 key={title}
@@ -251,10 +253,10 @@ export default function LandingPage() {
             className="max-w-3xl mx-auto text-center mb-12"
           >
             <h2 className="text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-              Paket Harga Transparan
+              {t("pricingTitle")}
             </h2>
             <p className="mt-4 text-xl text-slate-600 dark:text-slate-400">
-              Mulai gratis. Naik kelas saat bisnis berkembang.
+              {t("pricingSubtitle")}
             </p>
             {/* Toggle */}
             <div className="mt-8 inline-flex items-center gap-3 bg-white/80 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full p-1 shadow-sm">
@@ -265,7 +267,7 @@ export default function LandingPage() {
                   !annual ? "bg-blue-600 text-white shadow-sm" : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                 )}
               >
-                Bulanan
+                {t("pricingMonthly")}
               </button>
               <button
                 onClick={() => setAnnual(true)}
@@ -274,8 +276,8 @@ export default function LandingPage() {
                   annual ? "bg-blue-600 text-white shadow-sm" : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                 )}
               >
-                Tahunan
-                <span className="ml-1.5 text-xs opacity-85 px-1.5 py-0.5 bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300 rounded-full font-bold">Hemat 20%</span>
+                {t("pricingAnnual")}
+                <span className="ml-1.5 text-xs opacity-85 px-1.5 py-0.5 bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300 rounded-full font-bold">{t("pricingSave")}</span>
               </button>
             </div>
           </motion.div>
@@ -284,6 +286,37 @@ export default function LandingPage() {
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {PRICING_TIERS.map((tier, i) => {
               const price = annual ? tier.annualPrice : tier.price;
+
+              // Translate Pricing Tiers content dynamically
+              let tierDesc = tier.description;
+              let tierBadge = tier.badge;
+              let tierFeatures = tier.features;
+              
+              if (tier.key === "starter") {
+                tierDesc = t("tierStarterDesc");
+                tierBadge = tier.badge ? t("tierBadgeFree") : undefined;
+                tierFeatures = [
+                  t("f_st_1"), t("f_st_2"), t("f_st_3"), t("f_st_4"), t("f_st_5"), t("f_st_6")
+                ];
+              } else if (tier.key === "basic") {
+                tierDesc = t("tierBasicDesc");
+                tierFeatures = [
+                  t("f_ba_1"), t("f_ba_2"), t("f_ba_3"), t("f_ba_4"), t("f_ba_5"), t("f_ba_6"), t("f_ba_7"), t("f_ba_8")
+                ];
+              } else if (tier.key === "growth") {
+                tierDesc = t("tierGrowthDesc");
+                tierBadge = tier.badge ? t("tierBadgePopular") : undefined;
+                tierFeatures = [
+                  t("f_gr_1"), t("f_gr_2"), t("f_gr_3"), t("f_gr_4"), t("f_gr_5"), t("f_gr_6"), t("f_gr_7"), t("f_gr_8"), t("f_gr_9")
+                ];
+              } else if (tier.key === "business") {
+                tierDesc = t("tierBusinessDesc");
+                tierBadge = tier.badge ? t("tierBadgeBusiness") : undefined;
+                tierFeatures = [
+                  t("f_bu_1"), t("f_bu_2"), t("f_bu_3"), t("f_bu_4"), t("f_bu_5"), t("f_bu_6"), t("f_bu_7"), t("f_bu_8"), t("f_bu_9"), t("f_bu_10")
+                ];
+              }
+
               return (
                 <motion.div
                   key={tier.key}
@@ -304,21 +337,21 @@ export default function LandingPage() {
                     )}
                   >
                     {/* Badge */}
-                    {tier.badge && (
+                    {tierBadge && (
                       <div className={cn(
                         "absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap",
                         tier.highlighted
                           ? "bg-blue-600 text-white"
                           : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300"
                       )}>
-                        {tier.badge}
+                        {tierBadge}
                       </div>
                     )}
 
                     {/* Tier Info */}
                     <div className="mb-6">
                       <h3 className="text-lg font-bold text-slate-900 dark:text-white">{tier.name}</h3>
-                      <p className="mt-1 text-sm text-slate-600 dark:text-slate-400 min-h-[40px]">{tier.description}</p>
+                      <p className="mt-1 text-sm text-slate-600 dark:text-slate-400 min-h-[40px]">{tierDesc}</p>
                     </div>
 
                     {/* Price */}
@@ -326,10 +359,10 @@ export default function LandingPage() {
                       {tier.price === 0 ? (
                         <div className="flex flex-col items-start gap-1">
                           <span className="text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight leading-none">
-                            Free
+                            {t("pricingFree")}
                           </span>
                           <span className="text-xs font-semibold text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded w-max">
-                            selamanya
+                            {t("pricingForever")}
                           </span>
                         </div>
                       ) : (
@@ -338,7 +371,7 @@ export default function LandingPage() {
                             {formatIDR(price)}
                           </span>
                           <span className="text-xs font-semibold text-slate-500 bg-slate-100 dark:bg-slate-800/80 dark:text-slate-400 px-2 py-0.5 rounded w-max">
-                            per {annual ? "tahun" : "bulan"}
+                            {t("pricingPer")} {annual ? t("pricingYear") : t("pricingMonth")}
                           </span>
                         </div>
                       )}
@@ -350,17 +383,17 @@ export default function LandingPage() {
                         <p className="text-lg font-bold text-slate-900 dark:text-white">
                           {tier.skuLimit === "unlimited" ? "∞" : tier.skuLimit}
                         </p>
-                        <p className="text-xs text-slate-500">SKUs</p>
+                        <p className="text-xs text-slate-500">{t("pricingSKU")}</p>
                       </div>
                       <div className="w-px bg-slate-200 dark:bg-slate-800" />
                       <div className="text-center flex-1">
                         <p className="text-lg font-bold text-slate-900 dark:text-white">{tier.userLimit}</p>
-                        <p className="text-xs text-slate-500">Pengguna</p>
+                        <p className="text-xs text-slate-500">{t("pricingUsers")}</p>
                       </div>
                       <div className="w-px bg-slate-200 dark:bg-slate-800" />
                       <div className="text-center flex-1">
                         <p className="text-lg font-bold text-slate-900 dark:text-white">{tier.branchLimit}</p>
-                        <p className="text-xs text-slate-500">Cabang</p>
+                        <p className="text-xs text-slate-500">{t("pricingBranches")}</p>
                       </div>
                     </div>
 
@@ -370,14 +403,14 @@ export default function LandingPage() {
                         variant={tier.highlighted ? "primary" : "outline"}
                         className={cn("w-full h-11 transition-all hover:scale-[1.02]", tier.highlighted ? "bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-500/20" : "")}
                       >
-                        {tier.price === 0 ? "Mulai Sekarang" : "Coba Gratis"}
+                        {tier.price === 0 ? t("pricingStart") : t("pricingTry")}
                         <ArrowRight className="w-4 h-4 ml-1" />
                       </Button>
                     </Link>
 
                     {/* Features */}
                     <ul className="space-y-3 flex-1">
-                      {tier.features.map((feature) => (
+                      {tierFeatures.map((feature) => (
                         <li key={feature} className="flex items-start gap-2.5">
                           <Check className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" />
                           <span className="text-sm text-slate-600 dark:text-slate-400">{feature}</span>
@@ -404,21 +437,20 @@ export default function LandingPage() {
               transition={{ duration: 0.7 }}
             >
               <div className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 text-emerald-400 border border-slate-700/50 rounded-full text-sm font-bold mb-6 shadow-lg">
-                <Wifi className="w-4 h-4" /> Works Offline
+                <Wifi className="w-4 h-4" /> {t("offlineBadge")}
               </div>
               <h2 className="text-4xl sm:text-5xl font-extrabold text-slate-900 dark:text-white tracking-tight leading-tight">
-                Never miss a sale, <br />even without internet
+                {t("offlineTitle")}
               </h2>
               <p className="mt-6 text-xl text-slate-600 dark:text-slate-400 leading-relaxed">
-                Our hybrid POS stores transactions locally using IndexedDB. When connectivity returns,
-                everything syncs automatically with timestamp-based conflict resolution.
+                {t("offlineDesc")}
               </p>
               <div className="mt-10 space-y-5">
                 {[
-                  "IndexedDB local storage for products & orders",
-                  "Automatic background sync on reconnection",
-                  "Timestamp-based conflict resolution",
-                  "Visual connection status indicator",
+                  t("offlineItem1"),
+                  t("offlineItem2"),
+                  t("offlineItem3"),
+                  t("offlineItem4"),
                 ].map((item, i) => (
                   <motion.div
                     initial={{ opacity: 0, x: -20 }}
@@ -447,20 +479,20 @@ export default function LandingPage() {
               <div className="relative z-10 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-8 shadow-2xl">
                 <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-400 to-teal-400 rounded-t-2xl" />
                 <div className="flex items-center justify-between mb-8">
-                  <h3 className="text-lg font-bold text-slate-900 dark:text-white">Sync Status</h3>
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-white">{t("syncStatus")}</h3>
                   <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-900 text-emerald-400 border border-slate-700 rounded-full text-sm font-bold">
                     <span className="relative flex h-2.5 w-2.5">
                       <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping"></span>
                       <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500"></span>
                     </span>
-                    Online
+                    {t("syncOnline")}
                   </div>
                 </div>
                 <div className="space-y-4">
                   {[
-                    { label: "Products synced", val: "1,247 / 1,247" },
-                    { label: "Pending orders", val: "0 pending" },
-                    { label: "Last sync", val: "2 seconds ago" },
+                    { label: t("syncProducts"), val: "1,247 / 1,247" },
+                    { label: t("syncPending"), val: t("syncPendingVal") },
+                    { label: t("syncLast"), val: t("syncAgo") },
                   ].map((row) => (
                     <div key={row.label} className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-700/50">
                       <span className="text-slate-600 dark:text-slate-400 font-medium">{row.label}</span>
@@ -481,8 +513,8 @@ export default function LandingPage() {
                     <WifiOff className="w-5 h-5 text-amber-600 dark:text-amber-500" />
                   </div>
                   <div>
-                    <p className="text-sm font-bold text-slate-900 dark:text-white">Connection lost</p>
-                    <p className="text-sm text-slate-500 dark:text-slate-400">3 orders queued locally</p>
+                    <p className="text-sm font-bold text-slate-900 dark:text-white">{t("connectionLost")}</p>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">{t("queuedLocally")}</p>
                   </div>
                 </div>
               </motion.div>
@@ -502,30 +534,27 @@ export default function LandingPage() {
               transition={{ duration: 0.7 }}
             >
               <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800/50 rounded-full text-sm font-bold mb-6">
-                <Building2 className="w-4 h-4" /> About NAPS
+                <Building2 className="w-4 h-4" /> {t("aboutBadge")}
               </div>
               <h2 className="text-4xl sm:text-5xl font-extrabold text-slate-900 dark:text-white tracking-tight leading-tight">
-                Empowering Indonesian MSMEs with smart technology
+                {t("aboutTitle")}
               </h2>
               <div className="mt-6 space-y-6 text-lg text-slate-600 dark:text-slate-400 leading-relaxed">
                 <p>
-                  NAPS is a comprehensive SaaS platform designed specifically for Micro, Small, and Medium
-                  Enterprises (MSMEs) in Indonesia. We combine Point-of-Sale, inventory management, and
-                  omnichannel selling into one seamless experience.
+                  {t("aboutDesc1")}
                 </p>
                 <p>
-                  Our mission is to help businesses reduce capital waste through mathematical inventory
-                  optimization (EOQ &amp; ROP), while providing enterprise-grade features at an affordable price.
+                  {t("aboutDesc2")}
                 </p>
               </div>
             </motion.div>
 
             <div className="space-y-6">
               {[
-                { title: "Smart Inventory Optimization", desc: "EOQ and ROP calculations ensure you order the right amount at the right time, minimizing dead stock and maximizing capital efficiency." },
-                { title: "Hybrid Offline-Online POS", desc: "Never miss a sale — our POS works offline with IndexedDB and syncs seamlessly when back online with conflict resolution." },
-                { title: "Multi-Channel Integration", desc: "Manage physical stores and marketplace channels from a single unified dashboard with real-time stock synchronization." },
-                { title: "Role-Based Multi-Branch", desc: "Scale from 1 store to 5 locations with consolidated reporting, inter-branch transfers, and granular access controls." },
+                { title: t("aboutItem1Title"), desc: t("aboutItem1Desc") },
+                { title: t("aboutItem2Title"), desc: t("aboutItem2Desc") },
+                { title: t("aboutItem3Title"), desc: t("aboutItem3Desc") },
+                { title: t("aboutItem4Title"), desc: t("aboutItem4Desc") },
               ].map(({ title, desc }, i) => (
                 <motion.div
                   key={title}
@@ -566,20 +595,20 @@ export default function LandingPage() {
 
             <div className="relative z-10">
               <h2 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white tracking-tight drop-shadow-md">
-                Ready to grow your business?
+                {t("ctaTitle")}
               </h2>
               <p className="mt-6 text-xl text-blue-100 max-w-2xl mx-auto leading-relaxed">
-                Join thousands of Indonesian MSMEs using NAPS to optimize inventory and boost sales.
+                {t("ctaSubtitle")}
               </p>
               <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
                 <Link href="/register">
                   <Button size="lg" className="min-w-[200px] h-14 text-lg bg-white !text-blue-800 font-bold hover:bg-blue-50 hover:!text-blue-900 shadow-xl transition-all hover:scale-105">
-                    Get Started Free
+                    {t("ctaButton")}
                     <ArrowRight className="w-5 h-5 ml-2" />
                   </Button>
                 </Link>
               </div>
-              <p className="mt-6 text-sm text-blue-200 font-medium opacity-80">Start with our free forever Starter plan · No credit card required</p>
+              <p className="mt-6 text-sm text-blue-200 font-medium opacity-80">{t("ctaSubtext")}</p>
             </div>
           </motion.div>
         </div>
