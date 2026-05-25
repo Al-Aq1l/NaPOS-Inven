@@ -39,11 +39,11 @@ Frontend aktif di `http://localhost:3000`.
 - `owner@napos.id` / `password`
 - `manager@napos.id` / `password`
 - `cashier@napos.id` / `password`
-- `viewer@napos.id` / `password`
 
 ## Catatan RBAC
 - Role mengikuti hasil login backend.
 - Role switch demo di sidebar sudah dinonaktifkan.
+- Kasir diarahkan langsung ke POS dan tidak memiliki akses dashboard ringkasan.
 - Route-level guard aktif, user tanpa akses akan diarahkan ke halaman 403 dashboard.
 
 ## Scripts

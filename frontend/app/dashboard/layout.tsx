@@ -86,6 +86,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   useEffect(() => {
     if (isLoading || !isAuthenticated || !user) return;
 
+    if (user.role === "cashier" && pathname === "/dashboard") {
+      router.replace("/dashboard/pos");
+      return;
+    }
+
     const routePermissions: Array<{ prefix: string; feature: string }> = [
       { prefix: "/dashboard/settings/billing", feature: "settings.billing" },
       { prefix: "/dashboard/settings", feature: "settings" },

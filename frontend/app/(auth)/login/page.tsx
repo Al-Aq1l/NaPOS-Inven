@@ -20,8 +20,8 @@ export default function LoginPage() {
     e.preventDefault();
     setError(null);
     try {
-      await login(email, password);
-      router.push("/dashboard");
+      const user = await login(email, password);
+      router.push(user.role === "cashier" ? "/dashboard/pos" : "/dashboard");
     } catch (err: unknown) {
       if (axios.isAxiosError(err)) {
         setError(err.response?.data?.message || err.response?.data?.errors?.email?.[0] || "Invalid credentials");
@@ -34,8 +34,8 @@ export default function LoginPage() {
   const quickLogin = async (role: string) => {
     setError(null);
     try {
-      await login(`${role}@napos.id`, "password");
-      router.push("/dashboard");
+      const user = await login(`${role}@napos.id`, "password");
+      router.push(user.role === "cashier" ? "/dashboard/pos" : "/dashboard");
     } catch (err: unknown) {
       if (axios.isAxiosError(err)) {
         setError(err.response?.data?.message || err.response?.data?.errors?.email?.[0] || "Login failed");
@@ -105,7 +105,7 @@ export default function LoginPage() {
           </div>
         </div>
         <div className="mt-4 grid grid-cols-2 gap-2">
-          {["owner", "manager", "cashier", "viewer"].map((role) => (
+          {["owner", "manager", "cashier"].map((role) => (
             <button
               key={role}
               onClick={() => quickLogin(role)}

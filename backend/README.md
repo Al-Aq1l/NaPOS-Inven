@@ -48,7 +48,6 @@ Backend aktif di `http://127.0.0.1:8000`.
 - Owner: `owner@napos.id`
 - Manager: `manager@napos.id`
 - Cashier: `cashier@napos.id`
-- Viewer: `viewer@napos.id`
 - Password semua akun: `password`
 
 ## Endpoint Dasar yang Dipakai Frontend

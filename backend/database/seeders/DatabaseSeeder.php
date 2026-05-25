@@ -58,15 +58,7 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
-        User::updateOrCreate(
-            ['email' => 'viewer@napos.id'],
-            [
-                'tenant_id' => $tenant->id,
-                'name' => 'Mira Anggraini',
-                'password' => $password,
-                'role' => 'viewer',
-            ]
-        );
+        User::where('email', 'viewer@napos.id')->delete();
 
         $branches = [
             Branch::updateOrCreate(['name' => 'Pusat Bandung'], ['address' => 'Jl. Asia Afrika No. 88, Bandung', 'phone' => '022-3000111']),

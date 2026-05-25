@@ -4,10 +4,14 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { ShieldAlert, ArrowLeft } from "lucide-react";
 import { Card, Button } from "@/components/ui";
+import { useAuth } from "@/lib/auth-context";
 
 export default function ForbiddenPage() {
   const params = useSearchParams();
   const from = params.get("from");
+  const { user } = useAuth();
+  const backHref = user?.role === "cashier" ? "/dashboard/pos" : "/dashboard";
+  const backLabel = user?.role === "cashier" ? "Kembali ke POS" : "Kembali ke Dashboard";
 
   return (
     <div className="max-w-2xl mx-auto py-10">
@@ -26,9 +30,9 @@ export default function ForbiddenPage() {
         )}
 
         <div className="mt-6 flex items-center justify-center gap-2">
-          <Link href="/dashboard">
+          <Link href={backHref}>
             <Button size="sm" icon={<ArrowLeft className="w-4 h-4" />}>
-              Kembali ke Dashboard
+              {backLabel}
             </Button>
           </Link>
         </div>

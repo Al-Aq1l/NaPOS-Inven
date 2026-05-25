@@ -39,7 +39,7 @@ export default function PengaturanPage() {
           id: String(m.id),
           name: m.name,
           email: m.email,
-          role: (m.role as UserRole) ?? "viewer",
+          role: (m.role as UserRole) ?? "cashier",
           status: "active",
         }));
         setMembers(mapped.length ? mapped : [{ id: user.id, name: user.name, email: user.email, role: user.role, status: "active" }]);

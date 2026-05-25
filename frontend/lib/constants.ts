@@ -110,13 +110,12 @@ export const PRICING_TIERS: PricingTier[] = [
 ];
 
 // ===== Roles =====
-export type UserRole = "owner" | "manager" | "cashier" | "viewer";
+export type UserRole = "owner" | "manager" | "cashier";
 
 export const ROLES: Record<UserRole, { label: string; description: string; color: string }> = {
   owner: { label: "Pemilik", description: "Akses penuh ke semua fitur", color: "brand" },
   manager: { label: "Manajer", description: "Kelola stok, tim, dan laporan", color: "indigo" },
   cashier: { label: "Kasir", description: "Akses kasir dan penjualan dasar", color: "emerald" },
-  viewer: { label: "Pemantau", description: "Hanya melihat dashboard", color: "slate" },
 };
 
 // ===== Navigation =====
@@ -129,10 +128,10 @@ export interface NavItem {
 }
 
 export const DASHBOARD_NAV: NavItem[] = [
-  { label: "Dashboard", href: "/dashboard", icon: "LayoutDashboard", roles: ["owner", "manager", "cashier", "viewer"] },
+  { label: "Dashboard", href: "/dashboard", icon: "LayoutDashboard", roles: ["owner", "manager"] },
   { label: "Kasir POS", href: "/dashboard/pos", icon: "ShoppingCart", roles: ["owner", "manager", "cashier"] },
   { label: "Stok", href: "/dashboard/inventory", icon: "Package", roles: ["owner", "manager"] },
-  { label: "Analitik", href: "/dashboard/analytics", icon: "BarChart3", roles: ["owner", "manager", "viewer"] },
+  { label: "Analitik", href: "/dashboard/analytics", icon: "BarChart3", roles: ["owner", "manager"] },
   { label: "Omnichannel", href: "/dashboard/channels", icon: "Globe", roles: ["owner", "manager"] },
   { label: "Cabang", href: "/dashboard/branches", icon: "Building2", roles: ["owner", "manager"] },
   { label: "Pengaturan", href: "/dashboard/settings", icon: "Settings", roles: ["owner", "manager"] },

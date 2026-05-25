@@ -30,7 +30,7 @@ interface AuthState {
 }
 
 interface AuthContextType extends AuthState {
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<User>;
   logout: () => void;
   switchRole: (_role: UserRole) => void;
   hasRole: (...roles: UserRole[]) => boolean;
@@ -41,7 +41,7 @@ const FEATURE_ACCESS: Record<string, UserRole[]> = {
   pos: ["owner", "manager", "cashier"],
   inventory: ["owner", "manager"],
   "inventory.cost": ["owner", "manager"],
-  analytics: ["owner", "manager", "viewer"],
+  analytics: ["owner", "manager"],
   "analytics.profit": ["owner", "manager"],
   "analytics.cogs": ["owner", "manager"],
   "analytics.export": ["owner", "manager"],
@@ -81,7 +81,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (typeof window !== "undefined") {
         localStorage.setItem("access_token", res.data.access_token);
       }
-      setState({ user: res.data.user, isAuthenticated: true, isLoading: false });
+      const user = res.data.user as User;
+      setState({ user, isAuthenticated: true, isLoading: false });
+      return user;
     } catch (error) {
       setState((s) => ({ ...s, isLoading: false }));
       throw error;

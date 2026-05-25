@@ -68,6 +68,33 @@ export interface InventoryOptimizationItem {
   currentStock: number;
 }
 
+export interface DashboardSummary {
+  total_revenue: number;
+  total_orders: number;
+  branch_count: number;
+  sales_trend: Array<{ day: number; total: number }>;
+  recent_orders: Array<{
+    id: number;
+    customer_name: string | null;
+    total_amount: string | number;
+    status: string;
+    created_at: string;
+    item_count: number;
+  }>;
+  low_stock: Array<{
+    id: number;
+    name: string;
+    sku: string | null;
+    rop: number;
+    stock: number;
+  }>;
+}
+
+export async function fetchDashboardSummary() {
+  const res = await api.get<DashboardSummary>("/dashboard/summary");
+  return res.data;
+}
+
 export async function fetchBranches() {
   const res = await api.get<ApiBranch[]>("/branches");
   return res.data;

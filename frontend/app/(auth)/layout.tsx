@@ -1,4 +1,4 @@
-import { Zap } from "lucide-react";
+import { ArrowLeft, Zap } from "lucide-react";
 import Link from "next/link";
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
@@ -32,6 +32,14 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       {/* Right — Form */}
       <div className="flex-1 flex items-center justify-center p-6 sm:p-8 bg-[var(--background)]">
         <div className="w-full max-w-sm">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-2 mb-6 text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Kembali ke Beranda
+          </Link>
+
           {/* Mobile logo */}
           <div className="lg:hidden flex items-center gap-2 mb-8">
             <Link href="/" className="flex items-center gap-2">
