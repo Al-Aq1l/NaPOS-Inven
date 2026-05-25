@@ -48,6 +48,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
             Route::apiResource('branches', \App\Http\Controllers\BranchController::class)->except(['index']);
             Route::apiResource('categories', \App\Http\Controllers\CategoryController::class);
+            Route::post('/products/{product}', [\App\Http\Controllers\ProductController::class, 'update']);
             Route::apiResource('products', \App\Http\Controllers\ProductController::class)->except(['index']);
         });
         

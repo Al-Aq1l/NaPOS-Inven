@@ -23,17 +23,17 @@ export function Button({
   ...props
 }: ButtonProps) {
   const baseStyles =
-    "inline-flex items-center justify-center gap-2 font-medium rounded-lg transition-all duration-200 cursor-pointer select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--ring)] disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]";
+    "inline-flex items-center justify-center gap-2 font-medium rounded-lg transition-colors duration-150 cursor-pointer select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--ring)] disabled:opacity-50 disabled:cursor-not-allowed";
 
   const variants = {
     primary:
-      "bg-[var(--brand-600)] text-white hover:bg-[var(--brand-700)] shadow-sm hover:shadow-md",
+      "bg-[var(--brand-600)] text-white hover:bg-[var(--brand-700)]",
     secondary:
       "bg-[var(--slate-100)] text-[var(--text-primary)] hover:bg-[var(--slate-200)] dark:bg-[var(--slate-800)] dark:hover:bg-[var(--slate-700)]",
     ghost:
       "text-[var(--text-secondary)] hover:bg-[var(--slate-100)] hover:text-[var(--text-primary)] dark:hover:bg-[var(--slate-800)]",
     danger:
-      "bg-[var(--danger-500)] text-white hover:bg-[var(--danger-600)] shadow-sm",
+      "bg-[var(--danger-500)] text-white hover:bg-[var(--danger-600)]",
     outline:
       "border border-[var(--border)] text-[var(--text-primary)] hover:bg-[var(--slate-50)] hover:border-[var(--border-hover)] dark:hover:bg-[var(--slate-800)]",
   };
@@ -95,9 +95,9 @@ export function Card({
   return (
     <div
       className={cn(
-        "bg-[var(--surface)] border border-[var(--border)] rounded-xl shadow-[var(--shadow-xs)]",
+        "bg-[var(--surface)] border border-[var(--border)] rounded-lg",
         hover &&
-          "transition-all duration-200 hover:shadow-[var(--shadow-md)] hover:border-[var(--border-hover)] hover:-translate-y-0.5",
+          "transition-colors duration-150 hover:bg-[var(--surface-raised)] hover:border-[var(--border-hover)]",
         paddings[padding],
         className
       )}
@@ -126,12 +126,12 @@ export function Badge({
   ...props
 }: BadgeProps) {
   const variants = {
-    default: "bg-[var(--slate-200)] text-[var(--slate-700)] border border-[var(--slate-300)] dark:bg-[var(--slate-700)] dark:text-[var(--slate-200)] dark:border-[var(--slate-600)]",
-    success: "bg-green-200 text-green-900 border border-green-400 dark:bg-green-900/70 dark:text-green-100 dark:border-green-600",
-    warning: "bg-amber-200 text-amber-900 border border-amber-400 dark:bg-amber-900/70 dark:text-amber-100 dark:border-amber-600",
-    danger: "bg-red-100 text-red-800 border border-red-300 dark:bg-red-900/60 dark:text-red-200 dark:border-red-700",
-    info: "bg-sky-200 text-sky-900 border border-sky-400 dark:bg-sky-900/70 dark:text-sky-100 dark:border-sky-600",
-    brand: "bg-[var(--brand-100)] text-[var(--brand-800)] border border-[var(--brand-300)] dark:bg-[var(--brand-900)] dark:text-[var(--brand-200)] dark:border-[var(--brand-700)]",
+    default: "bg-slate-100/80 text-slate-600 ring-1 ring-inset ring-slate-200/70 dark:bg-slate-800/70 dark:text-slate-300 dark:ring-white/10",
+    success: "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-100 dark:bg-emerald-400/10 dark:text-emerald-300 dark:ring-emerald-400/15",
+    warning: "bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-100 dark:bg-amber-400/10 dark:text-amber-300 dark:ring-amber-400/15",
+    danger: "bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-100 dark:bg-rose-400/10 dark:text-rose-300 dark:ring-rose-400/15",
+    info: "bg-sky-50 text-sky-700 ring-1 ring-inset ring-sky-100 dark:bg-sky-400/10 dark:text-sky-300 dark:ring-sky-400/15",
+    brand: "bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-100 dark:bg-blue-400/10 dark:text-blue-300 dark:ring-blue-400/15",
   };
 
   const dotColors = {
@@ -151,7 +151,7 @@ export function Badge({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 font-medium rounded-full whitespace-nowrap",
+        "inline-flex items-center gap-1.5 rounded-full font-semibold whitespace-nowrap",
         variants[variant],
         sizes[size],
         className
@@ -280,11 +280,11 @@ export function StatCard({
   };
 
   return (
-    <Card hover className={cn("relative overflow-hidden", className)}>
+    <Card className={cn("relative overflow-hidden", className)}>
       <div className="flex items-start justify-between">
         <div className="space-y-1">
           <p className="text-sm text-[var(--text-secondary)]">{label}</p>
-          <p className="text-2xl font-bold text-[var(--text-primary)] animate-fade-in-up">
+          <p className="text-2xl font-bold text-[var(--text-primary)]">
             {value}
           </p>
           {change && (
@@ -294,7 +294,7 @@ export function StatCard({
           )}
         </div>
         {icon && (
-          <div className="p-2.5 bg-[var(--brand-50)] text-[var(--brand-600)] rounded-lg dark:bg-[var(--brand-950)] dark:text-[var(--brand-400)]">
+          <div className="p-2.5 bg-[var(--surface-raised)] text-[var(--text-secondary)] rounded-lg">
             {icon}
           </div>
         )}
@@ -354,14 +354,14 @@ export function Modal({ open, onClose, title, children, size = "md" }: ModalProp
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center animate-fade-in">
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
         onClick={onClose}
       />
       <div
         className={cn(
-          "relative w-full mx-4 bg-[var(--surface)] rounded-xl shadow-[var(--shadow-xl)] animate-scale-in",
+          "relative w-full mx-4 bg-[var(--surface)] rounded-lg shadow-[var(--shadow-md)]",
           sizes[size]
         )}
       >
@@ -411,10 +411,10 @@ export function Toast({ message, type = "info", visible }: ToastProps) {
   };
 
   return (
-    <div className="fixed bottom-6 right-6 z-[100] animate-slide-in-right">
+    <div className="fixed bottom-6 right-6 z-[100]">
       <div
         className={cn(
-          "flex items-center gap-3 px-4 py-3 rounded-lg text-white shadow-[var(--shadow-lg)]",
+          "flex items-center gap-3 px-4 py-3 rounded-lg text-white shadow-[var(--shadow-md)]",
           colors[type]
         )}
       >
@@ -500,7 +500,7 @@ export function DataTable<T>({
 }: DataTableProps<T>) {
   if (loading) {
     return (
-      <div className="border border-[var(--border)] rounded-xl overflow-hidden">
+      <div className="border border-[var(--border)] rounded-lg overflow-hidden">
         <div className="p-4 space-y-3">
           {Array.from({ length: 5 }).map((_, i) => (
             <Skeleton key={i} height="40px" />
@@ -511,7 +511,7 @@ export function DataTable<T>({
   }
 
   return (
-    <div className="border border-[var(--border)] rounded-xl overflow-hidden">
+    <div className="border border-[var(--border)] rounded-lg overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>

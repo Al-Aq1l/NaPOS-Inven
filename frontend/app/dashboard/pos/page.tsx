@@ -24,6 +24,7 @@ interface Produk {
   sku: string;
   barcode: string;
   image: string;
+  imageUrl: string | null;
   stock: number;
   branchStocks: Record<number, number>;
 }
@@ -67,6 +68,7 @@ function mapProdukFromApi(item: ApiProduct, branchId: number | null): Produk {
     sku: item.sku ?? `SKU-${item.id}`,
     barcode: item.barcode ?? "",
     image: initialsFromName(item.name),
+    imageUrl: item.image_url ?? null,
     stock: branchId ? branchStocks[branchId] ?? 0 : fallbackStock,
     branchStocks,
   };
@@ -111,6 +113,7 @@ export default function POSPage() {
   // State Pelanggan & Bayar
   const [customerName, setCustomerName] = useState("");
   const [paymentOpen, setPaymentOpen] = useState(false);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<"cash" | "qris" | "transfer" | null>(null);
   const [receiptOpen, setReceiptOpen] = useState(false);
   const [receiptId, setReceiptId] = useState("ORD-1001");
   const [receiptTime, setReceiptTime] = useState("");
@@ -191,6 +194,7 @@ export default function POSPage() {
             category: item.category?.name ?? "Lainnya",
             sku: item.sku ?? `SKU-${item.id}`,
             barcode: item.barcode ?? "-",
+            imageUrl: item.image_url ?? null,
             stock: activeBranchId ? (getBranchStocks(item)[activeBranchId] ?? 0) : 0,
             branchStocks: getBranchStocks(item),
             rop: item.rop,
@@ -211,6 +215,7 @@ export default function POSPage() {
             sku: p.sku,
             barcode: p.barcode,
             image: initialsFromName(p.name),
+            imageUrl: p.imageUrl ?? null,
             stock: activeBranchId ? p.branchStocks?.[activeBranchId] ?? 0 : p.stock,
             branchStocks: p.branchStocks ?? {},
           })));
@@ -459,7 +464,17 @@ export default function POSPage() {
   const paymentMethodLabels = {
     cash: "Tunai",
     qris: "QRIS",
-    transfer: "Transfer",
+    transfer: "Debit",
+  };
+
+  const openPaymentModal = () => {
+    setSelectedPaymentMethod(null);
+    setPaymentOpen(true);
+  };
+
+  const closePaymentModal = () => {
+    setSelectedPaymentMethod(null);
+    setPaymentOpen(false);
   };
 
   // Proses Checkout Transaksi (Online / Offline Mode)
@@ -474,7 +489,7 @@ export default function POSPage() {
       return;
     }
 
-    setPaymentOpen(false);
+    closePaymentModal();
     setLoading(true);
 
     const generatedId = `ORD-${Math.floor(1000 + Math.random() * 9000)}`;
@@ -800,30 +815,37 @@ export default function POSPage() {
           )}
 
           {!loading && !error && (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3.5">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3.5">
               {filtered.map((product) => (
                 <button
                   key={product.id}
                   onClick={() => addToCart(product)}
-                  className="group flex flex-col items-center p-3 bg-[var(--surface)] border border-[var(--border)] rounded-xl hover:border-[var(--brand-300)] hover:shadow-[var(--shadow-md)] transition-all duration-200 cursor-pointer active:scale-[0.97] text-left relative overflow-hidden"
+                  className="group flex flex-col overflow-hidden bg-[var(--surface)] border border-[var(--border)] rounded-lg hover:border-[var(--brand-300)] transition-colors duration-150 cursor-pointer active:scale-[0.99] text-left"
                 >
-                  <span className="text-base mb-2 w-12 h-12 rounded-xl bg-[var(--brand-50)] dark:bg-[var(--brand-950)] text-[var(--brand-700)] dark:text-[var(--brand-300)] flex items-center justify-center font-bold flex-shrink-0 group-hover:scale-105 transition-transform duration-200">
-                    {product.image}
-                  </span>
-                  <p className="text-xs font-semibold text-[var(--text-primary)] text-center leading-tight line-clamp-2 w-full min-h-[2rem]">
-                    {product.name}
-                  </p>
-                  <p className="text-[10px] text-[var(--text-tertiary)] font-mono mt-1">
-                    {product.sku}
-                  </p>
-                  <p className="text-xs font-bold text-[var(--brand-600)] mt-1.5">
-                    {formatIDR(product.price)}
-                  </p>
-                  
-                  {/* Status Stok */}
-                  <Badge variant={product.stock <= 0 ? "danger" : product.stock < 10 ? "warning" : "success"} size="sm" className="mt-2 text-[10px] py-0">
-                    {product.stock <= 0 ? "Habis" : `Stok: ${product.stock}`}
-                  </Badge>
+                  <div className="relative aspect-square w-full bg-[var(--surface-raised)]">
+                    {product.imageUrl ? (
+                      <img src={product.imageUrl} alt={product.name} className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-2xl font-black text-[var(--brand-700)] dark:text-[var(--brand-300)]">
+                        {product.image}
+                      </div>
+                    )}
+                    <Badge variant={product.stock <= 0 ? "danger" : product.stock < 10 ? "warning" : "success"} size="sm" className="absolute right-2 top-2 text-[10px] py-0">
+                      {product.stock <= 0 ? "Habis" : product.stock}
+                    </Badge>
+                  </div>
+
+                  <div className="flex min-h-[5.75rem] w-full flex-col p-2.5">
+                    <p className="text-xs font-semibold text-[var(--text-primary)] leading-tight line-clamp-2 min-h-[2rem]">
+                      {product.name}
+                    </p>
+                    <p className="mt-1 truncate text-[10px] text-[var(--text-tertiary)] font-mono">
+                      {product.sku}
+                    </p>
+                    <p className="mt-auto text-xs font-bold text-[var(--brand-600)]">
+                      {formatIDR(product.price)}
+                    </p>
+                  </div>
                 </button>
               ))}
               {filtered.length === 0 && (
@@ -861,9 +883,13 @@ export default function POSPage() {
             <div className="space-y-3">
               {cart.map((item) => (
                 <div key={item.id} className="flex items-center gap-3 p-3 bg-[var(--surface-raised)]/70 hover:bg-[var(--surface-raised)] border border-[var(--border)]/70 rounded-xl transition-all duration-150">
-                  <span className="text-xs w-9 h-9 rounded-lg bg-[var(--surface)] border border-[var(--border)] flex items-center justify-center font-bold text-[var(--brand-700)] dark:text-[var(--brand-300)] flex-shrink-0">
-                    {item.image}
-                  </span>
+                  {item.imageUrl ? (
+                    <img src={item.imageUrl} alt={item.name} className="h-9 w-9 flex-shrink-0 rounded-lg object-cover ring-1 ring-[var(--border)]" />
+                  ) : (
+                    <span className="text-xs w-9 h-9 rounded-lg bg-[var(--surface)] border border-[var(--border)] flex items-center justify-center font-bold text-[var(--brand-700)] dark:text-[var(--brand-300)] flex-shrink-0">
+                      {item.image}
+                    </span>
+                  )}
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-semibold text-[var(--text-primary)] truncate">{item.name}</p>
                     <p className="text-xs font-bold text-[var(--brand-600)] mt-0.5">{formatIDR(item.price)}</p>
@@ -912,7 +938,7 @@ export default function POSPage() {
                 <span>{formatIDR(total)}</span>
               </div>
             </div>
-            <Button onClick={() => setPaymentOpen(true)} className="w-full h-11 text-sm font-bold shadow-md hover:shadow-lg" size="lg">
+            <Button onClick={openPaymentModal} className="w-full h-11 text-sm font-bold shadow-md hover:shadow-lg" size="lg">
               <CreditCard className="w-4 h-4" /> Proses Pembayaran
             </Button>
           </div>
@@ -978,7 +1004,7 @@ export default function POSPage() {
       </Modal>
 
       {/* MODAL PEMBAYARAN */}
-      <Modal open={paymentOpen} onClose={() => setPaymentOpen(false)} title="Pilih Metode Pembayaran" size="sm">
+      <Modal open={paymentOpen} onClose={closePaymentModal} title="Pilih Metode Pembayaran" size="sm">
         <div className="space-y-5">
           <div className="text-center p-4 bg-[var(--surface-raised)] rounded-2xl border border-[var(--border)]">
             <p className="text-xs font-medium text-[var(--text-secondary)]">Tagihan Pembayaran</p>
@@ -993,7 +1019,32 @@ export default function POSPage() {
           />
 
           <div className="space-y-3">
-            <p className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider">Pembayaran Tunai</p>
+            <p className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider">Metode Pembayaran</p>
+            <div className="grid grid-cols-3 gap-2.5">
+              {[
+                { icon: Banknote, label: "Tunai", val: "cash" as const, color: "hover:border-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/20" },
+                { icon: QrCode, label: "QRIS", val: "qris" as const, color: "hover:border-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950/20" },
+                { icon: CreditCard, label: "Debit", val: "transfer" as const, color: "hover:border-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/20" },
+              ].map(({ icon: Icon, label, val, color }) => (
+                <button
+                  key={label}
+                  onClick={() => (val === "cash" ? setSelectedPaymentMethod("cash") : executePayment(val))}
+                  className={cn(
+                    "flex min-h-24 flex-col items-center justify-center gap-2.5 rounded-xl border p-3 text-center transition-all duration-200 active:scale-95 cursor-pointer",
+                    selectedPaymentMethod === val
+                      ? "border-[var(--brand-500)] bg-[var(--brand-50)] text-[var(--brand-700)] dark:bg-[var(--brand-950)] dark:text-[var(--brand-300)]"
+                      : "border-[var(--border)] text-[var(--text-secondary)]",
+                    color
+                  )}
+                >
+                  <Icon className="w-6 h-6" />
+                  <span className="text-xs font-black text-[var(--text-primary)]">{label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {selectedPaymentMethod === "cash" && (
             <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-raised)]/45 p-4 space-y-3">
               <div className="grid grid-cols-2 gap-2">
                 <Button variant="outline" size="sm" className="h-9 text-xs" onClick={() => setCashPaid(String(total))}>
@@ -1040,31 +1091,7 @@ export default function POSPage() {
                 <Banknote className="w-4 h-4" /> Bayar Tunai
               </Button>
             </div>
-          </div>
-
-          <div className="space-y-3">
-            <p className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider">Metode Non Tunai</p>
-            <div className="grid grid-cols-2 gap-3">
-              {[
-                { icon: QrCode, label: "QRIS", val: "qris" as const, color: "hover:border-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950/20" },
-                { icon: CreditCard, label: "Kartu / Transfer", val: "transfer" as const, color: "hover:border-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/20" },
-              ].map(({ icon: Icon, label, val, color }) => (
-                <button
-                  key={label}
-                  onClick={() => executePayment(val)}
-                  className={cn(
-                    "flex flex-col items-center gap-2.5 p-4 border border-[var(--border)] rounded-2xl transition-all duration-200 cursor-pointer active:scale-95 text-center",
-                    color
-                  )}
-                >
-                  <div className="p-2 bg-[var(--surface-raised)] rounded-xl">
-                    <Icon className="w-5 h-5 text-[var(--text-secondary)]" />
-                  </div>
-                  <span className="text-xs font-bold text-[var(--text-primary)]">{label}</span>
-                </button>
-              ))}
-            </div>
-          </div>
+          )}
         </div>
       </Modal>
 

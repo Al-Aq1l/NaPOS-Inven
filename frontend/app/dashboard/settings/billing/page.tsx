@@ -93,9 +93,8 @@ export default function BillingPage() {
         <p className="text-sm text-[var(--text-secondary)] mt-1">Kelola paket, penggunaan, dan metode pembayaran</p>
       </div>
 
-      <Card className="relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-bl from-[var(--brand-100)] to-transparent rounded-full -translate-y-1/2 translate-x-1/2 opacity-50 dark:from-[var(--brand-900)]" />
-        <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+      <Card>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-xl font-bold text-[var(--text-primary)]">{currentTier?.name} Plan</h2>

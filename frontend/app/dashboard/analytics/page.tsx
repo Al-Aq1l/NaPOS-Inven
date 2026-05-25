@@ -5,7 +5,7 @@ import { Chart, registerables } from "chart.js";
 import { useAuth } from "@/lib/auth-context";
 import { Card, Badge, StatCard } from "@/components/ui";
 import { formatIDR } from "@/lib/constants";
-import { DollarSign, ShoppingCart, TrendingUp, Users, Lock, Package } from "lucide-react";
+import { AlertTriangle, DollarSign, ShoppingCart, TrendingUp, Users, Lock, Package } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { fetchOrders, fetchProducts, type ApiOrder, type ApiProduct } from "@/lib/dashboard-api";
 
@@ -145,6 +145,7 @@ export default function AnalitikPage() {
     () => products.filter((p) => (p.branches ?? []).reduce((s, b) => s + (b.pivot?.stock ?? 0), 0) <= p.rop),
     [products],
   );
+  const getTotalStock = (product: ApiProduct) => (product.branches ?? []).reduce((sum, branch) => sum + (branch.pivot?.stock ?? 0), 0);
 
   const totalRevenue = useMemo(() => orders.reduce((sum, o) => sum + Number(o.total_amount), 0), [orders]);
   const totalTransactions = orders.length;
@@ -311,20 +312,42 @@ export default function AnalitikPage() {
 
       <Card>
         <div className="flex items-center justify-between mb-4">
-          <h3 className="font-semibold text-[var(--text-primary)]">Stok Kritis</h3>
+          <div>
+            <h3 className="font-semibold text-[var(--text-primary)]">Peringatan ROP / Stok Kritis</h3>
+            <p className="mt-1 text-xs text-[var(--text-tertiary)]">Produk yang sudah menyentuh atau berada di bawah batas reorder point.</p>
+          </div>
           <Badge variant="warning">{lowStockProducts.length} produk</Badge>
         </div>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
           {lowStockProducts.slice(0, plan === "starter" ? 5 : 12).map((p) => {
-            const stock = (p.branches ?? []).reduce((s, b) => s + (b.pivot?.stock ?? 0), 0);
+            const stock = getTotalStock(p);
             return (
-              <div key={p.id} className="p-3 rounded-lg border border-[var(--border)]">
-                <p className="text-sm font-medium text-[var(--text-primary)]">{p.name}</p>
-                <p className="text-xs text-[var(--text-tertiary)] mt-1">Stok: {stock} | ROP: {p.rop}</p>
+              <div
+                key={p.id}
+                className={cn(
+                  "rounded-lg border border-[var(--border)] bg-[var(--surface-raised)] p-3",
+                  stock <= 0 ? "border-l-4 border-l-rose-400" : "border-l-4 border-l-amber-400"
+                )}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-[var(--text-primary)]">{p.name}</p>
+                    <p className="text-xs text-[var(--text-tertiary)] mt-1">{p.sku || "Tanpa SKU"} · ROP {p.rop}</p>
+                  </div>
+                  <Badge variant={stock <= 0 ? "danger" : "warning"} size="sm">{stock} stok</Badge>
+                </div>
+                <div className="mt-3 flex items-center gap-2 text-xs text-[var(--text-secondary)]">
+                  <AlertTriangle className={cn("h-3.5 w-3.5", stock <= 0 ? "text-rose-500" : "text-amber-500")} />
+                  {stock <= 0 ? "Produk habis, perlu restock." : "Stok sudah di bawah batas aman."}
+                </div>
               </div>
             );
           })}
-          {lowStockProducts.length === 0 && <p className="text-sm text-[var(--text-secondary)]">Tidak ada stok kritis saat ini.</p>}
+          {lowStockProducts.length === 0 && (
+            <div className="rounded-lg border border-dashed border-[var(--border)] p-4 text-sm text-[var(--text-secondary)]">
+              Tidak ada stok kritis saat ini.
+            </div>
+          )}
         </div>
       </Card>
     </div>

@@ -20,6 +20,8 @@ export interface ApiProduct {
   sku: string | null;
   barcode: string | null;
   name: string;
+  image_path?: string | null;
+  image_url?: string | null;
   cost_price: string;
   sell_price: string;
   rop: number;

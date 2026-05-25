@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
-import { Search, Plus, Filter, Download, Upload, AlertTriangle, Package, ArrowUpDown, ClipboardList, Barcode as BarcodeIcon, QrCode, PackagePlus, Trash2, ChevronDown, Pencil } from "lucide-react";
+import { Search, Plus, Filter, Download, Upload, AlertTriangle, Package, ArrowUpDown, Barcode as BarcodeIcon, QrCode, PackagePlus, Trash2, Pencil, Info } from "lucide-react";
 import Barcode from "react-barcode";
 import { QRCodeSVG } from "qrcode.react";
 import { Button, Input, Badge, Card, DataTable, Modal, Toast } from "@/components/ui";
@@ -16,6 +15,7 @@ interface Produk {
   sku: string;
   barcode: string;
   name: string;
+  imageUrl: string | null;
   category: string;
   costPrice: number;
   sellPrice: number;
@@ -67,6 +67,7 @@ function mapProdukFromApi(item: ApiProduct): Produk {
     sku: item.sku ?? `SKU-${item.id}`,
     barcode: item.barcode ?? "-",
     name: item.name,
+    imageUrl: item.image_url ?? null,
     category: item.category?.name ?? "Tanpa Kategori",
     costPrice: Number(item.cost_price),
     sellPrice: Number(item.sell_price),
@@ -75,6 +76,17 @@ function mapProdukFromApi(item: ApiProduct): Produk {
     unit: item.unit,
     status: item.status,
   };
+}
+
+function appendProductFormData(formData: FormData, data: Record<string, string | number | null | File | undefined>) {
+  Object.entries(data).forEach(([key, value]) => {
+    if (value === undefined) return;
+    if (value instanceof File) {
+      formData.append(key, value);
+      return;
+    }
+    formData.append(key, value === null ? "" : String(value));
+  });
 }
 
 export default function StokBarangPage() {
@@ -87,12 +99,16 @@ export default function StokBarangPage() {
   const [loading, setLoading] = useState(true);
   const [generatingBarcode, setGeneratingBarcode] = useState<string | null>(null);
   const [labelProduct, setLabelProduct] = useState<Produk | null>(null);
-  const [addMenuOpen, setAddMenuOpen] = useState(false);
   const [productModalOpen, setProductModalOpen] = useState(false);
   const [productSubmitting, setProductSubmitting] = useState(false);
+  const [newProductImage, setNewProductImage] = useState<File | null>(null);
+  const [newProductImagePreview, setNewProductImagePreview] = useState<string | null>(null);
   const [editProductModalOpen, setEditProductModalOpen] = useState(false);
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
   const [editProductSubmitting, setEditProductSubmitting] = useState(false);
+  const [editProductImage, setEditProductImage] = useState<File | null>(null);
+  const [editProductImagePreview, setEditProductImagePreview] = useState<string | null>(null);
+  const [removeEditImage, setRemoveEditImage] = useState(false);
   const [detailProduct, setDetailProduct] = useState<Produk | null>(null);
   const [deleteProduct, setDeleteProduct] = useState<Produk | null>(null);
   const [deleteSubmitting, setDeleteSubmitting] = useState(false);
@@ -225,6 +241,9 @@ export default function StokBarangPage() {
   };
 
   const resetNewProductForm = () => {
+    if (newProductImagePreview) URL.revokeObjectURL(newProductImagePreview);
+    setNewProductImage(null);
+    setNewProductImagePreview(null);
     setNewProduct({
       name: "",
       sku: "",
@@ -237,6 +256,19 @@ export default function StokBarangPage() {
       branchId: branches[0] ? String(branches[0].id) : "",
       openingStock: "0",
     });
+  };
+
+  const handleNewProductImageChange = (file: File | null) => {
+    if (newProductImagePreview) URL.revokeObjectURL(newProductImagePreview);
+    setNewProductImage(file);
+    setNewProductImagePreview(file ? URL.createObjectURL(file) : null);
+  };
+
+  const handleEditProductImageChange = (file: File | null) => {
+    if (editProductImagePreview?.startsWith("blob:")) URL.revokeObjectURL(editProductImagePreview);
+    setEditProductImage(file);
+    setRemoveEditImage(false);
+    setEditProductImagePreview(file ? URL.createObjectURL(file) : editProductImagePreview);
   };
 
   const handleSubmitProduct = async () => {
@@ -255,7 +287,8 @@ export default function StokBarangPage() {
 
     try {
       setProductSubmitting(true);
-      await api.post("/products", {
+      const formData = new FormData();
+      appendProductFormData(formData, {
         name: newProduct.name.trim(),
         sku: newProduct.sku.trim() || null,
         barcode: newProduct.barcode.trim() || null,
@@ -265,8 +298,15 @@ export default function StokBarangPage() {
         unit: newProduct.unit.trim() || "pcs",
         rop: Math.max(0, Number(newProduct.rop) || 0),
         status: "active",
-        ...(branchPayload ? { branches: branchPayload } : {}),
       });
+      if (newProductImage) formData.append("image", newProductImage);
+      if (branchPayload) {
+        Object.entries(branchPayload).forEach(([branchId, value]) => {
+          formData.append(`branches[${branchId}][stock]`, String(value.stock));
+        });
+      }
+
+      await api.post("/products", formData, { headers: { "Content-Type": "multipart/form-data" } });
 
       await loadInventoryData();
       resetNewProductForm();
@@ -282,6 +322,10 @@ export default function StokBarangPage() {
   const openEditProduct = (product: Produk) => {
     setEditingProductId(product.id);
     const apiProduct = produk.find((item) => item.id === product.id);
+    if (editProductImagePreview?.startsWith("blob:")) URL.revokeObjectURL(editProductImagePreview);
+    setEditProductImage(null);
+    setEditProductImagePreview(product.imageUrl);
+    setRemoveEditImage(false);
     setEditProduct({
       name: product.name,
       sku: product.sku,
@@ -305,7 +349,9 @@ export default function StokBarangPage() {
 
     try {
       setEditProductSubmitting(true);
-      await api.put(`/products/${editingProductId}`, {
+      const formData = new FormData();
+      appendProductFormData(formData, {
+        _method: "PUT",
         name: editProduct.name.trim(),
         sku: editProduct.sku.trim() || null,
         barcode: editProduct.barcode.trim() || null,
@@ -316,10 +362,17 @@ export default function StokBarangPage() {
         rop: Math.max(0, Number(editProduct.rop) || 0),
         status: editProduct.status,
       });
+      if (editProductImage) formData.append("image", editProductImage);
+      if (removeEditImage) formData.append("remove_image", "1");
 
+      await api.post(`/products/${editingProductId}`, formData, { headers: { "Content-Type": "multipart/form-data" } });
       await loadInventoryData();
       setEditProductModalOpen(false);
       setEditingProductId(null);
+      if (editProductImagePreview?.startsWith("blob:")) URL.revokeObjectURL(editProductImagePreview);
+      setEditProductImage(null);
+      setEditProductImagePreview(null);
+      setRemoveEditImage(false);
       showToast("Produk berhasil diperbarui.", "success");
     } catch (err: any) {
       showToast(err.response?.data?.message || "Gagal memperbarui produk.", "error");
@@ -441,63 +494,29 @@ export default function StokBarangPage() {
 
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-[var(--text-primary)]">Stok Barang</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold text-[var(--text-primary)]">Stok Barang</h1>
+            <span
+              title="Halaman utama untuk melihat daftar produk, harga, SKU, barcode, dan stok berjalan per cabang."
+              className="inline-flex h-5 w-5 items-center justify-center rounded-full text-[var(--text-tertiary)] hover:bg-[var(--surface-raised)] hover:text-[var(--text-primary)]"
+            >
+              <Info className="h-3.5 w-3.5" />
+            </span>
+          </div>
           <p className="text-sm text-[var(--text-secondary)] mt-1">
             {produk.length} produk - {menipisStockCount} peringatan stok menipis
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Link href="/dashboard/inventory/optimization">
-            <Button variant="outline" size="sm" icon={<AlertTriangle className="w-4 h-4" />}>
-              EOQ/ROP
-            </Button>
-          </Link>
-          <Link href="/dashboard/inventory/opname">
-            <Button variant="outline" size="sm" icon={<ClipboardList className="w-4 h-4" />}>
-              Stock Opname
-            </Button>
-          </Link>
           <Button variant="outline" size="sm" icon={<Upload className="w-4 h-4" />}>
             Impor
           </Button>
           <Button variant="outline" size="sm" icon={<Download className="w-4 h-4" />}>
             Ekspor
           </Button>
-          <div className="relative">
-            <Button
-              size="sm"
-              icon={<Plus className="w-4 h-4" />}
-              onClick={() => setAddMenuOpen((open) => !open)}
-            >
-              Tambah <ChevronDown className="w-3.5 h-3.5" />
-            </Button>
-            {addMenuOpen && (
-              <div className="absolute right-0 z-30 mt-2 w-48 overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-lg)]">
-                <button
-                  type="button"
-                  className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-[var(--text-primary)] hover:bg-[var(--surface-raised)] cursor-pointer"
-                  onClick={() => {
-                    setAddMenuOpen(false);
-                    setProductModalOpen(true);
-                  }}
-                >
-                  <Plus className="w-4 h-4 text-[var(--brand-600)]" />
-                  Produk Baru
-                </button>
-                <button
-                  type="button"
-                  className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-[var(--text-primary)] hover:bg-[var(--surface-raised)] cursor-pointer"
-                  onClick={() => {
-                    setAddMenuOpen(false);
-                    setReceivingOpen(true);
-                  }}
-                >
-                  <PackagePlus className="w-4 h-4 text-[var(--success-500)]" />
-                  Terima Stok
-                </button>
-              </div>
-            )}
-          </div>
+          <Button size="sm" icon={<Plus className="w-4 h-4" />} onClick={() => setProductModalOpen(true)}>
+            Tambah Produk
+          </Button>
         </div>
       </div>
 
@@ -609,11 +628,20 @@ export default function StokBarangPage() {
               key: "name",
               label: "Produk",
               render: (p: Produk) => (
-                <div>
-                  <p className="font-medium text-[var(--text-primary)]">{p.name}</p>
-                  <p className="text-xs text-[var(--text-tertiary)]">
-                    {p.category} - {p.barcode}
-                  </p>
+                <div className="flex items-center gap-3">
+                  {p.imageUrl ? (
+                    <img src={p.imageUrl} alt={p.name} className="h-10 w-10 rounded-lg object-cover ring-1 ring-[var(--border)]" />
+                  ) : (
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--surface-raised)] text-xs font-bold text-[var(--text-secondary)] ring-1 ring-[var(--border)]">
+                      {p.name.slice(0, 2).toUpperCase()}
+                    </div>
+                  )}
+                  <div className="min-w-0">
+                    <p className="font-medium text-[var(--text-primary)]">{p.name}</p>
+                    <p className="text-xs text-[var(--text-tertiary)]">
+                      {p.category} - {p.barcode}
+                    </p>
+                  </div>
                 </div>
               ),
             },
@@ -756,6 +784,31 @@ export default function StokBarangPage() {
 
       <Modal open={productModalOpen} onClose={() => setProductModalOpen(false)} title="Tambah Produk Baru" size="lg">
         <div className="space-y-5">
+          <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-raised)]/40 p-4">
+            <p className="mb-3 text-sm font-semibold text-[var(--text-primary)]">Foto Produk (Opsional)</p>
+            <div className="flex items-center gap-4">
+              {newProductImagePreview ? (
+                <img src={newProductImagePreview} alt="Preview produk" className="h-20 w-20 rounded-lg object-cover ring-1 ring-[var(--border)]" />
+              ) : (
+                <div className="flex h-20 w-20 items-center justify-center rounded-lg bg-[var(--surface)] text-xs font-semibold text-[var(--text-tertiary)] ring-1 ring-[var(--border)]">
+                  Foto
+                </div>
+              )}
+              <div className="space-y-2">
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  onChange={(event) => handleNewProductImageChange(event.target.files?.[0] ?? null)}
+                  className="block text-sm text-[var(--text-secondary)] file:mr-3 file:rounded-lg file:border-0 file:bg-[var(--surface)] file:px-3 file:py-2 file:text-sm file:font-semibold file:text-[var(--text-primary)]"
+                />
+                {newProductImagePreview && (
+                  <button type="button" onClick={() => handleNewProductImageChange(null)} className="text-xs font-semibold text-[var(--danger-500)]">Hapus foto</button>
+                )}
+                <p className="text-xs text-[var(--text-tertiary)]">JPG, PNG, atau WEBP. Maksimal 2MB.</p>
+              </div>
+            </div>
+          </div>
+
           <div className="grid md:grid-cols-2 gap-4">
             <Input
               label="Nama Produk"
@@ -854,6 +907,42 @@ export default function StokBarangPage() {
 
       <Modal open={editProductModalOpen} onClose={() => setEditProductModalOpen(false)} title="Edit Produk" size="lg">
         <div className="space-y-5">
+          <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-raised)]/40 p-4">
+            <p className="mb-3 text-sm font-semibold text-[var(--text-primary)]">Foto Produk</p>
+            <div className="flex items-center gap-4">
+              {editProductImagePreview && !removeEditImage ? (
+                <img src={editProductImagePreview} alt="Preview produk" className="h-20 w-20 rounded-lg object-cover ring-1 ring-[var(--border)]" />
+              ) : (
+                <div className="flex h-20 w-20 items-center justify-center rounded-lg bg-[var(--surface)] text-xs font-semibold text-[var(--text-tertiary)] ring-1 ring-[var(--border)]">
+                  Foto
+                </div>
+              )}
+              <div className="space-y-2">
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  onChange={(event) => handleEditProductImageChange(event.target.files?.[0] ?? null)}
+                  className="block text-sm text-[var(--text-secondary)] file:mr-3 file:rounded-lg file:border-0 file:bg-[var(--surface)] file:px-3 file:py-2 file:text-sm file:font-semibold file:text-[var(--text-primary)]"
+                />
+                {editProductImagePreview && !removeEditImage && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (editProductImagePreview.startsWith("blob:")) URL.revokeObjectURL(editProductImagePreview);
+                      setEditProductImage(null);
+                      setEditProductImagePreview(null);
+                      setRemoveEditImage(true);
+                    }}
+                    className="text-xs font-semibold text-[var(--danger-500)]"
+                  >
+                    Hapus foto
+                  </button>
+                )}
+                <p className="text-xs text-[var(--text-tertiary)]">Ganti foto hanya jika perlu. Maksimal 2MB.</p>
+              </div>
+            </div>
+          </div>
+
           <div className="grid md:grid-cols-2 gap-4">
             <Input
               label="Nama Produk"
@@ -941,9 +1030,18 @@ export default function StokBarangPage() {
         {detailProduct && (
           <div className="space-y-5">
             <div className="flex items-start justify-between gap-4">
-              <div>
-                <h3 className="text-lg font-bold text-[var(--text-primary)]">{detailProduct.name}</h3>
-                <p className="text-sm text-[var(--text-secondary)]">{detailProduct.category}</p>
+              <div className="flex items-center gap-3">
+                {detailProduct.imageUrl ? (
+                  <img src={detailProduct.imageUrl} alt={detailProduct.name} className="h-14 w-14 rounded-lg object-cover ring-1 ring-[var(--border)]" />
+                ) : (
+                  <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-[var(--surface-raised)] text-sm font-bold text-[var(--text-secondary)] ring-1 ring-[var(--border)]">
+                    {detailProduct.name.slice(0, 2).toUpperCase()}
+                  </div>
+                )}
+                <div>
+                  <h3 className="text-lg font-bold text-[var(--text-primary)]">{detailProduct.name}</h3>
+                  <p className="text-sm text-[var(--text-secondary)]">{detailProduct.category}</p>
+                </div>
               </div>
               <Badge variant={detailProduct.status === "active" ? "success" : "default"}>
                 {detailProduct.status === "active" ? "Aktif" : "Nonaktif"}

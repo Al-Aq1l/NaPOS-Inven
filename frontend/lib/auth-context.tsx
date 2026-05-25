@@ -38,16 +38,16 @@ interface AuthContextType extends AuthState {
 }
 
 const FEATURE_ACCESS: Record<string, UserRole[]> = {
-  pos: ["owner", "manager", "cashier"],
+  pos: ["owner", "cashier"],
   inventory: ["owner", "manager"],
   "inventory.cost": ["owner", "manager"],
   analytics: ["owner", "manager"],
   "analytics.profit": ["owner", "manager"],
   "analytics.cogs": ["owner", "manager"],
   "analytics.export": ["owner", "manager"],
-  channels: ["owner", "manager"],
+  channels: [],
   branches: ["owner", "manager"],
-  settings: ["owner", "manager"],
+  settings: ["owner"],
   "settings.billing": ["owner"],
   "settings.users": ["owner"],
 };
@@ -98,6 +98,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       if (typeof window !== "undefined") {
         localStorage.removeItem("access_token");
+        Object.keys(sessionStorage)
+          .filter((key) => key.startsWith("dashboard-stock-alert:"))
+          .forEach((key) => sessionStorage.removeItem(key));
       }
       setState({ user: null, isAuthenticated: false, isLoading: false });
     }

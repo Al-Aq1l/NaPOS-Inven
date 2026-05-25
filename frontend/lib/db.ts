@@ -7,6 +7,7 @@ export interface LocalProduct {
   category: string;
   sku: string;
   barcode: string;
+  imageUrl?: string | null;
   stock: number;
   branchStocks: Record<number, number>;
   rop: number;

@@ -17,6 +17,7 @@ class Product extends Model
         'barcode',
         'name',
         'description',
+        'image_path',
         'cost_price',
         'sell_price',
         'rop',
@@ -28,6 +29,15 @@ class Product extends Model
         'cost_price' => 'decimal:2',
         'sell_price' => 'decimal:2',
     ];
+
+    protected $appends = [
+        'image_url',
+    ];
+
+    public function getImageUrlAttribute(): ?string
+    {
+        return $this->image_path ? asset('storage/' . $this->image_path) : null;
+    }
 
     public function category()
     {

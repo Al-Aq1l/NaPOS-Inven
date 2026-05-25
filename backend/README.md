@@ -38,11 +38,28 @@ php artisan key:generate
 ```bash
 php artisan migrate:fresh --seed
 ```
-7. Jalankan server backend:
+7. Aktifkan public storage untuk foto produk:
+```bash
+php artisan storage:link
+```
+Foto produk disimpan di `storage/app/public/products` dan dibaca frontend melalui URL `/storage/products/...`.
+
+8. Jalankan server backend:
 ```bash
 php artisan serve
 ```
 Backend aktif di `http://127.0.0.1:8000`.
+
+## Update Database Existing
+Jika database sudah ada dan hanya ingin menambahkan dukungan foto produk, jalankan:
+```bash
+php artisan migrate
+php artisan storage:link
+```
+Pastikan `APP_URL` di `.env` mengarah ke host backend yang dipakai frontend, misalnya:
+```env
+APP_URL=http://127.0.0.1:8000
+```
 
 ## Akun Demo (Seeder)
 - Owner: `owner@napos.id`

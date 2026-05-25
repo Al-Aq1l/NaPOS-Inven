@@ -114,7 +114,7 @@ export type UserRole = "owner" | "manager" | "cashier";
 
 export const ROLES: Record<UserRole, { label: string; description: string; color: string }> = {
   owner: { label: "Pemilik", description: "Akses penuh ke semua fitur", color: "brand" },
-  manager: { label: "Manajer", description: "Kelola stok, tim, dan laporan", color: "indigo" },
+  manager: { label: "Manajer", description: "Akses operasional toko, stok, transfer, adjustment, dan laporan cabang", color: "indigo" },
   cashier: { label: "Kasir", description: "Akses kasir dan penjualan dasar", color: "emerald" },
 };
 
@@ -129,12 +129,16 @@ export interface NavItem {
 
 export const DASHBOARD_NAV: NavItem[] = [
   { label: "Dashboard", href: "/dashboard", icon: "LayoutDashboard", roles: ["owner", "manager"] },
-  { label: "Kasir POS", href: "/dashboard/pos", icon: "ShoppingCart", roles: ["owner", "manager", "cashier"] },
-  { label: "Stok", href: "/dashboard/inventory", icon: "Package", roles: ["owner", "manager"] },
+  { label: "Kasir POS", href: "/dashboard/pos", icon: "ShoppingCart", roles: ["owner", "cashier"] },
+  { label: "Produk & Stok", href: "/dashboard/inventory", icon: "Package", roles: ["owner", "manager"] },
+  { label: "Stok Masuk", href: "/dashboard/inventory/stock-in", icon: "PackagePlus", roles: ["owner", "manager"] },
+  { label: "Stok Keluar", href: "/dashboard/inventory/stock-out", icon: "PackageMinus", roles: ["owner", "manager"] },
+  { label: "Transfer Stok", href: "/dashboard/inventory/transfers", icon: "ArrowRightLeft", roles: ["owner", "manager"] },
+  { label: "Stok Opname", href: "/dashboard/inventory/opname", icon: "ClipboardList", roles: ["owner", "manager"] },
+  { label: "Rekomendasi Restock", href: "/dashboard/inventory/optimization", icon: "Calculator", roles: ["owner", "manager"] },
   { label: "Analitik", href: "/dashboard/analytics", icon: "BarChart3", roles: ["owner", "manager"] },
-  { label: "Omnichannel", href: "/dashboard/channels", icon: "Globe", roles: ["owner", "manager"] },
   { label: "Cabang", href: "/dashboard/branches", icon: "Building2", roles: ["owner", "manager"] },
-  { label: "Pengaturan", href: "/dashboard/settings", icon: "Settings", roles: ["owner", "manager"] },
+  { label: "Pengaturan", href: "/dashboard/settings", icon: "Settings", roles: ["owner"] },
 ];
 
 // ===== API =====
