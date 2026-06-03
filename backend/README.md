@@ -81,6 +81,9 @@ APP_URL=http://127.0.0.1:8000
 ## Printer ESC/POS
 NAPS mendukung cetak struk thermal langsung lewat backend menggunakan ESC/POS. Panduan konfigurasi printer ada di [PRINTING.md](./PRINTING.md).
 
+## Tenant, Role, dan Langganan
+Logic multi-tenant, role user, limit paket, gating fitur, dan flow demo pengajuan upgrade dijelaskan di [TENANT_SUBSCRIPTION_LOGIC.md](./TENANT_SUBSCRIPTION_LOGIC.md).
+
 ## Troubleshooting
 - Jika seeder gagal karena data lama, jalankan ulang:
 ```bash

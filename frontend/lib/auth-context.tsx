@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useCallback, ReactNode, useEffect } from "react";
 import { type UserRole } from "@/lib/constants";
 import api from "@/lib/api";
+import type { ApiBranch } from "@/lib/dashboard-api";
 
 export interface Tenant {
   id: string;
@@ -15,12 +16,14 @@ export interface Tenant {
 
 export interface User {
   id: string;
+  branch_id: number | null;
   name: string;
   email: string;
   phone: string;
   role: UserRole;
   avatar: string | null;
   tenant: Tenant;
+  branch: ApiBranch | null;
 }
 
 interface AuthState {
@@ -52,6 +55,13 @@ const FEATURE_ACCESS: Record<string, UserRole[]> = {
   "settings.users": ["owner"],
 };
 
+const PLAN_FEATURES: Record<Tenant["plan"], string[]> = {
+  starter: ["pos", "inventory", "branches"],
+  basic: ["pos", "inventory", "branches", "analytics"],
+  growth: ["pos", "inventory", "branches", "analytics", "inventory.transfers", "inventory.opname", "inventory.optimization"],
+  business: ["pos", "inventory", "branches", "analytics", "inventory.transfers", "inventory.opname", "inventory.optimization", "channels"],
+};
+
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -63,7 +73,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
           const res = await api.get("/me");
           setState({ user: res.data.user, isAuthenticated: true, isLoading: false });
-        } catch (_error) {
+        } catch {
           localStorage.removeItem("access_token");
           setState({ user: null, isAuthenticated: false, isLoading: false });
         }
@@ -107,7 +117,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // Role wajib mengikuti data backend/login.
-  const switchRole = useCallback((_role: UserRole) => {}, []);
+  const switchRole = useCallback(() => {}, []);
 
   const hasRole = useCallback((...roles: UserRole[]) => {
     if (!state.user) return false;
@@ -117,8 +127,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const canAccess = useCallback((feature: string) => {
     if (!state.user) return false;
     const allowed = FEATURE_ACCESS[feature];
-    if (!allowed) return true;
-    return allowed.includes(state.user.role);
+    const roleAllowed = allowed ? allowed.includes(state.user.role) : true;
+    if (!roleAllowed) return false;
+
+    if (feature.startsWith("settings")) return true;
+
+    const planFeatures = PLAN_FEATURES[state.user.tenant.plan] ?? PLAN_FEATURES.starter;
+    return planFeatures.includes(feature) || planFeatures.some((item) => feature.startsWith(`${item}.`));
   }, [state.user]);
 
   return (
@@ -133,4 +148,3 @@ export function useAuth() {
   if (!ctx) throw new Error("useAuth must be used within AuthProvider");
   return ctx;
 }
-

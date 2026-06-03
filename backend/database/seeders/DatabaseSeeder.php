@@ -61,16 +61,16 @@ class DatabaseSeeder extends Seeder
         User::where('email', 'viewer@napos.id')->delete();
 
         $branches = [
-            Branch::updateOrCreate(['name' => 'Pusat Bandung'], ['address' => 'Jl. Asia Afrika No. 88, Bandung', 'phone' => '022-3000111']),
-            Branch::updateOrCreate(['name' => 'Kopo Square'], ['address' => 'Jl. Kopo Permai Blok B2, Bandung', 'phone' => '022-3000222']),
-            Branch::updateOrCreate(['name' => 'Antapani Point'], ['address' => 'Jl. Antapani Tengah No. 19, Bandung', 'phone' => '022-3000333']),
+            Branch::updateOrCreate(['tenant_id' => $tenant->id, 'name' => 'Pusat Bandung'], ['address' => 'Jl. Asia Afrika No. 88, Bandung', 'phone' => '022-3000111']),
+            Branch::updateOrCreate(['tenant_id' => $tenant->id, 'name' => 'Kopo Square'], ['address' => 'Jl. Kopo Permai Blok B2, Bandung', 'phone' => '022-3000222']),
+            Branch::updateOrCreate(['tenant_id' => $tenant->id, 'name' => 'Antapani Point'], ['address' => 'Jl. Antapani Tengah No. 19, Bandung', 'phone' => '022-3000333']),
         ];
 
         $categories = [
-            'Beverages' => Category::updateOrCreate(['slug' => Str::slug('Beverages')], ['name' => 'Beverages']),
-            'Snacks' => Category::updateOrCreate(['slug' => Str::slug('Snacks')], ['name' => 'Snacks']),
-            'Staples' => Category::updateOrCreate(['slug' => Str::slug('Staples')], ['name' => 'Staples']),
-            'Household' => Category::updateOrCreate(['slug' => Str::slug('Household')], ['name' => 'Household']),
+            'Beverages' => Category::updateOrCreate(['tenant_id' => $tenant->id, 'slug' => Str::slug('Beverages')], ['name' => 'Beverages']),
+            'Snacks' => Category::updateOrCreate(['tenant_id' => $tenant->id, 'slug' => Str::slug('Snacks')], ['name' => 'Snacks']),
+            'Staples' => Category::updateOrCreate(['tenant_id' => $tenant->id, 'slug' => Str::slug('Staples')], ['name' => 'Staples']),
+            'Household' => Category::updateOrCreate(['tenant_id' => $tenant->id, 'slug' => Str::slug('Household')], ['name' => 'Household']),
         ];
 
         $products = [
@@ -84,7 +84,7 @@ class DatabaseSeeder extends Seeder
 
         foreach ($products as $item) {
             $product = Product::updateOrCreate(
-                ['sku' => $item['sku']],
+                ['tenant_id' => $tenant->id, 'sku' => $item['sku']],
                 [
                     'category_id' => $categories[$item['category']]->id,
                     'barcode' => $item['barcode'],

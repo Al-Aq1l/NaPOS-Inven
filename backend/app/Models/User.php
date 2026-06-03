@@ -21,6 +21,7 @@ class User extends Authenticatable
      */
     protected $fillable = [
         'tenant_id',
+        'branch_id',
         'name',
         'email',
         'password',
@@ -53,6 +54,11 @@ class User extends Authenticatable
     public function tenant(): BelongsTo
     {
         return $this->belongsTo(Tenant::class);
+    }
+
+    public function branch(): BelongsTo
+    {
+        return $this->belongsTo(Branch::class);
     }
 
     public function hasRole(string $role): bool

@@ -161,6 +161,15 @@ body {
   background: var(--slate-600);
 }
 
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
 /* ===== Animations ===== */
 @keyframes fade-in {
   from { opacity: 0; }

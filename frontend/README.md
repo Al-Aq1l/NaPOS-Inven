@@ -45,6 +45,7 @@ Frontend aktif di `http://localhost:3000`.
 - Role switch demo di sidebar sudah dinonaktifkan.
 - Kasir diarahkan langsung ke POS dan tidak memiliki akses dashboard ringkasan.
 - Route-level guard aktif, user tanpa akses akan diarahkan ke halaman 403 dashboard.
+- Logic lengkap tenant, role, paket langganan, dan flow upgrade ada di `../backend/TENANT_SUBSCRIPTION_LOGIC.md`.
 
 ## Scripts
 - Dev server:

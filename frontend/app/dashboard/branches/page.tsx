@@ -4,23 +4,36 @@ import { useEffect, useMemo, useState } from "react";
 import { Building2, DollarSign, Info, Package, Users } from "lucide-react";
 import { Badge, Card, StatCard } from "@/components/ui";
 import { formatIDR } from "@/lib/constants";
-import { fetchBranches, fetchOrders, type ApiBranch, type ApiOrder } from "@/lib/dashboard-api";
+import { fetchBillingInfo, fetchBranches, fetchOrders, type ApiBranch, type ApiOrder, type BillingInfo } from "@/lib/dashboard-api";
 
 export default function BranchesPage() {
   const [branches, setBranches] = useState<ApiBranch[]>([]);
   const [orders, setOrders] = useState<ApiOrder[]>([]);
+  const [billing, setBilling] = useState<BillingInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    setLoading(true);
-    Promise.all([fetchBranches(), fetchOrders()])
-      .then(([branchData, orderData]) => {
+    let mounted = true;
+
+    async function loadData() {
+      try {
+        const [branchData, orderData, billingInfo] = await Promise.all([fetchBranches(), fetchOrders(), fetchBillingInfo()]);
+        if (!mounted) return;
         setBranches(branchData);
         setOrders(orderData);
-      })
-      .catch(() => setError("Gagal memuat data cabang."))
-      .finally(() => setLoading(false));
+        setBilling(billingInfo);
+      } catch {
+        if (mounted) setError("Gagal memuat data cabang.");
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    }
+
+    loadData();
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   const today = new Date().toDateString();
@@ -35,6 +48,7 @@ export default function BranchesPage() {
 
   const totalRevenue = branchStats.reduce((sum, branch) => sum + branch.todayRevenue, 0);
   const totalTx = branchStats.reduce((sum, branch) => sum + branch.todayTx, 0);
+  const branchLimit = billing?.limits.max_branches ?? 1;
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -58,8 +72,14 @@ export default function BranchesPage() {
         <StatCard label="Pendapatan Hari Ini" value={formatIDR(totalRevenue)} changeType="positive" icon={<DollarSign className="w-5 h-5" />} />
         <StatCard label="Transaksi Hari Ini" value={String(totalTx)} changeType="positive" icon={<Package className="w-5 h-5" />} />
         <StatCard label="Cabang Aktif" value={String(branchStats.length)} changeType="positive" icon={<Building2 className="w-5 h-5" />} />
-        <StatCard label="Rata-rata per Cabang" value={formatIDR(branchStats.length ? totalRevenue / branchStats.length : 0)} changeType="neutral" icon={<Users className="w-5 h-5" />} />
+        <StatCard label="Limit Paket" value={`${branchStats.length} / ${branchLimit}`} changeType={branchStats.length >= branchLimit ? "negative" : "neutral"} icon={<Users className="w-5 h-5" />} />
       </div>
+
+      {billing && branchStats.length >= branchLimit && (
+        <Card className="border-amber-200 bg-amber-50 text-sm text-amber-800">
+          Limit cabang paket aktif sudah tercapai. Ajukan upgrade paket di Tagihan & Langganan untuk menambah cabang.
+        </Card>
+      )}
 
       <div className="grid lg:grid-cols-3 gap-4">
         {branchStats.map((branch) => (

@@ -53,6 +53,68 @@ export interface ApiOrder {
   items?: ApiOrderItem[];
 }
 
+export interface ApiStockReceiptItem {
+  id: number;
+  product_id: number;
+  quantity: number;
+  unit_cost: string;
+  subtotal: string;
+  stock_before: number;
+  stock_after: number;
+  product?: ApiProduct;
+}
+
+export interface ApiStockReceipt {
+  id: number;
+  branch_id: number;
+  supplier_name: string | null;
+  reference_number: string | null;
+  notes: string | null;
+  total_cost: string;
+  created_at: string;
+  branch?: ApiBranch;
+  items?: ApiStockReceiptItem[];
+}
+
+export interface ApiStockOpnameItem {
+  id: number;
+  product_id: number;
+  system_stock: number;
+  physical_stock: number;
+  variance: number;
+  product?: ApiProduct;
+}
+
+export interface ApiStockOpname {
+  id: number;
+  branch_id: number;
+  status: string;
+  notes: string | null;
+  created_at: string;
+  branch?: ApiBranch;
+  items?: ApiStockOpnameItem[];
+}
+
+export interface ApiStockTransferItem {
+  id: number;
+  product_id: number;
+  quantity: number;
+  product?: ApiProduct;
+}
+
+export interface ApiStockTransfer {
+  id: number;
+  from_branch_id: number;
+  to_branch_id: number;
+  status: "draft" | "in-transit" | "received";
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+  from_branch?: ApiBranch;
+  to_branch?: ApiBranch;
+  items?: ApiStockTransferItem[];
+}
+
 export interface InventoryOptimizationItem {
   id: number;
   name: string;
@@ -92,6 +154,31 @@ export interface DashboardSummary {
   }>;
 }
 
+export interface BillingInfo {
+  tenant_id: number;
+  plan: "starter" | "basic" | "growth" | "business";
+  is_active: boolean;
+  trial_ends_at: string | null;
+  limits: {
+    max_sku: number | null;
+    max_branches: number;
+    max_users: number;
+    features: string[];
+  };
+  usage: {
+    sku: number;
+    branches: number;
+    users: number;
+  };
+}
+
+export interface BillingUpgradeRequest {
+  message: string;
+  requested_plan: string;
+  current_plan: string;
+  status: "pending";
+}
+
 export async function fetchDashboardSummary() {
   const res = await api.get<DashboardSummary>("/dashboard/summary");
   return res.data;
@@ -107,6 +194,11 @@ export async function fetchCategories() {
   return res.data;
 }
 
+export async function createCategory(name: string) {
+  const res = await api.post<ApiCategory>("/categories", { name });
+  return res.data;
+}
+
 export async function fetchProducts() {
   const res = await api.get<ApiProduct[]>("/products");
   return res.data;
@@ -114,6 +206,31 @@ export async function fetchProducts() {
 
 export async function fetchOrders() {
   const res = await api.get<ApiOrder[]>("/orders");
+  return res.data;
+}
+
+export async function fetchStockReceipts() {
+  const res = await api.get<ApiStockReceipt[]>("/stock-receipts");
+  return res.data;
+}
+
+export async function fetchStockOpnames() {
+  const res = await api.get<ApiStockOpname[]>("/stock-opname");
+  return res.data;
+}
+
+export async function fetchStockTransfers() {
+  const res = await api.get<ApiStockTransfer[]>("/transfers");
+  return res.data;
+}
+
+export async function fetchBillingInfo() {
+  const res = await api.get<BillingInfo>("/billing");
+  return res.data;
+}
+
+export async function requestPlanChange(plan: string) {
+  const res = await api.post<BillingUpgradeRequest>("/billing/upgrade", { plan });
   return res.data;
 }
 

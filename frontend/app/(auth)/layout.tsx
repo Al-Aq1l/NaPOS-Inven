@@ -1,4 +1,4 @@
-import { ArrowLeft, Zap } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
@@ -10,43 +10,52 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           backgroundImage: "radial-gradient(circle at 25% 25%, white 1px, transparent 1px)",
           backgroundSize: "40px 40px"
         }} />
-        <div className="relative flex flex-col justify-between p-12">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="flex items-center justify-center w-8 h-8 bg-white/20 rounded-lg">
-              <Zap className="w-5 h-5 text-white" />
-            </div>
-            <span className="text-xl font-bold text-white">NAPS</span>
+        <div className="relative flex min-h-screen w-full flex-col justify-between p-12">
+          <Link href="/login" className="block w-40">
+            <Image
+              src="/logo2.png"
+              alt="NAPS"
+              width={338}
+              height={186}
+              priority
+              className="h-auto w-full"
+            />
           </Link>
+          <div className="flex flex-1 items-center justify-center py-10">
+            <Image
+              src="/napsrender.png"
+              alt="Perangkat kasir NAPS"
+              width={1512}
+              height={1040}
+              priority
+              className="h-auto w-full max-w-[760px] object-contain drop-shadow-[0_28px_55px_rgba(2,8,23,0.45)]"
+            />
+          </div>
           <div>
-            <h2 className="text-3xl font-bold text-white leading-tight">
-              Manage your entire business from one platform.
+            <h2 className="max-w-lg text-3xl font-bold leading-tight text-white">
+              Kelola kasir, stok, dan cabang dalam satu dashboard.
             </h2>
-            <p className="mt-4 text-blue-200 leading-relaxed">
-              Smart inventory optimization, offline POS, and omnichannel sync — all designed for Indonesian MSMEs.
+            <p className="mt-4 max-w-lg leading-relaxed text-blue-200">
+              Sistem POS modern untuk operasional toko harian, lengkap dengan printer struk, scanner barcode, dan laporan stok yang rapi.
             </p>
           </div>
-          <p className="text-sm text-blue-300">© {new Date().getFullYear()} NAPS. All rights reserved.</p>
         </div>
       </div>
 
       {/* Right — Form */}
       <div className="flex-1 flex items-center justify-center p-6 sm:p-8 bg-[var(--background)]">
         <div className="w-full max-w-sm">
-          <Link
-            href="/"
-            className="inline-flex items-center gap-2 mb-6 text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Kembali ke Beranda
-          </Link>
-
           {/* Mobile logo */}
           <div className="lg:hidden flex items-center gap-2 mb-8">
-            <Link href="/" className="flex items-center gap-2">
-              <div className="flex items-center justify-center w-8 h-8 bg-[var(--brand-600)] rounded-lg">
-                <Zap className="w-5 h-5 text-white" />
-              </div>
-              <span className="text-xl font-bold text-[var(--text-primary)]">NAPS</span>
+            <Link href="/login" className="block w-32">
+              <Image
+                src="/logo2.png"
+                alt="NAPS"
+                width={338}
+                height={186}
+                priority
+                className="h-auto w-full"
+              />
             </Link>
           </div>
           {children}

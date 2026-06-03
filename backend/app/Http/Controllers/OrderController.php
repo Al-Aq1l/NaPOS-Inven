@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
+use App\Models\Branch;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -25,6 +26,19 @@ class OrderController extends Controller
             'items.*.product_id' => 'required|exists:products,id',
             'items.*.quantity' => 'required|integer|min:1',
         ]);
+
+        $user = auth()->user();
+        $branch = Branch::where('tenant_id', $user->tenant_id)->find($validated['branch_id']);
+
+        if (! $branch) {
+            return response()->json(['message' => 'Cabang tidak ditemukan untuk tenant ini.'], 422);
+        }
+
+        if ($user->role === 'cashier' && (int) $user->branch_id !== (int) $validated['branch_id']) {
+            return response()->json([
+                'message' => 'Kasir hanya dapat membuat transaksi pada cabang kerja yang ditetapkan owner.',
+            ], 403);
+        }
 
         try {
             DB::beginTransaction();

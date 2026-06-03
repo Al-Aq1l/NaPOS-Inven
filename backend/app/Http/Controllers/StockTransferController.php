@@ -73,8 +73,8 @@ class StockTransferController extends Controller
      * PUT /api/transfers/{transfer}/status — Advance the transfer status.
      *
      * Allowed transitions:
-     *   draft → in-transit   (no stock mutation yet)
-     *   in-transit → received (subtract from_branch, add to_branch)
+     *   draft → in-transit   (subtract from_branch)
+     *   in-transit → received (add to_branch)
      */
     public function updateStatus(Request $request, StockTransfer $transfer)
     {
@@ -99,10 +99,9 @@ class StockTransferController extends Controller
         try {
             DB::beginTransaction();
 
-            // When transitioning to "received", mutate the branch_product pivot stock
-            if ($newStatus === 'received') {
-                $transfer->load('items');
+            $transfer->load('items');
 
+            if ($newStatus === 'in-transit') {
                 foreach ($transfer->items as $item) {
                     $fromPivot = DB::table('branch_product')
                         ->where('branch_id', $transfer->from_branch_id)
@@ -127,7 +126,11 @@ class StockTransferController extends Controller
                             'stock' => $fromStock - $item->quantity,
                             'updated_at' => now(),
                         ]);
+                }
+            }
 
+            if ($newStatus === 'received') {
+                foreach ($transfer->items as $item) {
                     $toPivot = DB::table('branch_product')
                         ->where('branch_id', $transfer->to_branch_id)
                         ->where('product_id', $item->product_id)

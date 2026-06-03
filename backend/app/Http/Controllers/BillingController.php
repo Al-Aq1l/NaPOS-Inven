@@ -2,7 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Tenant;
+use App\Models\Branch;
+use App\Models\Product;
+use App\Models\User;
+use App\Services\PlanLimits;
 use Illuminate\Http\Request;
 
 class BillingController extends Controller
@@ -14,7 +17,7 @@ class BillingController extends Controller
     {
         $tenant = auth()->user()->tenant;
 
-        $planLimits = $this->getPlanLimits($tenant->plan);
+        $planLimits = PlanLimits::forPlan($tenant->plan);
 
         return response()->json([
             'tenant_id'   => $tenant->id,
@@ -22,61 +25,41 @@ class BillingController extends Controller
             'is_active'   => $tenant->is_active,
             'trial_ends_at' => $tenant->trial_ends_at,
             'limits'      => $planLimits,
+            'usage'       => [
+                'sku' => Product::count(),
+                'branches' => Branch::count(),
+                'users' => User::where('tenant_id', $tenant->id)->count(),
+            ],
         ]);
     }
 
     /**
-     * POST /api/billing/upgrade — Simulate plan upgrade (instant).
+     * POST /api/billing/upgrade — Request a plan change.
+     *
+     * The active tenant plan is intentionally not changed here. Actual plan
+     * changes should happen through payment/admin approval or a billing webhook.
      */
     public function upgrade(Request $request)
     {
         $validated = $request->validate([
-            'plan' => 'required|in:starter,basic,growth,business',
+            'plan' => 'required|in:' . PlanLimits::planKeys(),
         ]);
 
         $tenant = auth()->user()->tenant;
-        $oldPlan = $tenant->plan;
-        $tenant->update(['plan' => $validated['plan']]);
+        if ($validated['plan'] === $tenant->plan) {
+            return response()->json([
+                'message' => 'Paket ini sudah aktif.',
+                'plan' => $tenant->plan,
+                'limits' => PlanLimits::forPlan($tenant->plan),
+            ], 422);
+        }
 
         return response()->json([
-            'message'  => "Paket berhasil diubah dari {$oldPlan} ke {$validated['plan']}.",
-            'plan'     => $validated['plan'],
-            'limits'   => $this->getPlanLimits($validated['plan']),
+            'message' => "Permintaan perubahan paket ke {$validated['plan']} sudah diterima. Paket aktif belum berubah sampai pembayaran atau approval selesai.",
+            'requested_plan' => $validated['plan'],
+            'current_plan' => $tenant->plan,
+            'status' => 'pending',
+            'limits' => PlanLimits::forPlan($tenant->plan),
         ]);
-    }
-
-    /**
-     * Get plan-specific feature limits.
-     */
-    private function getPlanLimits(string $plan): array
-    {
-        $plans = [
-            'starter' => [
-                'max_sku'      => 30,
-                'max_branches' => 1,
-                'max_users'    => 1,
-                'features'     => ['pos', 'basic_inventory'],
-            ],
-            'basic' => [
-                'max_sku'      => 500,
-                'max_branches' => 1,
-                'max_users'    => 2,
-                'features'     => ['pos', 'basic_inventory', 'stock_transfer'],
-            ],
-            'growth' => [
-                'max_sku'      => 5000,
-                'max_branches' => 5,
-                'max_users'    => 10,
-                'features'     => ['pos', 'basic_inventory', 'stock_transfer', 'optimization', 'opname', 'analytics'],
-            ],
-            'business' => [
-                'max_sku'      => 999999,
-                'max_branches' => 999,
-                'max_users'    => 999,
-                'features'     => ['pos', 'basic_inventory', 'stock_transfer', 'optimization', 'opname', 'analytics', 'omnichannel', 'api_access'],
-            ],
-        ];
-
-        return $plans[$plan] ?? $plans['starter'];
     }
 }

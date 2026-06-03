@@ -1,15 +1,45 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { ArrowRightLeft, Info } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { ArrowRightLeft, CheckCircle2, ChevronDown, Info, Send } from "lucide-react";
 import { Badge, Button, Card, Input, Modal, Toast } from "@/components/ui";
 import { fetchBranches, fetchProducts, type ApiBranch, type ApiProduct } from "@/lib/dashboard-api";
 import api from "@/lib/api";
 
+interface StockTransferItem {
+  id: number;
+  product_id: number;
+  quantity: number;
+  product?: ApiProduct;
+}
+
+interface StockTransfer {
+  id: number;
+  from_branch?: ApiBranch;
+  to_branch?: ApiBranch;
+  status: "draft" | "in-transit" | "received";
+  items?: StockTransferItem[];
+}
+
+function getApiErrorMessage(error: unknown, fallback: string) {
+  if (typeof error === "object" && error !== null && "response" in error) {
+    const response = (error as { response?: { data?: { message?: string } } }).response;
+    return response?.data?.message || fallback;
+  }
+
+  return fallback;
+}
+
+function getProductStock(product: ApiProduct | undefined, branchId: string) {
+  if (!product || !branchId) return 0;
+  const branch = product.branches?.find((item) => String(item.id) === branchId);
+  return branch?.pivot?.stock ?? 0;
+}
+
 export default function StockTransfersPage() {
   const [branches, setBranches] = useState<ApiBranch[]>([]);
   const [products, setProducts] = useState<ApiProduct[]>([]);
-  const [transfers, setTransfers] = useState<any[]>([]);
+  const [transfers, setTransfers] = useState<StockTransfer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [transferModal, setTransferModal] = useState(false);
@@ -21,6 +51,7 @@ export default function StockTransfersPage() {
   const [toastMsg, setToastMsg] = useState("");
   const [toastType, setToastType] = useState<"success" | "error" | "info" | "warning">("info");
   const [toastVisible, setToastVisible] = useState(false);
+  const [openActionTransferId, setOpenActionTransferId] = useState<number | null>(null);
 
   const showToast = (msg: string, type: "success" | "error" | "info" | "warning" = "info") => {
     setToastMsg(msg);
@@ -29,20 +60,57 @@ export default function StockTransfersPage() {
     setTimeout(() => setToastVisible(false), 4000);
   };
 
-  const loadData = () => {
+  const selectedProduct = useMemo(
+    () => products.find((product) => String(product.id) === selectedProductId),
+    [products, selectedProductId],
+  );
+  const selectedFromStock = getProductStock(selectedProduct, fromBranchId);
+
+  const loadData = async () => {
     setLoading(true);
-    Promise.all([fetchBranches(), fetchProducts(), api.get("/transfers")])
-      .then(([branchData, productData, transferRes]) => {
-        setBranches(branchData);
-        setProducts(productData);
-        setTransfers(transferRes.data);
-      })
-      .catch(() => setError("Gagal memuat data transfer stok."))
-      .finally(() => setLoading(false));
+    try {
+      setError(null);
+      const [branchData, productData, transferRes] = await Promise.all([
+        fetchBranches(),
+        fetchProducts(),
+        api.get<StockTransfer[]>("/transfers"),
+      ]);
+      setBranches(branchData);
+      setProducts(productData);
+      setTransfers(transferRes.data);
+    } catch {
+      setError("Gagal memuat data transfer stok.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
-    loadData();
+    let mounted = true;
+
+    async function loadInitialData() {
+      try {
+        setError(null);
+        const [branchData, productData, transferRes] = await Promise.all([
+          fetchBranches(),
+          fetchProducts(),
+          api.get<StockTransfer[]>("/transfers"),
+        ]);
+        if (!mounted) return;
+        setBranches(branchData);
+        setProducts(productData);
+        setTransfers(transferRes.data);
+      } catch {
+        if (mounted) setError("Gagal memuat data transfer stok.");
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    }
+
+    loadInitialData();
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   const handleTransferSubmit = async () => {
@@ -73,23 +141,23 @@ export default function StockTransfersPage() {
       setToBranchId("");
       setSelectedProductId("");
       setQuantity("1");
-      const transferRes = await api.get("/transfers");
-      setTransfers(transferRes.data);
-    } catch (err: any) {
-      showToast(err.response?.data?.message || "Gagal membuat transfer stok.", "error");
+      await loadData();
+    } catch (err: unknown) {
+      showToast(getApiErrorMessage(err, "Gagal membuat transfer stok."), "error");
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleStatusUpdate = async (transferId: number, newStatus: string) => {
+    setOpenActionTransferId(null);
+
     try {
       await api.put(`/transfers/${transferId}/status`, { status: newStatus });
       showToast(`Status transfer berhasil diubah ke ${newStatus}.`, "success");
-      const transferRes = await api.get("/transfers");
-      setTransfers(transferRes.data);
-    } catch (err: any) {
-      showToast(err.response?.data?.message || "Gagal mengubah status transfer.", "error");
+      await loadData();
+    } catch (err: unknown) {
+      showToast(getApiErrorMessage(err, "Gagal mengubah status transfer."), "error");
     }
   };
 
@@ -102,7 +170,7 @@ export default function StockTransfersPage() {
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-bold text-[var(--text-primary)]">Transfer Stok</h1>
             <span
-              title="Pindahkan stok antar cabang. Transfer dibuat sebagai draft, lalu dikirim dan diterima untuk memutasi stok."
+              title="Pindahkan stok antar cabang. Saat dikirim, stok cabang asal berkurang. Saat diterima, stok cabang tujuan bertambah."
               className="inline-flex h-5 w-5 items-center justify-center rounded-full text-[var(--text-tertiary)] hover:bg-[var(--surface-raised)] hover:text-[var(--text-primary)]"
             >
               <Info className="h-3.5 w-3.5" />
@@ -137,7 +205,7 @@ export default function StockTransfersPage() {
                   <td colSpan={6} className="p-8 text-center text-[var(--text-secondary)]">Belum ada riwayat transfer stok.</td>
                 </tr>
               )}
-              {transfers.map((transfer: any) => {
+              {transfers.map((transfer) => {
                 const item = transfer.items?.[0];
                 const productName = item?.product?.name || `Produk ID #${item?.product_id}`;
                 const qty = item?.quantity || 0;
@@ -156,13 +224,48 @@ export default function StockTransfersPage() {
                         {transfer.status}
                       </Badge>
                     </td>
-                    <td className="p-4 text-right space-x-2">
-                      {transfer.status === "draft" && (
-                        <Button size="sm" variant="outline" className="text-xs h-7 py-0 px-2.5" onClick={() => handleStatusUpdate(transfer.id, "in-transit")}>Kirim</Button>
-                      )}
-                      {transfer.status === "in-transit" && (
-                        <Button size="sm" className="text-xs h-7 py-0 px-2.5 bg-emerald-600 hover:bg-emerald-700" onClick={() => handleStatusUpdate(transfer.id, "received")}>Terima</Button>
-                      )}
+                    <td className="p-4 text-right">
+                      <div className="relative inline-flex justify-end">
+                        <button
+                          type="button"
+                          onClick={() => setOpenActionTransferId((current) => current === transfer.id ? null : transfer.id)}
+                          className="inline-flex h-9 items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 text-xs font-semibold text-[var(--text-secondary)] transition-colors hover:border-[var(--border-hover)] hover:bg-[var(--surface-raised)] hover:text-[var(--text-primary)]"
+                          aria-expanded={openActionTransferId === transfer.id}
+                          aria-label={`Aksi transfer TRF-${transfer.id}`}
+                        >
+                          Aksi
+                          <ChevronDown className="h-3.5 w-3.5" />
+                        </button>
+                        {openActionTransferId === transfer.id && (
+                          <div className="absolute right-0 top-full z-20 mt-2 w-36 overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface)] text-left shadow-[var(--shadow-lg)]">
+                            {transfer.status === "draft" && (
+                              <button
+                                type="button"
+                                onClick={() => handleStatusUpdate(transfer.id, "in-transit")}
+                                className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--surface-raised)] hover:text-[var(--text-primary)]"
+                              >
+                                <Send className="h-3.5 w-3.5" />
+                                Kirim
+                              </button>
+                            )}
+                            {transfer.status === "in-transit" && (
+                              <button
+                                type="button"
+                                onClick={() => handleStatusUpdate(transfer.id, "received")}
+                                className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-emerald-600 hover:bg-emerald-50"
+                              >
+                                <CheckCircle2 className="h-3.5 w-3.5" />
+                                Terima
+                              </button>
+                            )}
+                            {transfer.status === "received" && (
+                              <div className="px-3 py-2 text-xs text-[var(--text-tertiary)]">
+                                Tidak ada aksi
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );
@@ -200,7 +303,12 @@ export default function StockTransfersPage() {
           </label>
 
           <Input label="Jumlah" type="number" min="1" value={quantity} onChange={(event) => setQuantity(event.target.value)} placeholder="Masukkan jumlah item..." />
-          <p className="text-xs text-[var(--text-tertiary)]">Transfer baru dibuat sebagai draft. Gunakan tombol Kirim lalu Terima pada riwayat transfer untuk memutasi stok.</p>
+          {fromBranchId && selectedProductId && (
+            <p className="text-xs text-[var(--text-secondary)]">
+              Stok tersedia di cabang asal: <span className="font-semibold text-[var(--text-primary)]">{selectedFromStock}</span>
+            </p>
+          )}
+          <p className="text-xs text-[var(--text-tertiary)]">Transfer baru dibuat sebagai draft. Tombol Kirim akan mengurangi stok cabang asal, lalu tombol Terima akan menambah stok cabang tujuan.</p>
 
           <div className="flex justify-end gap-3 pt-3 border-t border-[var(--border)]">
             <Button variant="ghost" onClick={() => setTransferModal(false)}>Batal</Button>

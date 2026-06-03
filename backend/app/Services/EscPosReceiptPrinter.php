@@ -44,6 +44,12 @@ class EscPosReceiptPrinter
             if ($written === false || $written < strlen($bytes)) {
                 throw new RuntimeException('Gagal menulis data ESC/POS ke printer.');
             }
+
+            fflush($handle);
+
+            if (str_starts_with($printerPath, '/dev/cu.')) {
+                usleep(300000);
+            }
         } finally {
             fclose($handle);
         }

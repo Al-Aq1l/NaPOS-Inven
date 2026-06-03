@@ -31,20 +31,6 @@ export default function LoginPage() {
     }
   };
 
-  const quickLogin = async (role: string) => {
-    setError(null);
-    try {
-      const user = await login(`${role}@napos.id`, "password");
-      router.push(user.role === "cashier" ? "/dashboard/pos" : "/dashboard");
-    } catch (err: unknown) {
-      if (axios.isAxiosError(err)) {
-        setError(err.response?.data?.message || err.response?.data?.errors?.email?.[0] || "Login failed");
-      } else {
-        setError("Login failed");
-      }
-    }
-  };
-
   return (
     <div className="animate-fade-in">
       <h1 className="text-2xl font-bold text-[var(--text-primary)]">Selamat datang kembali</h1>
@@ -96,27 +82,6 @@ export default function LoginPage() {
         </Button>
       </form>
 
-      {/* Quick Demo Access */}
-      <div className="mt-8">
-        <div className="relative">
-          <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-[var(--border)]" /></div>
-          <div className="relative flex justify-center text-xs">
-            <span className="px-2 bg-[var(--background)] text-[var(--text-tertiary)]">Login Demo Cepat</span>
-          </div>
-        </div>
-        <div className="mt-4 grid grid-cols-2 gap-2">
-          {["owner", "manager", "cashier"].map((role) => (
-            <button
-              key={role}
-              onClick={() => quickLogin(role)}
-              className="px-3 py-2 text-xs font-medium text-[var(--text-secondary)] bg-[var(--surface-raised)] border border-[var(--border)] rounded-lg hover:bg-[var(--slate-100)] hover:text-[var(--text-primary)] transition-colors capitalize cursor-pointer"
-            >
-              {role}
-            </button>
-          ))}
-        </div>
-      </div>
-
       <p className="mt-8 text-center text-sm text-[var(--text-secondary)]">
         Don&#39;t have an account?{" "}
         <Link href="/register" className="text-[var(--brand-600)] font-medium hover:underline">
@@ -126,5 +91,4 @@ export default function LoginPage() {
     </div>
   );
 }
-
 

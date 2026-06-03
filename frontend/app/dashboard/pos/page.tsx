@@ -3,10 +3,11 @@
 import React, { useEffect, useMemo, useState, useRef } from "react";
 import { 
   Search, Plus, Minus, Trash2, CreditCard, QrCode, 
-  Banknote, Send, Printer, ShoppingCart, Building2, 
-  Wifi, WifiOff, Camera, RefreshCw, AlertTriangle
+  Banknote, Printer, ShoppingCart, Building2, 
+  Camera, RefreshCw, LogOut
 } from "lucide-react";
-import { Button, Badge, Input, Modal, ConnectionStatus, Card, Toast } from "@/components/ui";
+import { useRouter } from "next/navigation";
+import { Button, Badge, Input, Modal, Card, Toast } from "@/components/ui";
 import { formatIDR } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { fetchProducts, fetchBranches, type ApiProduct, type ApiBranch } from "@/lib/dashboard-api";
@@ -96,7 +97,9 @@ const cameraConstraints: MediaStreamConstraints = {
 };
 
 export default function POSPage() {
-  const { user } = useAuth();
+  const router = useRouter();
+  const { user, logout } = useAuth();
+  const cashierMode = user?.role === "cashier";
   
   // State Data & UI
   const [search, setSearch] = useState("");
@@ -177,8 +180,13 @@ export default function POSPage() {
       if (!isMounted) return;
       setBranches(branchData);
       
-      const activeBranchId = selectedBranchId || branchData[0]?.id || null;
-      if (activeBranchId) setSelectedBranchId((prev) => prev || activeBranchId);
+      const assignedBranchId = cashierMode && user?.branch_id && branchData.some((branch) => branch.id === user.branch_id)
+        ? user.branch_id
+        : null;
+      const activeBranchId = assignedBranchId || selectedBranchId || branchData[0]?.id || null;
+      if (activeBranchId) {
+        setSelectedBranchId((prev) => assignedBranchId || prev || activeBranchId);
+      }
 
       // 2. Ambil data produk
       let productData: ApiProduct[] = [];
@@ -457,6 +465,7 @@ export default function POSPage() {
   const total = subtotal + tax;
   const itemCount = cart.reduce((sum, c) => sum + c.quantity, 0);
   const activeBranchName = branches.find((branch) => branch.id === selectedBranchId)?.name ?? "-";
+  const cashierBranchMissing = cashierMode && !user?.branch_id;
   const cashPaidAmount = parseCashAmount(cashPaid);
   const cashChange = Math.max(0, cashPaidAmount - total);
   const isCashEnough = cashPaidAmount >= total;
@@ -465,6 +474,26 @@ export default function POSPage() {
     cash: "Tunai",
     qris: "QRIS",
     transfer: "Debit",
+  };
+
+  const handleBranchChange = (nextBranchId: number) => {
+    if (nextBranchId === selectedBranchId) return;
+
+    if (cart.length > 0) {
+      const confirmed = window.confirm("Mengganti cabang akan mengosongkan keranjang. Lanjutkan?");
+      if (!confirmed) return;
+      setCart([]);
+      setCashPaid("");
+      setCustomerName("");
+    }
+
+    setSelectedBranchId(nextBranchId);
+    showToast("Cabang aktif diganti. Stok produk disesuaikan.", "info");
+  };
+
+  const handleLogout = () => {
+    logout();
+    router.push("/login");
   };
 
   const openPaymentModal = () => {
@@ -479,6 +508,10 @@ export default function POSPage() {
 
   // Proses Checkout Transaksi (Online / Offline Mode)
   const executePayment = async (method: "cash" | "qris" | "transfer") => {
+    if (cashierBranchMissing) {
+      showToast("Cabang kerja kasir belum diatur owner.", "error");
+      return;
+    }
     if (!selectedBranchId) {
       showToast("Harap pilih cabang aktif terlebih dahulu.", "error");
       return;
@@ -632,7 +665,7 @@ export default function POSPage() {
   };
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] -m-4 lg:-m-6 relative overflow-hidden">
+    <div className={cn("flex relative overflow-hidden", cashierMode ? "h-screen" : "h-[calc(100vh-4rem)] -m-4 lg:-m-6")}>
       <div className="receipt-print-area hidden print:block" aria-hidden="true">
         <div className="receipt-paper">
           <div className="receipt-center">
@@ -725,22 +758,33 @@ export default function POSPage() {
             {/* Pemilihan Cabang */}
             <div className="flex items-center gap-2">
               <Building2 className="w-4 h-4 text-[var(--brand-600)]" />
-              <select
-                value={selectedBranchId || ""}
-                onChange={(e) => setSelectedBranchId(Number(e.target.value))}
-                className="h-9 px-2 bg-[var(--surface-raised)] border border-[var(--border)] rounded-lg text-xs font-semibold text-[var(--text-primary)] cursor-pointer"
-              >
-                {branches.length === 0 && <option>Memuat cabang...</option>}
-                {branches.map((b) => (
-                  <option key={b.id} value={b.id}>
-                    Cabang: {b.name}
-                  </option>
-                ))}
-              </select>
+              {cashierMode ? (
+                <div className={cn(
+                  "flex h-9 items-center rounded-lg border px-3 text-xs font-semibold",
+                  cashierBranchMissing
+                    ? "border-amber-300 bg-amber-50 text-amber-700"
+                    : "border-[var(--border)] bg-[var(--surface-raised)] text-[var(--text-primary)]"
+                )}>
+                  Cabang: {cashierBranchMissing ? "Belum diatur owner" : activeBranchName}
+                </div>
+              ) : (
+                <select
+                  value={selectedBranchId || ""}
+                  onChange={(e) => handleBranchChange(Number(e.target.value))}
+                  className="h-9 px-2 bg-[var(--surface-raised)] border border-[var(--border)] rounded-lg text-xs font-semibold text-[var(--text-primary)] cursor-pointer"
+                >
+                  {branches.length === 0 && <option>Memuat cabang...</option>}
+                  {branches.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      Cabang: {b.name}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
 
             {/* Status Koneksi & Sinkronisasi */}
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center justify-end gap-2">
               {isPendingSyncOrders && (
                 <Button 
                   variant="outline" 
@@ -756,6 +800,16 @@ export default function POSPage() {
               <Badge variant={isOnline ? "success" : "danger"} dot pulse={!isOnline}>
                 {isOnline ? "Server Online" : "Mode Offline"}
               </Badge>
+              {cashierMode && (
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="inline-flex h-8 items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface-raised)] px-3 text-xs font-semibold text-[var(--text-secondary)] transition-colors hover:bg-[var(--danger-50)] hover:text-[var(--danger-600)]"
+                >
+                  <LogOut className="h-3.5 w-3.5" />
+                  Keluar
+                </button>
+              )}
             </div>
           </div>
 
@@ -779,82 +833,136 @@ export default function POSPage() {
             </div>
           </div>
 
-          {/* Navigasi Kategori */}
-          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-            {kategori.map((cat) => (
-              <button
-                key={cat}
-                onClick={() => setCategory(cat)}
-                className={cn(
-                  "px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all duration-200 cursor-pointer border",
-                  category === cat
-                    ? "bg-[var(--brand-600)] text-white border-transparent shadow-[var(--shadow-sm)]"
-                    : "bg-[var(--surface-raised)] text-[var(--text-secondary)] border-[var(--border)] hover:bg-[var(--slate-150)] dark:hover:bg-[var(--slate-800)]"
-                )}
-              >
-                {cat}
-              </button>
-            ))}
-          </div>
+          {!cashierMode && (
+            <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+              {kategori.map((cat) => (
+                <button
+                  key={cat}
+                  onClick={() => setCategory(cat)}
+                  className={cn(
+                    "px-4 py-2 rounded-full text-sm font-semibold whitespace-nowrap transition-all duration-200 cursor-pointer border",
+                    category === cat
+                      ? "bg-[var(--brand-600)] text-white border-transparent shadow-[var(--shadow-sm)]"
+                      : "bg-[var(--surface-raised)] text-[var(--text-secondary)] border-[var(--border)] hover:bg-[var(--slate-150)] dark:hover:bg-[var(--slate-800)]"
+                  )}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Daftar Produk */}
-        <div className="flex-1 overflow-y-auto p-4 lg:p-6">
-          {loading && (
-            <Card>
-              <p className="text-sm text-[var(--text-secondary)] flex items-center gap-2">
-                <RefreshCw className="w-4 h-4 animate-spin text-[var(--brand-600)]" />
-                Memuat data produk...
+        <div className={cn("flex-1 min-h-0", cashierMode ? "flex" : "overflow-y-auto p-4 lg:p-6")}>
+          {cashierMode && (
+            <aside className="hidden w-56 flex-shrink-0 flex-col border-r border-[var(--border)] bg-[var(--surface)] p-4 sm:flex">
+              <p className="mb-4 px-2 text-xs font-bold uppercase tracking-[0.08em] text-[var(--text-tertiary)]">
+                Kategori
               </p>
-            </Card>
-          )}
-          {error && (
-            <Card className="border-red-300 bg-red-50 text-red-700 dark:bg-red-950/20 dark:border-red-900/50 dark:text-red-300">
-              <p className="text-sm font-medium">{error}</p>
-            </Card>
-          )}
-
-          {!loading && !error && (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3.5">
-              {filtered.map((product) => (
-                <button
-                  key={product.id}
-                  onClick={() => addToCart(product)}
-                  className="group flex flex-col overflow-hidden bg-[var(--surface)] border border-[var(--border)] rounded-lg hover:border-[var(--brand-300)] transition-colors duration-150 cursor-pointer active:scale-[0.99] text-left"
-                >
-                  <div className="relative aspect-square w-full bg-[var(--surface-raised)]">
-                    {product.imageUrl ? (
-                      <img src={product.imageUrl} alt={product.name} className="h-full w-full object-cover" />
-                    ) : (
-                      <div className="flex h-full w-full items-center justify-center text-2xl font-black text-[var(--brand-700)] dark:text-[var(--brand-300)]">
-                        {product.image}
-                      </div>
+              <div className="space-y-2 overflow-y-auto">
+                {kategori.map((cat) => (
+                  <button
+                    key={cat}
+                    onClick={() => setCategory(cat)}
+                    className={cn(
+                      "flex min-h-14 w-full items-center justify-between gap-3 rounded-xl px-4 py-3 text-left text-sm font-semibold transition-colors",
+                      category === cat
+                        ? "bg-[var(--brand-600)] text-white shadow-[var(--shadow-sm)]"
+                        : "border border-[var(--border)] text-[var(--text-secondary)] hover:bg-[var(--surface-raised)] hover:text-[var(--text-primary)]"
                     )}
-                    <Badge variant={product.stock <= 0 ? "danger" : product.stock < 10 ? "warning" : "success"} size="sm" className="absolute right-2 top-2 text-[10px] py-0">
-                      {product.stock <= 0 ? "Habis" : product.stock}
-                    </Badge>
-                  </div>
-
-                  <div className="flex min-h-[5.75rem] w-full flex-col p-2.5">
-                    <p className="text-xs font-semibold text-[var(--text-primary)] leading-tight line-clamp-2 min-h-[2rem]">
-                      {product.name}
-                    </p>
-                    <p className="mt-1 truncate text-[10px] text-[var(--text-tertiary)] font-mono">
-                      {product.sku}
-                    </p>
-                    <p className="mt-auto text-xs font-bold text-[var(--brand-600)]">
-                      {formatIDR(product.price)}
-                    </p>
-                  </div>
-                </button>
-              ))}
-              {filtered.length === 0 && (
-                <div className="col-span-full py-12 text-center text-[var(--text-tertiary)] bg-[var(--surface)] border border-dashed border-[var(--border)] rounded-2xl">
-                  Tidak ada produk ditemukan
-                </div>
-              )}
-            </div>
+                  >
+                    <span className="min-w-0 truncate">{cat}</span>
+                    <span className={cn("rounded-full px-2 py-1 text-xs", category === cat ? "bg-white/20 text-white" : "bg-[var(--surface-raised)] text-[var(--text-tertiary)]")}>
+                      {cat === "Semua" ? produk.length : produk.filter((item) => item.category === cat).length}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </aside>
           )}
+
+          <div className="flex-1 overflow-y-auto p-4 lg:p-6">
+            {cashierMode && (
+              <div className="mb-4 flex gap-2 overflow-x-auto pb-1 sm:hidden scrollbar-hide">
+                {kategori.map((cat) => (
+                  <button
+                    key={cat}
+                    onClick={() => setCategory(cat)}
+                    className={cn(
+                      "px-4 py-2 rounded-full text-sm font-semibold whitespace-nowrap transition-all duration-200 cursor-pointer border",
+                      category === cat
+                        ? "bg-[var(--brand-600)] text-white border-transparent shadow-[var(--shadow-sm)]"
+                        : "bg-[var(--surface)] text-[var(--text-secondary)] border-[var(--border)] hover:bg-[var(--surface-raised)]"
+                    )}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {loading && (
+              <Card>
+                <p className="text-sm text-[var(--text-secondary)] flex items-center gap-2">
+                  <RefreshCw className="w-4 h-4 animate-spin text-[var(--brand-600)]" />
+                  Memuat data produk...
+                </p>
+              </Card>
+            )}
+            {error && (
+              <Card className="border-red-300 bg-red-50 text-red-700 dark:bg-red-950/20 dark:border-red-900/50 dark:text-red-300">
+                <p className="text-sm font-medium">{error}</p>
+              </Card>
+            )}
+
+            {!loading && !error && (
+              <div className={cn(
+                "grid gap-4",
+                cashierMode
+                  ? "grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5"
+                  : "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5"
+              )}>
+                {filtered.map((product) => (
+                  <button
+                    key={product.id}
+                    onClick={() => addToCart(product)}
+                    className="group flex flex-col overflow-hidden bg-[var(--surface)] border border-[var(--border)] rounded-xl hover:border-[var(--brand-300)] transition-colors duration-150 cursor-pointer active:scale-[0.99] text-left"
+                  >
+                    <div className="relative aspect-square w-full bg-[var(--surface-raised)]">
+                      {product.imageUrl ? (
+                        <img src={product.imageUrl} alt={product.name} className="h-full w-full object-cover" />
+                      ) : (
+                        <div className={cn("flex h-full w-full items-center justify-center font-black text-[var(--brand-700)] dark:text-[var(--brand-300)]", cashierMode ? "text-4xl" : "text-3xl")}>
+                          {product.image}
+                        </div>
+                      )}
+                      <Badge variant={product.stock <= 0 ? "danger" : product.stock < 10 ? "warning" : "success"} size="sm" className="absolute right-2 top-2 py-0 text-xs">
+                        {product.stock <= 0 ? "Habis" : product.stock}
+                      </Badge>
+                    </div>
+
+                    <div className={cn("flex w-full flex-col", cashierMode ? "min-h-[7rem] p-3.5" : "min-h-[6.5rem] p-3")}>
+                      <p className={cn("font-semibold text-[var(--text-primary)] leading-tight line-clamp-2", cashierMode ? "min-h-[2.5rem] text-sm" : "min-h-[2.25rem] text-sm")}>
+                        {product.name}
+                      </p>
+                      <p className="mt-1 truncate text-xs text-[var(--text-tertiary)] font-mono">
+                        {product.sku}
+                      </p>
+                      <p className={cn("mt-auto font-bold text-[var(--brand-600)]", cashierMode ? "text-base" : "text-sm")}>
+                        {formatIDR(product.price)}
+                      </p>
+                    </div>
+                  </button>
+                ))}
+                {filtered.length === 0 && (
+                  <div className="col-span-full py-12 text-center text-[var(--text-tertiary)] bg-[var(--surface)] border border-dashed border-[var(--border)] rounded-2xl">
+                    Tidak ada produk ditemukan
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -1145,14 +1253,9 @@ export default function POSPage() {
             )}
           </div>
           
-          <div className="grid grid-cols-2 gap-3">
-            <Button variant="outline" size="sm" icon={<Printer className="w-3.5 h-3.5" />} className="h-9 text-xs" onClick={handlePrintReceipt} disabled={receiptPrinting}>
-              {receiptPrinting ? "Mencetak..." : "Cetak Struk"}
-            </Button>
-            <Button variant="outline" size="sm" icon={<Send className="w-3.5 h-3.5" />} className="h-9 text-xs">
-              WhatsApp Nota
-            </Button>
-          </div>
+          <Button variant="outline" size="sm" icon={<Printer className="w-3.5 h-3.5" />} className="w-full h-9 text-xs" onClick={handlePrintReceipt} disabled={receiptPrinting}>
+            {receiptPrinting ? "Mencetak..." : "Cetak Struk"}
+          </Button>
           <Button onClick={handleNewOrder} className="w-full h-10 text-xs font-bold shadow-sm">
             Mulai Pesanan Baru
           </Button>

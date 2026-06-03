@@ -7,7 +7,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   LayoutDashboard, ShoppingCart, Package, BarChart3, Globe,
   Building2, Settings, Menu, LogOut, ChevronDown, Bell,
-  PackagePlus, PackageMinus, ArrowRightLeft, ClipboardList, Calculator, AlertTriangle
+  PackagePlus, PackageMinus, ArrowRightLeft, ClipboardList, Calculator, AlertTriangle, History, PanelLeftClose
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { Avatar, Badge, ConnectionStatus } from "@/components/ui";
@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
 
 const ICONS: Record<string, React.ElementType> = {
   LayoutDashboard, ShoppingCart, Package, BarChart3, Globe, Building2, Settings,
-  PackagePlus, PackageMinus, ArrowRightLeft, ClipboardList, Calculator,
+  PackagePlus, PackageMinus, ArrowRightLeft, ClipboardList, Calculator, History,
 };
 
 const SIDEBAR_SECTIONS = [
@@ -33,6 +33,7 @@ const SIDEBAR_SECTIONS = [
       "/dashboard/inventory",
       "/dashboard/inventory/stock-in",
       "/dashboard/inventory/stock-out",
+      "/dashboard/inventory/history",
       "/dashboard/inventory/transfers",
       "/dashboard/inventory/opname",
       "/dashboard/inventory/optimization",
@@ -56,12 +57,14 @@ function SidebarContent({
   pathname,
   currentHref,
   setSidebarOpen,
+  onClose,
 }: {
   user: { tenant: { name: string; plan: string }; role: UserRole };
   navItems: Array<{ href: string; label: string; icon: string }>;
   pathname: string;
   currentHref: string;
   setSidebarOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  onClose?: () => void;
 }) {
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     operations: true,
@@ -79,7 +82,7 @@ function SidebarContent({
 
   return (
     <div className="flex flex-col h-full bg-[#1f2a37] text-slate-300">
-      <div className="flex items-center justify-center px-4 h-28 bg-[radial-gradient(circle_at_1px_1px,rgba(255,255,255,0.08)_1px,transparent_0)] [background-size:12px_12px]">
+      <div className="relative flex items-center justify-center px-4 h-28 bg-[radial-gradient(circle_at_1px_1px,rgba(255,255,255,0.08)_1px,transparent_0)] [background-size:12px_12px]">
         <Image
           src="/logo2.png"
           alt="NAPS"
@@ -88,12 +91,23 @@ function SidebarContent({
           priority
           className="h-16 w-auto object-contain"
         />
+        {onClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Tutup menu"
+            title="Tutup menu"
+            className="absolute right-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-white/[0.08] hover:text-white"
+          >
+            <PanelLeftClose className="h-4 w-4" />
+          </button>
+        )}
       </div>
       <div className="mx-3 mt-5 px-4 py-3 rounded-xl bg-white/[0.06] shadow-[0_10px_24px_-18px_rgba(0,0,0,0.85),inset_0_1px_0_rgba(255,255,255,0.06)] space-y-1.5">
         <p className="text-sm font-semibold text-white leading-snug break-words">{user.tenant.name}</p>
         <Badge variant="brand" size="sm" className="inline-flex w-fit">Paket {user.tenant.plan}</Badge>
       </div>
-      <nav className="flex-1 px-3 py-4 space-y-3 overflow-y-auto">
+      <nav className="flex-1 px-3 py-4 space-y-3 overflow-y-auto scrollbar-hide">
         {SIDEBAR_SECTIONS.map((section) => {
           const sectionItems = section.items
             .map((href) => navItems.find((item) => item.href === href))
@@ -168,6 +182,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const router = useRouter();
   const { user, isAuthenticated, isLoading, logout, canAccess } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarClosing, setSidebarClosing] = useState(false);
+  const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(true);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [notificationToastOpen, setNotificationToastOpen] = useState(false);
@@ -193,6 +209,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       { prefix: "/dashboard/branches", feature: "branches" },
       { prefix: "/dashboard/channels", feature: "channels" },
       { prefix: "/dashboard/analytics", feature: "analytics" },
+      { prefix: "/dashboard/inventory/transfers", feature: "inventory.transfers" },
+      { prefix: "/dashboard/inventory/opname", feature: "inventory.opname" },
+      { prefix: "/dashboard/inventory/optimization", feature: "inventory.optimization" },
       { prefix: "/dashboard/inventory", feature: "inventory" },
       { prefix: "/dashboard/pos", feature: "pos" },
     ];
@@ -244,7 +263,24 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return null;
   }
 
-  const navItems = DASHBOARD_NAV.filter((item) => item.roles.includes(user.role));
+  const navFeatureByHref: Record<string, string> = {
+    "/dashboard/pos": "pos",
+    "/dashboard/inventory": "inventory",
+    "/dashboard/inventory/stock-in": "inventory",
+    "/dashboard/inventory/stock-out": "inventory",
+    "/dashboard/inventory/history": "inventory",
+    "/dashboard/inventory/transfers": "inventory.transfers",
+    "/dashboard/inventory/opname": "inventory.opname",
+    "/dashboard/inventory/optimization": "inventory.optimization",
+    "/dashboard/analytics": "analytics",
+    "/dashboard/channels": "channels",
+    "/dashboard/branches": "branches",
+    "/dashboard/settings": "settings",
+  };
+  const navItems = DASHBOARD_NAV.filter((item) => {
+    const feature = navFeatureByHref[item.href];
+    return item.roles.includes(user.role) && (!feature || canAccess(feature));
+  });
   const query = searchParams.toString();
   const currentHref = query ? `${pathname}?${query}` : pathname;
   const currentNavLabel = navItems.find((item) => {
@@ -261,24 +297,84 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         pathname.startsWith(`${itemPath}/`)
       );
   })?.label;
+  const cashierPosMode = user.role === "cashier" && pathname.startsWith("/dashboard/pos");
+
+  const openSidebar = () => {
+    setSidebarClosing(false);
+    setSidebarOpen(true);
+    setDesktopSidebarOpen(true);
+  };
+
+  const closeMobileSidebar = () => {
+    setSidebarClosing(true);
+    window.setTimeout(() => {
+      setSidebarOpen(false);
+      setSidebarClosing(false);
+    }, 220);
+  };
+
+  if (cashierPosMode) {
+    return (
+      <div className="h-screen overflow-hidden bg-[var(--background)]">
+        {children}
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen bg-[var(--background)]">
-      <aside className="hidden lg:flex lg:w-64 flex-col bg-[#1f2a37]">
-        <SidebarContent user={user} navItems={navItems} pathname={pathname} currentHref={currentHref} setSidebarOpen={setSidebarOpen} />
+      <aside
+        className={cn(
+          "hidden lg:flex flex-col overflow-hidden bg-[#1f2a37] transition-[width] duration-300 ease-in-out",
+          desktopSidebarOpen ? "lg:w-64" : "lg:w-0",
+        )}
+      >
+        <div className={cn("h-full w-64 transition-opacity duration-200", desktopSidebarOpen ? "opacity-100" : "opacity-0")}>
+          <SidebarContent
+            user={user}
+            navItems={navItems}
+            pathname={pathname}
+            currentHref={currentHref}
+            setSidebarOpen={setSidebarOpen}
+            onClose={() => setDesktopSidebarOpen(false)}
+          />
+        </div>
       </aside>
       {sidebarOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setSidebarOpen(false)} />
-          <aside className="absolute inset-y-0 left-0 w-64 bg-[#1f2a37] shadow-[var(--shadow-xl)] animate-slide-in-left">
-            <SidebarContent user={user} navItems={navItems} pathname={pathname} currentHref={currentHref} setSidebarOpen={setSidebarOpen} />
+        <div className={cn("fixed inset-0 z-50 lg:hidden", sidebarClosing && "pointer-events-none")}>
+          <div
+            className={cn("absolute inset-0 bg-black/50 transition-opacity duration-200 ease-out", sidebarClosing ? "opacity-0" : "opacity-100")}
+            onClick={closeMobileSidebar}
+          />
+          <aside
+            className={cn(
+              "absolute inset-y-0 left-0 w-64 bg-[#1f2a37] shadow-[var(--shadow-xl)] transition-transform duration-200 ease-out",
+              sidebarClosing ? "-translate-x-full" : "translate-x-0 animate-slide-in-left",
+            )}
+          >
+            <SidebarContent
+              user={user}
+              navItems={navItems}
+              pathname={pathname}
+              currentHref={currentHref}
+              setSidebarOpen={setSidebarOpen}
+              onClose={closeMobileSidebar}
+            />
           </aside>
         </div>
       )}
       <div className="flex-1 flex flex-col min-w-0">
         <header className="h-16 flex items-center justify-between px-4 lg:px-6 border-b border-[var(--border)] bg-[var(--surface)]">
           <div className="flex items-center gap-3">
-            <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer">
+            <button
+              onClick={openSidebar}
+              aria-label="Buka menu"
+              title="Buka menu"
+              className={cn(
+                "p-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer",
+                desktopSidebarOpen && "lg:hidden",
+              )}
+            >
               <Menu className="w-5 h-5" />
             </button>
             <h1 className="text-lg font-semibold text-[var(--text-primary)] hidden sm:block">

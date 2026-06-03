@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Search, Plus, Filter, Download, Upload, AlertTriangle, Package, ArrowUpDown, Barcode as BarcodeIcon, QrCode, PackagePlus, Trash2, Pencil, Info } from "lucide-react";
+import { Search, Plus, Filter, Download, Upload, AlertTriangle, Package, ArrowUpDown, Barcode as BarcodeIcon, QrCode, PackagePlus, Trash2, Pencil, Info, ChevronDown, Eye } from "lucide-react";
 import Barcode from "react-barcode";
 import { QRCodeSVG } from "qrcode.react";
 import { Button, Input, Badge, Card, DataTable, Modal, Toast } from "@/components/ui";
 import { formatIDR } from "@/lib/constants";
 import { cn } from "@/lib/utils";
-import { fetchBranches, fetchCategories, fetchProducts, type ApiBranch, type ApiCategory, type ApiProduct } from "@/lib/dashboard-api";
+import { createCategory, fetchBranches, fetchCategories, fetchProducts, type ApiBranch, type ApiCategory, type ApiProduct } from "@/lib/dashboard-api";
 import api from "@/lib/api";
 
 interface Produk {
@@ -89,6 +89,15 @@ function appendProductFormData(formData: FormData, data: Record<string, string |
   });
 }
 
+function getApiErrorMessage(error: unknown, fallback: string) {
+  if (typeof error === "object" && error !== null && "response" in error) {
+    const response = (error as { response?: { data?: { message?: string } } }).response;
+    return response?.data?.message || fallback;
+  }
+
+  return fallback;
+}
+
 export default function StokBarangPage() {
   const [search, setSearch] = useState("");
   const [filterCategory, setFilterCategory] = useState("Semua");
@@ -109,9 +118,13 @@ export default function StokBarangPage() {
   const [editProductImage, setEditProductImage] = useState<File | null>(null);
   const [editProductImagePreview, setEditProductImagePreview] = useState<string | null>(null);
   const [removeEditImage, setRemoveEditImage] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [editCategoryName, setEditCategoryName] = useState("");
+  const [categorySubmittingTarget, setCategorySubmittingTarget] = useState<"new" | "edit" | null>(null);
   const [detailProduct, setDetailProduct] = useState<Produk | null>(null);
   const [deleteProduct, setDeleteProduct] = useState<Produk | null>(null);
   const [deleteSubmitting, setDeleteSubmitting] = useState(false);
+  const [openActionProductId, setOpenActionProductId] = useState<string | null>(null);
   const [editProduct, setEditProduct] = useState<ProductForm>({
     name: "",
     sku: "",
@@ -215,8 +228,8 @@ export default function StokBarangPage() {
       )));
       setLabelProduct({ ...product, barcode: generatedCode });
       showToast(`Barcode ${generatedCode} berhasil disimpan.`, "success");
-    } catch (err: any) {
-      showToast(err.response?.data?.message || "Gagal generate barcode produk.", "error");
+    } catch (err: unknown) {
+      showToast(getApiErrorMessage(err, "Gagal generate barcode produk."), "error");
     } finally {
       setGeneratingBarcode(null);
     }
@@ -240,10 +253,50 @@ export default function StokBarangPage() {
     setEditProduct((prev) => ({ ...prev, ...patch }));
   };
 
+  const handleCreateCategory = async (target: "new" | "edit") => {
+    const categoryName = (target === "new" ? newCategoryName : editCategoryName).trim();
+    if (!categoryName) {
+      showToast("Nama kategori wajib diisi.", "warning");
+      return;
+    }
+
+    const existingCategory = categories.find((category) => category.name.toLowerCase() === categoryName.toLowerCase());
+    if (existingCategory) {
+      if (target === "new") {
+        updateNewProduct({ categoryId: String(existingCategory.id) });
+        setNewCategoryName("");
+      } else {
+        updateEditProduct({ categoryId: String(existingCategory.id) });
+        setEditCategoryName("");
+      }
+      showToast("Kategori sudah ada dan langsung dipilih.", "info");
+      return;
+    }
+
+    try {
+      setCategorySubmittingTarget(target);
+      const category = await createCategory(categoryName);
+      setCategories((prev) => [...prev, category].sort((a, b) => a.name.localeCompare(b.name)));
+      if (target === "new") {
+        updateNewProduct({ categoryId: String(category.id) });
+        setNewCategoryName("");
+      } else {
+        updateEditProduct({ categoryId: String(category.id) });
+        setEditCategoryName("");
+      }
+      showToast("Kategori baru berhasil ditambahkan.", "success");
+    } catch (err: unknown) {
+      showToast(getApiErrorMessage(err, "Gagal menambahkan kategori."), "error");
+    } finally {
+      setCategorySubmittingTarget(null);
+    }
+  };
+
   const resetNewProductForm = () => {
     if (newProductImagePreview) URL.revokeObjectURL(newProductImagePreview);
     setNewProductImage(null);
     setNewProductImagePreview(null);
+    setNewCategoryName("");
     setNewProduct({
       name: "",
       sku: "",
@@ -312,8 +365,8 @@ export default function StokBarangPage() {
       resetNewProductForm();
       setProductModalOpen(false);
       showToast("Produk baru berhasil ditambahkan.", "success");
-    } catch (err: any) {
-      showToast(err.response?.data?.message || "Gagal menambahkan produk.", "error");
+    } catch (err: unknown) {
+      showToast(getApiErrorMessage(err, "Gagal menambahkan produk."), "error");
     } finally {
       setProductSubmitting(false);
     }
@@ -326,6 +379,7 @@ export default function StokBarangPage() {
     setEditProductImage(null);
     setEditProductImagePreview(product.imageUrl);
     setRemoveEditImage(false);
+    setEditCategoryName("");
     setEditProduct({
       name: product.name,
       sku: product.sku,
@@ -373,9 +427,10 @@ export default function StokBarangPage() {
       setEditProductImage(null);
       setEditProductImagePreview(null);
       setRemoveEditImage(false);
+      setEditCategoryName("");
       showToast("Produk berhasil diperbarui.", "success");
-    } catch (err: any) {
-      showToast(err.response?.data?.message || "Gagal memperbarui produk.", "error");
+    } catch (err: unknown) {
+      showToast(getApiErrorMessage(err, "Gagal memperbarui produk."), "error");
     } finally {
       setEditProductSubmitting(false);
     }
@@ -390,14 +445,16 @@ export default function StokBarangPage() {
       await loadInventoryData();
       setDeleteProduct(null);
       showToast("Produk berhasil dihapus.", "success");
-    } catch (err: any) {
-      showToast(err.response?.data?.message || "Gagal menghapus produk. Pastikan produk tidak masih dipakai transaksi penting.", "error");
+    } catch (err: unknown) {
+      showToast(getApiErrorMessage(err, "Gagal menghapus produk. Pastikan produk tidak masih dipakai transaksi penting."), "error");
     } finally {
       setDeleteSubmitting(false);
     }
   };
 
   const handleProductAction = (product: Produk, action: string) => {
+    setOpenActionProductId(null);
+
     if (action === "detail") {
       setDetailProduct(product);
       return;
@@ -481,8 +538,8 @@ export default function StokBarangPage() {
       resetReceivingForm();
       setReceivingOpen(false);
       showToast("Penerimaan stok berhasil disimpan dan stok cabang diperbarui.", "success");
-    } catch (err: any) {
-      showToast(err.response?.data?.message || "Gagal menyimpan penerimaan stok.", "error");
+    } catch (err: unknown) {
+      showToast(getApiErrorMessage(err, "Gagal menyimpan penerimaan stok."), "error");
     } finally {
       setReceivingSubmitting(false);
     }
@@ -712,19 +769,46 @@ export default function StokBarangPage() {
               key: "actions",
               label: "Aksi",
               render: (p: Produk) => (
-                <select
-                  defaultValue=""
-                  onChange={(event) => {
-                    handleProductAction(p, event.target.value);
-                    event.currentTarget.value = "";
-                  }}
-                  className="h-8 min-w-28 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-2 text-xs font-medium text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
-                >
-                  <option value="" disabled>Aksi</option>
-                  <option value="detail">Detail</option>
-                  <option value="edit">Edit</option>
-                  <option value="delete">Hapus</option>
-                </select>
+                <div className="relative flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setOpenActionProductId((current) => current === p.id ? null : p.id)}
+                    className="inline-flex h-9 items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 text-xs font-semibold text-[var(--text-secondary)] transition-colors hover:border-[var(--border-hover)] hover:bg-[var(--surface-raised)] hover:text-[var(--text-primary)]"
+                    aria-expanded={openActionProductId === p.id}
+                    aria-label={`Aksi ${p.name}`}
+                  >
+                    Aksi
+                    <ChevronDown className="h-3.5 w-3.5" />
+                  </button>
+                  {openActionProductId === p.id && (
+                    <div className="absolute right-0 top-full z-20 mt-2 w-36 overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface)] text-left shadow-[var(--shadow-lg)]">
+                      <button
+                        type="button"
+                        onClick={() => handleProductAction(p, "detail")}
+                        className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--surface-raised)] hover:text-[var(--text-primary)]"
+                      >
+                        <Eye className="h-3.5 w-3.5" />
+                        Detail
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleProductAction(p, "edit")}
+                        className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--surface-raised)] hover:text-[var(--text-primary)]"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleProductAction(p, "delete")}
+                        className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-[var(--danger-500)] hover:bg-[var(--danger-50)]"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        Hapus
+                      </button>
+                    </div>
+                  )}
+                </div>
               ),
             },
           ]}
@@ -734,26 +818,27 @@ export default function StokBarangPage() {
         />
       )}
 
-      <Modal open={!!labelProduct} onClose={() => setLabelProduct(null)} title="Label Barcode / QR Produk" size="md">
+      <Modal open={!!labelProduct} onClose={() => setLabelProduct(null)} title="Label Barcode / QR Produk" size="lg">
         {labelProduct && (
           <div className="space-y-5">
             <div className="rounded-lg border border-[var(--border)] bg-white p-5 text-center text-slate-900">
               <p className="text-sm font-bold">{labelProduct.name}</p>
               <p className="mt-1 text-xs text-slate-500">{labelProduct.sku}</p>
               {labelProduct.barcode && labelProduct.barcode !== "-" ? (
-                <div className="mt-4 grid gap-4 sm:grid-cols-[1fr_auto] sm:items-center">
-                  <div className="overflow-hidden rounded border border-slate-200 bg-white p-3">
+                <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_9rem] lg:items-center">
+                  <div className="flex min-h-36 min-w-0 items-center justify-center overflow-x-auto rounded border border-slate-200 bg-white px-4 py-3">
                     <Barcode
                       value={labelProduct.barcode}
                       format="CODE128"
-                      height={54}
-                      width={1.6}
+                      height={62}
+                      width={1.25}
                       fontSize={12}
-                      margin={4}
+                      margin={8}
+                      displayValue
                     />
                   </div>
-                  <div className="mx-auto rounded border border-slate-200 bg-white p-3">
-                    <QRCodeSVG value={labelProduct.barcode} size={112} marginSize={2} />
+                  <div className="mx-auto flex h-36 w-36 items-center justify-center rounded border border-slate-200 bg-white p-3">
+                    <QRCodeSVG value={labelProduct.barcode} size={118} marginSize={2} />
                   </div>
                 </div>
               ) : (
@@ -840,6 +925,32 @@ export default function StokBarangPage() {
                   <option key={category.id} value={category.id}>{category.name}</option>
                 ))}
               </select>
+              <div className="mt-2 flex gap-2">
+                <input
+                  type="text"
+                  value={newCategoryName}
+                  onChange={(e) => setNewCategoryName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleCreateCategory("new");
+                    }
+                  }}
+                  placeholder="Kategori baru"
+                  className="min-w-0 flex-1 h-9 px-3 bg-[var(--surface)] border border-[var(--border)] rounded-lg text-sm text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  icon={<Plus className="w-4 h-4" />}
+                  loading={categorySubmittingTarget === "new"}
+                  onClick={() => handleCreateCategory("new")}
+                  className="h-9 shrink-0"
+                >
+                  Tambah
+                </Button>
+              </div>
             </div>
             <Input
               label="HPP"
@@ -971,6 +1082,32 @@ export default function StokBarangPage() {
                   <option key={category.id} value={category.id}>{category.name}</option>
                 ))}
               </select>
+              <div className="mt-2 flex gap-2">
+                <input
+                  type="text"
+                  value={editCategoryName}
+                  onChange={(e) => setEditCategoryName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleCreateCategory("edit");
+                    }
+                  }}
+                  placeholder="Kategori baru"
+                  className="min-w-0 flex-1 h-9 px-3 bg-[var(--surface)] border border-[var(--border)] rounded-lg text-sm text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  icon={<Plus className="w-4 h-4" />}
+                  loading={categorySubmittingTarget === "edit"}
+                  onClick={() => handleCreateCategory("edit")}
+                  className="h-9 shrink-0"
+                >
+                  Tambah
+                </Button>
+              </div>
             </div>
             <Input
               label="HPP"

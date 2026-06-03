@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Product;
+use App\Services\PlanLimits;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -17,17 +18,12 @@ class ProductController extends Controller
     {
         $tenant = auth()->user()->tenant;
         if ($tenant) {
-            $planLimits = [
-                'starter' => 30,
-                'basic' => 500,
-                'growth' => 5000,
-                'business' => 999999,
-            ];
-            $maxSku = $planLimits[strtolower($tenant->plan)] ?? 30;
+            $limits = PlanLimits::forPlan($tenant->plan);
+            $maxSku = $limits['max_sku'];
             $currentSkuCount = Product::count();
-            if ($currentSkuCount >= $maxSku) {
+            if (! PlanLimits::isUnlimited($maxSku) && $currentSkuCount >= $maxSku) {
                 return response()->json([
-                    'message' => "Batas SKU paket Anda ({$maxSku} SKU) telah tercapai. Harap upgrade ke paket langganan yang lebih tinggi!"
+                    'message' => "Batas SKU paket Anda ({$maxSku} SKU) telah tercapai. Ajukan upgrade paket untuk menambah produk."
                 ], 403);
             }
         }

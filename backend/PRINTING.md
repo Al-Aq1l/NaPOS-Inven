@@ -22,7 +22,7 @@ PortName   : COM4:
 
 Kalau `PortName` adalah `COM4:`, gunakan konfigurasi COM port. Kalau printer di-share, gunakan konfigurasi share printer.
 
-Di macOS, cek printer CUPS:
+Di macOS, target yang disarankan adalah printer yang tersambung lewat USB dan muncul sebagai CUPS queue:
 
 ```bash
 lpstat -p
@@ -123,7 +123,7 @@ Restart backend.
 
 ## 5. Opsi C: macOS CUPS Printer
 
-Gunakan opsi ini jika printer thermal muncul di **System Settings > Printers & Scanners** atau terdaftar lewat `lpstat -p`.
+Gunakan opsi ini hanya jika printer thermal muncul di **System Settings > Printers & Scanners** atau terdaftar lewat `lpstat -p`. Untuk demo macOS, jalur yang direkomendasikan adalah printer thermal USB yang benar-benar terdeteksi sebagai CUPS queue.
 
 ```env
 ESC_POS_PRINTER_PATH=cups:POS58
@@ -155,7 +155,7 @@ php artisan serve
 
 ## 6. Opsi D: macOS USB Serial Langsung
 
-Gunakan opsi ini jika printer muncul sebagai device `/dev/cu.*`.
+Gunakan opsi ini jika printer USB muncul sebagai device `/dev/cu.*`.
 
 ```env
 ESC_POS_PRINTER_PATH=/dev/cu.usbserial-1410
@@ -173,6 +173,17 @@ Lalu jalankan:
 php artisan config:clear
 php artisan serve
 ```
+
+## Catatan macOS Bluetooth
+
+Bluetooth thermal portable seperti RPP02N tidak dijadikan target demo resmi untuk NAPS di macOS. Pada beberapa Mac, printer Bluetooth bisa terlihat di Bluetooth settings tetapi tidak muncul sebagai CUPS queue yang bisa dipakai, atau hanya membuat `/dev/cu.*` yang tidak stabil untuk ESC/POS.
+
+Untuk demo dan operasional macOS, gunakan salah satu:
+
+- Printer thermal USB yang muncul di `lpstat -p`, lalu pakai `ESC_POS_PRINTER_PATH=cups:NAMA_PRINTER`.
+- Printer thermal USB serial yang muncul sebagai `/dev/cu.usbserial-*`, lalu pakai `ESC_POS_PRINTER_PATH=/dev/cu.usbserial-*`.
+
+Jika nanti ada printer thermal yang cocok untuk macOS, biasanya cukup sambungkan via USB, pastikan muncul di CUPS atau `/dev/cu.*`, lalu sesuaikan `.env`.
 
 ## 7. Cara Test dari Aplikasi
 
@@ -235,7 +246,7 @@ User yang menjalankan backend tidak punya akses ke device serial, atau device se
 - Tutup aplikasi printer utility lain.
 - Cabut pasang printer.
 - Coba jalankan backend dari terminal user yang sama.
-- Jika tetap sulit, lebih mudah gunakan opsi CUPS: `ESC_POS_PRINTER_PATH=cups:NAMA_PRINTER`.
+- Jika tetap sulit, gunakan printer USB yang muncul sebagai CUPS queue.
 
 ### Struk tercetak tapi karakter aneh
 
