@@ -856,24 +856,24 @@ export default function POSPage() {
         {/* Daftar Produk */}
         <div className={cn("flex-1 min-h-0", cashierMode ? "flex" : "overflow-y-auto p-4 lg:p-6")}>
           {cashierMode && (
-            <aside className="hidden w-56 flex-shrink-0 flex-col border-r border-[var(--border)] bg-[var(--surface)] p-4 sm:flex">
-              <p className="mb-4 px-2 text-xs font-bold uppercase tracking-[0.08em] text-[var(--text-tertiary)]">
+            <aside className="hidden w-52 flex-shrink-0 flex-col border-r border-[var(--border)] bg-[var(--surface)] p-4 sm:flex">
+              <p className="mb-3 px-2 text-xs font-bold uppercase tracking-[0.08em] text-[var(--text-tertiary)]">
                 Kategori
               </p>
-              <div className="space-y-2 overflow-y-auto">
+              <div className="space-y-1 overflow-y-auto">
                 {kategori.map((cat) => (
                   <button
                     key={cat}
                     onClick={() => setCategory(cat)}
                     className={cn(
-                      "flex min-h-14 w-full items-center justify-between gap-3 rounded-xl px-4 py-3 text-left text-sm font-semibold transition-colors",
+                      "flex min-h-11 w-full items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-semibold transition-colors",
                       category === cat
-                        ? "bg-[var(--brand-600)] text-white shadow-[var(--shadow-sm)]"
-                        : "border border-[var(--border)] text-[var(--text-secondary)] hover:bg-[var(--surface-raised)] hover:text-[var(--text-primary)]"
+                        ? "bg-[var(--brand-600)] text-white"
+                        : "text-[var(--text-secondary)] hover:bg-[var(--surface-raised)] hover:text-[var(--text-primary)]"
                     )}
                   >
                     <span className="min-w-0 truncate">{cat}</span>
-                    <span className={cn("rounded-full px-2 py-1 text-xs", category === cat ? "bg-white/20 text-white" : "bg-[var(--surface-raised)] text-[var(--text-tertiary)]")}>
+                    <span className={cn("text-xs", category === cat ? "text-white/80" : "text-[var(--text-tertiary)]")}>
                       {cat === "Semua" ? produk.length : produk.filter((item) => item.category === cat).length}
                     </span>
                   </button>
