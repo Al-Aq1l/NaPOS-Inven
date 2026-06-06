@@ -187,13 +187,28 @@ body {
 }
 
 @keyframes slide-in-right {
-  from { opacity: 0; transform: translateX(6px); }
+  from { opacity: 0; transform: translateX(24px); }
   to { opacity: 1; transform: translateX(0); }
 }
 
 @keyframes slide-in-left {
-  from { opacity: 0; transform: translateX(-6px); }
+  from { opacity: 0; transform: translateX(-24px); }
   to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes slide-out-left {
+  from { opacity: 1; transform: translateX(0); }
+  to { opacity: 0; transform: translateX(-24px); }
+}
+
+@keyframes slide-out-right {
+  from { opacity: 1; transform: translateX(0); }
+  to { opacity: 0; transform: translateX(24px); }
+}
+
+@keyframes float-gentle {
+  0%, 100% { transform: translateY(0px) rotate(-1deg); }
+  50% { transform: translateY(-12px) rotate(1deg); }
 }
 
 @keyframes scale-in {
@@ -230,10 +245,11 @@ body {
 .animate-fade-in { animation: fade-in 0.18s ease-out; }
 .animate-fade-in-up { animation: fade-in-up 0.18s ease-out; }
 .animate-fade-in-down { animation: fade-in-down 0.18s ease-out; }
-.animate-slide-in-right { animation: slide-in-right 0.18s ease-out; }
-.animate-slide-in-left { animation: slide-in-left 0.18s ease-out; }
+.animate-slide-in-right { animation: slide-in-right 0.28s cubic-bezier(0.22, 1, 0.36, 1); }
+.animate-slide-in-left { animation: slide-in-left 0.28s cubic-bezier(0.22, 1, 0.36, 1); }
 .animate-scale-in { animation: scale-in 0.16s ease-out; }
 .animate-float { animation: float 3s ease-in-out infinite; }
+.animate-float-gentle { animation: float-gentle 4s ease-in-out infinite; }
 .animate-gradient { animation: gradient-shift 6s ease infinite; background-size: 200% 200%; }
 
 /* Stagger children animations */

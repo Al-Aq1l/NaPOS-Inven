@@ -72,7 +72,7 @@ export default function LoginPage() {
             <input type="checkbox" className="rounded border-[var(--border)]" />
             Remember me
           </label>
-          <Link href="#" className="text-sm text-[var(--brand-600)] hover:underline">
+          <Link href="/forgot-password" className="text-sm text-[var(--brand-600)] hover:underline">
             Forgot password?
           </Link>
         </div>

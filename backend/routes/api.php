@@ -3,10 +3,21 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\OtpController;
+use App\Http\Controllers\Api\PasswordResetController;
+use App\Http\Controllers\Api\PaymentWebhookController;
 use App\Http\Controllers\InventoryOptimizationController;
 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
+
+// OTP verification (public — email must be provided before registration)
+Route::post('/otp/send',   [OtpController::class, 'send']);
+Route::post('/otp/verify', [OtpController::class, 'verify']);
+Route::post('/password/reset', [PasswordResetController::class, 'reset']);
+
+// Midtrans webhook — excluded from CSRF (handled by signature verification inside controller)
+Route::post('/midtrans/notification', [PaymentWebhookController::class, 'handle']);
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/me', [AuthController::class, 'me']);
