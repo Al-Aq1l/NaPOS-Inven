@@ -184,7 +184,14 @@ class EscPosReceiptPrinter
             $qty = (int) ($item['quantity'] ?? 0);
             $price = (int) ($item['price'] ?? 0);
             $subtotal = (int) ($item['subtotal'] ?? ($qty * $price));
-            $out .= $this->columns("{$qty} x " . $this->rupiah($price), $this->rupiah($subtotal), $width);
+            $grossSubtotal = $qty * $price;
+            $discountAmount = (int) ($item['discount_amount'] ?? max(0, $grossSubtotal - $subtotal));
+            $out .= $this->columns("{$qty} x " . $this->rupiah($price), $this->rupiah($grossSubtotal), $width);
+
+            if ($discountAmount > 0) {
+                $out .= $this->columns('Diskon', '-' . $this->rupiah($discountAmount), $width);
+                $out .= $this->columns('Subtotal item', $this->rupiah($subtotal), $width);
+            }
         }
 
         $out .= $this->separator($width);

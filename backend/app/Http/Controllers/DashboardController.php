@@ -12,25 +12,27 @@ class DashboardController extends Controller
     public function summary()
     {
         $now = Carbon::now();
-        $startOfMonth = $now->copy()->startOfMonth();
-        $endOfMonth = $now->copy()->endOfMonth();
-        $daysInMonth = $now->daysInMonth;
+        $startOfYear = $now->copy()->startOfYear();
+        $endOfToday = $now->copy()->endOfDay();
+        $currentMonth = $now->month;
 
         $orderStats = Order::query()
             ->selectRaw('COUNT(*) as total_orders, COALESCE(SUM(total_amount), 0) as total_revenue')
             ->first();
 
         $trendRows = Order::query()
-            ->selectRaw('DAY(created_at) as day, COALESCE(SUM(total_amount), 0) as total')
-            ->whereBetween('created_at', [$startOfMonth, $endOfMonth])
-            ->groupByRaw('DAY(created_at)')
-            ->pluck('total', 'day');
+            ->selectRaw('MONTH(created_at) as month, COALESCE(SUM(total_amount), 0) as total')
+            ->whereBetween('created_at', [$startOfYear, $endOfToday])
+            ->groupByRaw('MONTH(created_at)')
+            ->pluck('total', 'month');
 
+        $monthLabels = [1 => 'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
         $salesTrend = [];
-        for ($day = 1; $day <= $daysInMonth; $day++) {
+        for ($month = 1; $month <= $currentMonth; $month++) {
             $salesTrend[] = [
-                'day' => $day,
-                'total' => (float) ($trendRows[$day] ?? 0),
+                'month' => $month,
+                'label' => $monthLabels[$month],
+                'total' => (float) ($trendRows[$month] ?? 0),
             ];
         }
 

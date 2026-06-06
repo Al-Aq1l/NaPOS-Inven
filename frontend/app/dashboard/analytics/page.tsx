@@ -3,11 +3,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Chart, registerables } from "chart.js";
 import { useAuth } from "@/lib/auth-context";
-import { Card, Badge, StatCard } from "@/components/ui";
+import { Card, Badge, StatCard, DataTable } from "@/components/ui";
 import { formatIDR } from "@/lib/constants";
-import { AlertTriangle, DollarSign, ShoppingCart, TrendingUp, Users, Lock, Package } from "lucide-react";
+import { AlertTriangle, Lock, Package, ReceiptText, Users, Wallet } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { fetchOrders, fetchProducts, type ApiOrder, type ApiProduct } from "@/lib/dashboard-api";
+import { fetchOrders, fetchProducts, type ApiOrder, type ApiProduct, fetchBranches, type ApiBranch } from "@/lib/dashboard-api";
 
 Chart.register(...registerables);
 
@@ -31,24 +31,37 @@ function formatChartTick(value: number) {
 function TierGate({ required, current, children }: { required: string[]; current: string; children: React.ReactNode }) {
   if (required.includes(current)) return <>{children}</>;
   return (
-    <div className="relative">
-      <div className="absolute inset-0 z-10 bg-[var(--surface)]/80 backdrop-blur-sm rounded-xl flex flex-col items-center justify-center text-center p-6">
-        <div className="w-12 h-12 bg-[var(--slate-100)] rounded-full flex items-center justify-center mb-3 dark:bg-[var(--slate-800)]">
-          <Lock className="w-6 h-6 text-[var(--text-tertiary)]" />
+    <div className="relative overflow-hidden rounded-xl">
+      <div className="absolute inset-0 z-10 bg-white/45 dark:bg-black/45 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-xl flex flex-col items-center justify-center text-center p-6">
+        <div className="w-16 h-16 bg-gradient-to-tr from-[var(--brand-600)] to-blue-400 rounded-full flex items-center justify-center mb-4 shadow-lg shadow-blue-500/20 text-white">
+          <Lock className="w-7 h-7" />
         </div>
-        <p className="font-semibold text-[var(--text-primary)]">Perlu upgrade paket</p>
-        <p className="text-sm text-[var(--text-secondary)] mt-1">Tersedia di paket {required.join(" & ")}</p>
+        <p className="font-extrabold text-[var(--text-primary)] text-base">Analitik Premium Terkunci</p>
+        <p className="text-xs text-[var(--text-secondary)] mt-1.5 max-w-xs leading-relaxed">
+          Dapatkan wawasan bisnis yang lebih mendalam dengan peningkatan visualisasi, tren margin, dan analisis perilaku pelanggan.
+        </p>
+        <div className="mt-3 text-[10px] font-bold text-[var(--brand-600)] bg-[var(--brand-50)] dark:bg-[var(--brand-950)]/40 dark:text-[var(--brand-300)] px-2.5 py-0.5 rounded-full border border-[var(--brand-100)] dark:border-[var(--brand-900)]">
+          Tersedia di paket: {required.map(r => r.toUpperCase()).join(" / ")}
+        </div>
+        <a
+          href="/dashboard/settings?tab=billing"
+          className="mt-4 inline-flex h-8 items-center justify-center gap-2 rounded-lg bg-[var(--brand-600)] px-4 text-xs font-bold text-white shadow-md hover:bg-[var(--brand-700)] transition-all active:scale-95"
+        >
+          Upgrade Paket Sekarang
+        </a>
       </div>
-      <div className="opacity-30 pointer-events-none">{children}</div>
+      <div className="opacity-15 pointer-events-none">{children}</div>
     </div>
   );
 }
 
 export default function AnalitikPage() {
   const { user, canAccess } = useAuth();
-  const [period, setPeriod] = useState("7D");
   const [orders, setOrders] = useState<ApiOrder[]>([]);
   const [products, setProducts] = useState<ApiProduct[]>([]);
+  const [branches, setBranches] = useState<ApiBranch[]>([]);
+  const [selectedBranchId, setSelectedBranchId] = useState<number | null>(null);
+  const [dateRange, setDateRange] = useState<"7d" | "30d" | "month" | "year">("month");
   const [error, setError] = useState<string | null>(null);
   if (!user) return null;
 
@@ -67,10 +80,15 @@ export default function AnalitikPage() {
     async function loadData() {
       try {
         setError(null);
-        const [ordersData, productsData] = await Promise.all([fetchOrders(), fetchProducts()]);
+        const [ordersData, productsData, branchesData] = await Promise.all([
+          fetchOrders(),
+          fetchProducts(),
+          fetchBranches(),
+        ]);
         if (!isMounted) return;
         setOrders(ordersData);
         setProducts(productsData);
+        setBranches(branchesData);
       } catch (err: any) {
         if (!isMounted) return;
         const status = err?.response?.status;
@@ -81,6 +99,7 @@ export default function AnalitikPage() {
         }
         setOrders([]);
         setProducts([]);
+        setBranches([]);
       }
     }
     loadData();
@@ -89,30 +108,87 @@ export default function AnalitikPage() {
     };
   }, []);
 
-  const salesData = useMemo(() => {
+  const filteredOrders = useMemo(() => {
+    let result = orders;
+
+    // 1. Filter by branch
+    if (selectedBranchId !== null) {
+      result = result.filter((o) => o.branch_id === selectedBranchId);
+    }
+
+    // 2. Filter by date range
     const now = new Date();
-    const labels = ["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"];
-    const dayTotals = [0, 0, 0, 0, 0, 0, 0];
-    for (const order of orders) {
+    result = result.filter((order) => {
       const d = new Date(order.created_at);
-      const diffDays = Math.floor((now.getTime() - d.getTime()) / (1000 * 60 * 60 * 24));
-      if (diffDays >= 0 && diffDays <= 6) {
-        const idx = (d.getDay() + 6) % 7;
-        dayTotals[idx] += Number(order.total_amount);
+      if (dateRange === "7d") {
+        const diff = now.getTime() - d.getTime();
+        return diff <= 7 * 24 * 60 * 60 * 1000;
+      }
+      if (dateRange === "30d") {
+        const diff = now.getTime() - d.getTime();
+        return diff <= 30 * 24 * 60 * 60 * 1000;
+      }
+      if (dateRange === "month") {
+        return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+      }
+      if (dateRange === "year") {
+        return d.getFullYear() === now.getFullYear();
+      }
+      return true;
+    });
+
+    return result;
+  }, [orders, selectedBranchId, dateRange]);
+
+  const salesData = useMemo(() => {
+    if (dateRange === "7d" || dateRange === "30d") {
+      const daysCount = dateRange === "7d" ? 7 : 30;
+      const labels: string[] = [];
+      const values: number[] = new Array(daysCount).fill(0);
+      const now = new Date();
+      
+      for (let i = daysCount - 1; i >= 0; i--) {
+        const d = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+        labels.push(d.toLocaleDateString("id-ID", { day: "2-digit", month: "short" }));
+      }
+      
+      for (const order of filteredOrders) {
+        const orderDate = new Date(order.created_at);
+        const diffDays = Math.floor((now.getTime() - orderDate.getTime()) / (24 * 60 * 60 * 1000));
+        if (diffDays >= 0 && diffDays < daysCount) {
+          const index = daysCount - 1 - diffDays;
+          values[index] += Number(order.total_amount);
+        }
+      }
+      return { labels, values };
+    }
+
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth();
+    const monthLabels = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
+    const labels = monthLabels.slice(0, currentMonth + 1);
+    const monthTotals = new Array(currentMonth + 1).fill(0);
+
+    for (const order of filteredOrders) {
+      const d = new Date(order.created_at);
+      if (d.getFullYear() === currentYear && d.getMonth() <= currentMonth) {
+        monthTotals[d.getMonth()] += Number(order.total_amount);
       }
     }
-    return { labels, values: dayTotals };
-  }, [orders]);
+
+    return { labels, values: monthTotals };
+  }, [filteredOrders, dateRange]);
 
   const hourlyData = useMemo(() => {
     const labels = Array.from({ length: 16 }, (_, i) => String(i + 6));
     const values = new Array(16).fill(0);
-    for (const order of orders) {
+    for (const order of filteredOrders) {
       const hour = new Date(order.created_at).getHours();
       if (hour >= 6 && hour <= 21) values[hour - 6] += 1;
     }
     return { labels, values };
-  }, [orders]);
+  }, [filteredOrders]);
 
   const categoryData = useMemo(() => {
     const countByCategory = new Map<string, number>();
@@ -129,31 +205,46 @@ export default function AnalitikPage() {
   }, [products]);
 
   const topProducts = useMemo(() => {
-    const productMap = new Map<number, { name: string; qty: number }>();
-    for (const order of orders) {
+    const productMap = new Map<number, { name: string; qty: number; price: number }>();
+    for (const order of filteredOrders) {
       for (const item of order.items ?? []) {
         const name = item.product?.name ?? `Produk #${item.product_id}`;
+        const price = Number(item.price) || 0;
         const existing = productMap.get(item.product_id);
-        if (existing) existing.qty += item.quantity;
-        else productMap.set(item.product_id, { name, qty: item.quantity });
+        if (existing) {
+          existing.qty += item.quantity;
+        } else {
+          productMap.set(item.product_id, { name, qty: item.quantity, price });
+        }
       }
     }
     return Array.from(productMap.values()).sort((a, b) => b.qty - a.qty);
-  }, [orders]);
+  }, [filteredOrders]);
+
+  const topProductsWithRank = useMemo(() => {
+    return topProducts.map((p, index) => ({ ...p, rank: index + 1 }));
+  }, [topProducts]);
+
+  const getTotalStock = (product: ApiProduct) => {
+    if (selectedBranchId === null) {
+      return (product.branches ?? []).reduce((sum, branch) => sum + (branch.pivot?.stock ?? 0), 0);
+    }
+    const b = (product.branches ?? []).find((branch) => branch.id === selectedBranchId);
+    return b?.pivot?.stock ?? 0;
+  };
 
   const lowStockProducts = useMemo(
-    () => products.filter((p) => (p.branches ?? []).reduce((s, b) => s + (b.pivot?.stock ?? 0), 0) <= p.rop),
-    [products],
+    () => products.filter((p) => getTotalStock(p) <= p.rop),
+    [products, selectedBranchId],
   );
-  const getTotalStock = (product: ApiProduct) => (product.branches ?? []).reduce((sum, branch) => sum + (branch.pivot?.stock ?? 0), 0);
 
-  const totalRevenue = useMemo(() => orders.reduce((sum, o) => sum + Number(o.total_amount), 0), [orders]);
-  const totalTransactions = orders.length;
+  const totalRevenue = useMemo(() => filteredOrders.reduce((sum, o) => sum + Number(o.total_amount), 0), [filteredOrders]);
+  const totalTransactions = filteredOrders.length;
   const avgBasket = totalTransactions > 0 ? Math.round(totalRevenue / totalTransactions) : 0;
-  const uniqueCustomers = useMemo(() => new Set(orders.map((o) => (o.customer_name || "").trim()).filter(Boolean)).size, [orders]);
+  const uniqueCustomers = useMemo(() => new Set(filteredOrders.map((o) => (o.customer_name || "").trim()).filter(Boolean)).size, [filteredOrders]);
   const stockValuation = useMemo(
-    () => products.reduce((sum, p) => sum + Number(p.cost_price) * (p.branches ?? []).reduce((s, b) => s + (b.pivot?.stock ?? 0), 0), 0),
-    [products],
+    () => products.reduce((sum, p) => sum + Number(p.cost_price) * getTotalStock(p), 0),
+    [products, selectedBranchId],
   );
 
   const hasSalesData = salesData.values.some((v) => v > 0);
@@ -166,18 +257,62 @@ export default function AnalitikPage() {
           <h1 className="text-2xl font-bold text-[var(--text-primary)]">Analitik</h1>
           <p className="text-sm text-[var(--text-secondary)] mt-1">Ringkasan performa usaha secara real-time</p>
         </div>
-        <div className="flex gap-1 bg-[var(--surface-raised)] border border-[var(--border)] rounded-lg p-1">
-          {plan === "starter" ? ["7D"] : ["24H", "7D", "30D", "90D"].map((p) => (
-            <button key={p} onClick={() => setPeriod(p)} className={cn("px-3 py-1.5 rounded-md text-xs font-medium transition-all cursor-pointer", period === p ? "bg-[var(--brand-600)] text-white shadow-sm" : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]")}>{p}</button>
+        <Badge variant="info">Live</Badge>
+      </div>
+
+      {/* Bilah Filter */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 p-4 bg-[var(--surface)] border border-[var(--border)] rounded-xl shadow-[var(--shadow-xs)]">
+        {/* Dropdown Cabang */}
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-semibold text-[var(--text-secondary)]">Cabang:</span>
+          <select
+            value={selectedBranchId ?? ""}
+            onChange={(e) => {
+              const val = e.target.value;
+              setSelectedBranchId(val === "" ? null : Number(val));
+            }}
+            className="h-9 px-3 bg-[var(--surface-raised)] border border-[var(--border)] rounded-lg text-xs font-bold text-[var(--text-primary)] cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+          >
+            <option value="">Semua Cabang</option>
+            {branches.map((b) => (
+              <option key={b.id} value={b.id}>
+                {b.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Preset Tanggal */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-hide">
+          {(
+            [
+              { label: "7 Hari Terakhir", val: "7d" },
+              { label: "30 Hari Terakhir", val: "30d" },
+              { label: "Bulan Ini", val: "month" },
+              { label: "Tahun Ini", val: "year" },
+            ] as const
+          ).map((item) => (
+            <button
+              key={item.val}
+              onClick={() => setDateRange(item.val)}
+              className={cn(
+                "px-3 py-1.5 rounded-lg text-xs font-bold transition-all border whitespace-nowrap",
+                dateRange === item.val
+                  ? "bg-[var(--brand-600)] text-white border-transparent shadow-sm"
+                  : "bg-[var(--surface-raised)] text-[var(--text-secondary)] border-[var(--border)] hover:bg-[var(--slate-150)] dark:hover:bg-[var(--slate-800)]"
+              )}
+            >
+              {item.label}
+            </button>
           ))}
         </div>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard label="Pendapatan" value={formatIDR(totalRevenue)} change="Berdasarkan data transaksi" changeType="positive" icon={<DollarSign className="w-5 h-5" />} />
-        <StatCard label="Transaksi" value={String(totalTransactions)} change="Total transaksi" changeType="positive" icon={<ShoppingCart className="w-5 h-5" />} />
-        <StatCard label="Produk Terlaris" value={String(plan === "starter" ? Math.min(5, topProducts.length) : Math.min(20, topProducts.length))} change={plan === "starter" ? "Top 5 SKU" : "Top SKU"} changeType="positive" icon={<TrendingUp className="w-5 h-5" />} />
-        <StatCard label={plan === "starter" ? "Stok Kritis" : "Pelanggan Unik"} value={plan === "starter" ? String(lowStockProducts.length) : String(uniqueCustomers)} change={plan === "starter" ? "Di bawah safety stock" : "Pelanggan tercatat"} changeType="neutral" icon={<Users className="w-5 h-5" />} />
+        <StatCard label="Pendapatan" value={formatIDR(totalRevenue)} change="Berdasarkan data transaksi" changeType="positive" icon={<Wallet className="w-5 h-5" />} />
+        <StatCard label="Transaksi" value={String(totalTransactions)} change="Total transaksi" changeType="positive" icon={<ReceiptText className="w-5 h-5" />} />
+        <StatCard label="Produk Terlaris" value={String(plan === "starter" ? Math.min(5, topProducts.length) : Math.min(20, topProducts.length))} change={plan === "starter" ? "Top 5 SKU" : "Top SKU"} changeType="positive" icon={<Package className="w-5 h-5" />} />
+        <StatCard label={plan === "starter" ? "Stok Kritis" : "Pelanggan Unik"} value={plan === "starter" ? String(lowStockProducts.length) : String(uniqueCustomers)} change={plan === "starter" ? "Di bawah safety stock" : "Pelanggan tercatat"} changeType="neutral" icon={plan === "starter" ? <AlertTriangle className="w-5 h-5" /> : <Users className="w-5 h-5" />} />
       </div>
 
       {error && (
@@ -189,7 +324,7 @@ export default function AnalitikPage() {
       <TierGate required={["basic", "growth", "business"]} current={plan}>
         <div className="grid lg:grid-cols-3 gap-6">
           <Card className="lg:col-span-2">
-            <h3 className="font-semibold text-[var(--text-primary)] mb-4">Tren Penjualan</h3>
+            <h3 className="font-semibold text-[var(--text-primary)] mb-4">Tren Penjualan Bulanan</h3>
             {!hasSalesData ? (
               <div className="h-64 flex items-center justify-center text-center rounded-lg border border-dashed border-[var(--border)]">
                 <div>
@@ -295,20 +430,67 @@ export default function AnalitikPage() {
         </div>
       </TierGate>
 
-      {plan === "starter" && (
-        <Card>
-          <h3 className="font-semibold text-[var(--text-primary)] mb-4">Ringkasan Starter (Top 5 SKU)</h3>
-          <div className="space-y-2">
-            {topProducts.slice(0, 5).map((p) => (
-              <div key={p.name} className="flex items-center justify-between p-2 rounded-lg bg-[var(--surface-raised)]">
-                <span className="text-sm text-[var(--text-primary)]">{p.name}</span>
-                <Badge variant="info">{p.qty} unit</Badge>
-              </div>
-            ))}
-            {topProducts.length === 0 && <p className="text-sm text-[var(--text-secondary)]">Belum ada transaksi untuk menghitung produk terlaris.</p>}
+      <Card>
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="font-semibold text-[var(--text-primary)]">Produk Terlaris</h3>
+            <p className="mt-1 text-xs text-[var(--text-tertiary)]">
+              Daftar produk paling laku berdasarkan volume penjualan untuk periode terpilih.
+            </p>
           </div>
-        </Card>
-      )}
+          <Badge variant="brand">
+            {plan === "starter" ? "Top 5 SKU" : "Top 10 SKU"}
+          </Badge>
+        </div>
+        
+        <DataTable
+          columns={[
+            {
+              key: "rank",
+              label: "#",
+              render: (item: any) => <span className="font-semibold text-[var(--text-secondary)]">{item.rank}</span>,
+              className: "w-12",
+            },
+            {
+              key: "name",
+              label: "Nama Produk",
+              render: (item: any) => <span className="font-bold text-[var(--text-primary)]">{item.name}</span>,
+            },
+            {
+              key: "qty",
+              label: "Terjual",
+              render: (item: any) => <Badge variant="info">{item.qty} unit</Badge>,
+              className: "w-28",
+            },
+            {
+              key: "omset",
+              label: "Total Omset",
+              render: (item: any) => <span className="font-semibold text-[var(--text-primary)]">{formatIDR(item.qty * item.price)}</span>,
+              className: "w-40",
+            },
+            {
+              key: "contribution",
+              label: "Kontribusi",
+              render: (item: any) => {
+                const omset = item.qty * item.price;
+                const pct = totalRevenue > 0 ? (omset / totalRevenue) * 100 : 0;
+                return (
+                  <div className="flex items-center gap-2 min-w-[5rem]">
+                    <div className="flex-1 bg-[var(--slate-100)] dark:bg-[var(--slate-800)] h-1.5 rounded-full overflow-hidden">
+                      <div className="bg-[var(--brand-600)] h-full rounded-full" style={{ width: `${Math.min(100, pct)}%` }} />
+                    </div>
+                    <span className="font-mono text-xs font-semibold text-[var(--text-secondary)]">{pct.toFixed(1)}%</span>
+                  </div>
+                );
+              },
+              className: "w-48",
+            },
+          ]}
+          data={topProductsWithRank.slice(0, plan === "starter" ? 5 : 10)}
+          keyExtractor={(item: any) => String(item.rank)}
+          emptyMessage="Belum ada transaksi untuk periode ini."
+        />
+      </Card>
 
       <Card>
         <div className="flex items-center justify-between mb-4">

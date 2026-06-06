@@ -136,7 +136,7 @@ export interface DashboardSummary {
   total_revenue: number;
   total_orders: number;
   branch_count: number;
-  sales_trend: Array<{ day: number; total: number }>;
+  sales_trend: Array<{ month: number; label: string; total: number }>;
   recent_orders: Array<{
     id: number;
     customer_name: string | null;

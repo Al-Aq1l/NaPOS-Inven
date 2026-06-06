@@ -300,7 +300,31 @@ body {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
   font-size: 10px;
   line-height: 1.35;
-  padding: 3mm;
+  padding: 3mm 7mm 3mm 3mm;
+  position: relative;
+}
+
+.receipt-side-watermark {
+  position: absolute;
+  inset: 2mm 1mm 2mm auto;
+  width: 5mm;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-around;
+  color: var(--brand-600);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  opacity: 0.9;
+  pointer-events: none;
+}
+
+.receipt-side-watermark span {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
 }
 
 .receipt-title {
@@ -390,8 +414,15 @@ body {
     max-width: 48mm;
     box-sizing: border-box;
     margin: 0;
-    padding: 2mm 1.5mm;
+    padding: 2mm 7mm 2mm 1.5mm;
     box-shadow: none;
     break-inside: avoid;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .receipt-side-watermark {
+    right: 1mm;
+    color: #2563eb;
   }
 }

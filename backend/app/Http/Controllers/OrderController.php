@@ -25,16 +25,24 @@ class OrderController extends Controller
             'items' => 'required|array|min:1',
             'items.*.product_id' => 'required|exists:products,id',
             'items.*.quantity' => 'required|integer|min:1',
+            'items.*.discount_amount' => 'nullable|numeric|min:0',
         ]);
 
         $user = auth()->user();
+
+        if ($user->role !== 'cashier') {
+            return response()->json([
+                'message' => 'Transaksi POS hanya dapat dibuat oleh akun kasir.',
+            ], 403);
+        }
+
         $branch = Branch::where('tenant_id', $user->tenant_id)->find($validated['branch_id']);
 
         if (! $branch) {
             return response()->json(['message' => 'Cabang tidak ditemukan untuk tenant ini.'], 422);
         }
 
-        if ($user->role === 'cashier' && (int) $user->branch_id !== (int) $validated['branch_id']) {
+        if ((int) $user->branch_id !== (int) $validated['branch_id']) {
             return response()->json([
                 'message' => 'Kasir hanya dapat membuat transaksi pada cabang kerja yang ditetapkan owner.',
             ], 403);
@@ -45,13 +53,17 @@ class OrderController extends Controller
 
             $itemsByProduct = collect($validated['items'])
                 ->groupBy('product_id')
-                ->map(fn ($items) => $items->sum('quantity'));
+                ->map(fn ($items) => [
+                    'quantity' => $items->sum('quantity'),
+                    'discount_amount' => $items->sum(fn ($item) => (float) ($item['discount_amount'] ?? 0)),
+                ]);
 
             $products = Product::whereIn('id', $itemsByProduct->keys())->get()->keyBy('id');
             $totalAmount = 0;
             $orderItemsData = [];
 
-            foreach ($itemsByProduct as $productId => $quantity) {
+            foreach ($itemsByProduct as $productId => $itemData) {
+                $quantity = (int) $itemData['quantity'];
                 $product = $products->get((int) $productId);
                 if (!$product) {
                     DB::rollBack();
@@ -59,7 +71,9 @@ class OrderController extends Controller
                 }
 
                 $price = $product->sell_price;
-                $subtotal = $price * $quantity;
+                $grossSubtotal = $price * $quantity;
+                $discountAmount = min($grossSubtotal, max(0, (float) $itemData['discount_amount']));
+                $subtotal = $grossSubtotal - $discountAmount;
 
                 $pivot = DB::table('branch_product')
                     ->where('branch_id', $validated['branch_id'])

@@ -204,7 +204,7 @@ export default function PengaturanPage() {
         role: (created.role as UserRole) ?? inviteForm.role,
         branchId: created.branch_id ?? null,
         branchName: created.branch?.name ?? null,
-        status: "active",
+        status: "active" as const,
       }].sort((a, b) => a.name.localeCompare(b.name)));
       setInviteOpen(false);
     } catch (error: unknown) {

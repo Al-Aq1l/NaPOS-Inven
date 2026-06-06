@@ -18,6 +18,8 @@ export interface LocalOrderItem {
   quantity: number;
   name: string;
   price: number;
+  discount_amount?: number;
+  subtotal?: number;
 }
 
 export interface LocalOrder {

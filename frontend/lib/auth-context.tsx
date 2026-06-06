@@ -41,7 +41,7 @@ interface AuthContextType extends AuthState {
 }
 
 const FEATURE_ACCESS: Record<string, UserRole[]> = {
-  pos: ["owner", "cashier"],
+  pos: ["cashier"],
   inventory: ["owner", "manager"],
   "inventory.cost": ["owner", "manager"],
   analytics: ["owner", "manager"],

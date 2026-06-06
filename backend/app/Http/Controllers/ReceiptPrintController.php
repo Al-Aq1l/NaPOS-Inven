@@ -28,6 +28,7 @@ class ReceiptPrintController extends Controller
             'items.*.name' => 'required|string|max:160',
             'items.*.quantity' => 'required|integer|min:1',
             'items.*.price' => 'required|integer|min:0',
+            'items.*.discount_amount' => 'nullable|integer|min:0',
             'items.*.subtotal' => 'required|integer|min:0',
         ]);
 

@@ -14,7 +14,7 @@ import {
   Wallet,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
-import { Badge, Card } from "@/components/ui";
+import { Badge, Card, Modal, Button } from "@/components/ui";
 import { formatIDR } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { fetchDashboardSummary, type DashboardSummary } from "@/lib/dashboard-api";
@@ -52,12 +52,14 @@ function SummaryTile({
   helper,
   icon,
   tone = "blue",
+  trend,
 }: {
   label: string;
   value: string;
   helper: string;
   icon: React.ReactNode;
   tone?: "blue" | "emerald" | "amber" | "slate";
+  trend?: { value: number; label: string };
 }) {
   const tones = {
     blue: "bg-blue-50 text-blue-700 dark:bg-blue-400/10 dark:text-blue-300",
@@ -76,8 +78,22 @@ function SummaryTile({
           </span>
         </div>
         <div>
-          <p className="text-2xl font-black tracking-normal text-[var(--text-primary)]">{value}</p>
-          <p className="mt-1 text-xs text-[var(--text-tertiary)]">{helper}</p>
+          <div className="flex items-baseline justify-between gap-2">
+            <p className="text-2xl font-black tracking-normal text-[var(--text-primary)]">{value}</p>
+            {trend && (
+              <span className={cn(
+                "inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-xs font-bold",
+                trend.value >= 0
+                  ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-400/10 dark:text-emerald-300"
+                  : "bg-rose-50 text-rose-700 dark:bg-rose-400/10 dark:text-rose-300"
+              )}>
+                {trend.value >= 0 ? "↑" : "↓"} {Math.abs(trend.value).toFixed(1)}%
+              </span>
+            )}
+          </div>
+          <p className="mt-1 text-xs text-[var(--text-tertiary)]">
+            {helper}{trend ? ` vs ${trend.label}` : ""}
+          </p>
         </div>
       </div>
     </Card>
@@ -98,6 +114,7 @@ export default function DashboardHome() {
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<DashboardSummary["recent_orders"][0] | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -115,7 +132,7 @@ export default function DashboardHome() {
   const salesData = useMemo(() => {
     const trend = summary?.sales_trend ?? [];
     return {
-      labels: trend.map((row) => `${row.day}`),
+      labels: trend.map((row) => row.label),
       values: trend.map((row) => Number(row.total)),
     };
   }, [summary]);
@@ -128,6 +145,18 @@ export default function DashboardHome() {
   const avgBasket = totalOrders ? totalRevenue / totalOrders : 0;
   const hasSalesData = salesData.values.some((value) => value > 0);
   const visibleLowStock = lowStock.slice(0, 5);
+
+  const revenueTrend = useMemo(() => {
+    const trendData = summary?.sales_trend ?? [];
+    if (trendData.length < 2) return undefined;
+    const current = trendData[trendData.length - 1];
+    const prev = trendData[trendData.length - 2];
+    const currentTotal = Number(current.total) || 0;
+    const prevTotal = Number(prev.total) || 0;
+    if (prevTotal <= 0) return undefined;
+    const pct = ((currentTotal - prevTotal) / prevTotal) * 100;
+    return { value: pct, label: prev.label };
+  }, [summary]);
 
   if (!user) return null;
 
@@ -145,13 +174,23 @@ export default function DashboardHome() {
             Pantau penjualan, transaksi, dan stok penting di {user.tenant.name}.
           </p>
         </div>
-        <Link
-          href="/dashboard/pos"
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-[var(--brand-600)] px-4 text-sm font-semibold text-white transition-colors hover:bg-[var(--brand-700)]"
-        >
-          <ShoppingCart className="h-4 w-4" />
-          Buka Kasir
-        </Link>
+        {role === "cashier" ? (
+          <Link
+            href="/dashboard/pos"
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-[var(--brand-600)] px-4 text-sm font-semibold text-white transition-colors hover:bg-[var(--brand-700)]"
+          >
+            <ShoppingCart className="h-4 w-4" />
+            Buka Kasir
+          </Link>
+        ) : (
+          <Link
+            href="/dashboard/analytics"
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-[var(--brand-600)] px-4 text-sm font-semibold text-white transition-colors hover:bg-[var(--brand-700)]"
+          >
+            <BarChart3 className="h-4 w-4" />
+            Lihat Analitik
+          </Link>
+        )}
       </div>
 
       {error && <Card className="text-sm text-[var(--danger-500)]">{error}</Card>}
@@ -164,6 +203,7 @@ export default function DashboardHome() {
           helper="Total penjualan yang tercatat"
           icon={<Wallet className="h-5 w-5" />}
           tone="blue"
+          trend={revenueTrend}
         />
         <SummaryTile
           label={role === "cashier" ? "Transaksi Saya" : "Transaksi"}
@@ -193,7 +233,12 @@ export default function DashboardHome() {
           <div className="mb-5 flex items-center justify-between gap-3">
             <div>
               <h2 className="text-base font-bold text-[var(--text-primary)]">Perlu Perhatian</h2>
-              <p className="mt-1 text-xs text-[var(--text-tertiary)]">Hal yang sebaiknya dicek sebelum toko semakin ramai.</p>
+              <p className="mt-1 text-xs text-[var(--text-tertiary)]">
+                Stok gabungan seluruh cabang.{" "}
+                <Link href="/dashboard/inventory" className="text-[var(--brand-600)] font-semibold hover:underline">
+                  Lihat per cabang
+                </Link>
+              </p>
             </div>
             <Badge variant={lowStock.length > 0 ? "warning" : "success"}>
               {lowStock.length > 0 ? `${lowStock.length} item` : "Aman"}
@@ -261,7 +306,11 @@ export default function DashboardHome() {
           ) : (
             <div className="space-y-2">
               {recentOrders.slice(0, 6).map((order) => (
-                <div key={order.id} className="flex items-center justify-between gap-3 rounded-lg p-2.5 transition-colors hover:bg-[var(--surface-raised)]">
+                <div
+                  key={order.id}
+                  onClick={() => setSelectedOrder(order)}
+                  className="flex items-center justify-between gap-3 rounded-lg p-2.5 transition-colors hover:bg-[var(--surface-raised)] cursor-pointer hover:shadow-xs active:scale-[0.99]"
+                >
                   <div className="min-w-0">
                     <p className="truncate text-sm font-semibold text-[var(--text-primary)]">{order.customer_name || "Pelanggan Umum"}</p>
                     <p className="mt-0.5 text-xs text-[var(--text-tertiary)]">
@@ -285,7 +334,7 @@ export default function DashboardHome() {
         <div className="mb-5 flex items-center justify-between gap-3">
           <div>
             <h2 className="text-base font-bold text-[var(--text-primary)]">Tren Penjualan</h2>
-            <p className="mt-1 text-xs text-[var(--text-tertiary)]">Untuk melihat arah penjualan beberapa hari terakhir.</p>
+            <p className="mt-1 text-xs text-[var(--text-tertiary)]">Untuk melihat arah penjualan per bulan tahun ini.</p>
           </div>
           <Link href="/dashboard/analytics" className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--brand-600)] hover:text-[var(--brand-700)]">
             Detail Analitik
@@ -339,6 +388,56 @@ export default function DashboardHome() {
         )}
       </Card>
 
+      {/* Modal Detail Transaksi */}
+      <Modal
+        open={!!selectedOrder}
+        onClose={() => setSelectedOrder(null)}
+        title="Detail Transaksi"
+        size="sm"
+      >
+        {selectedOrder && (
+          <div className="space-y-4">
+            <div className="text-center pb-4 border-b border-[var(--border)]">
+              <p className="text-xs text-[var(--text-tertiary)]">ID Transaksi</p>
+              <p className="text-lg font-bold text-[var(--text-primary)] mt-0.5">ORD-{selectedOrder.id}</p>
+              <Badge variant={selectedOrder.status === "completed" ? "success" : "warning"} className="mt-2">
+                {selectedOrder.status === "completed" ? "Selesai" : "Proses"}
+              </Badge>
+            </div>
+
+            <div className="space-y-3 text-sm">
+              <div className="flex justify-between">
+                <span className="text-[var(--text-secondary)]">Waktu</span>
+                <span className="font-medium text-[var(--text-primary)]">
+                  {new Date(selectedOrder.created_at).toLocaleString("id-ID", {
+                    dateStyle: "medium",
+                    timeStyle: "short",
+                  })}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-[var(--text-secondary)]">Pelanggan</span>
+                <span className="font-bold text-[var(--text-primary)]">{selectedOrder.customer_name || "Pelanggan Umum"}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-[var(--text-secondary)]">Jumlah Item</span>
+                <span className="font-medium text-[var(--text-primary)]">{selectedOrder.item_count} item</span>
+              </div>
+              <div className="flex justify-between pt-3 border-t border-[var(--border)] text-base font-extrabold text-[var(--text-primary)]">
+                <span>Total Pembayaran</span>
+                <span className="text-[var(--brand-600)]">{formatIDR(Number(selectedOrder.total_amount))}</span>
+              </div>
+            </div>
+
+            <Button
+              className="w-full mt-4 h-10 text-xs font-bold"
+              onClick={() => setSelectedOrder(null)}
+            >
+              Tutup
+            </Button>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }
