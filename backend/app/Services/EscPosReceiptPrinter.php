@@ -6,6 +6,10 @@ use RuntimeException;
 
 class EscPosReceiptPrinter
 {
+    private const SIDE_WATERMARK_PATTERN = ['N', 'A', 'P', 'S', ' ', ' ', ' '];
+
+    private int $sideWatermarkIndex = 0;
+
     public function print(array $receipt): void
     {
         if (!config('printing.enabled')) {
@@ -151,6 +155,7 @@ class EscPosReceiptPrinter
 
     private function buildReceipt(array $receipt): string
     {
+        $this->sideWatermarkIndex = 0;
         $width = max(24, min(48, (int) config('printing.line_width', 32)));
         $feedLines = max(1, min(8, (int) config('printing.feed_lines', 4)));
 
@@ -169,16 +174,12 @@ class EscPosReceiptPrinter
         $out .= $this->columns('Kasir', $receipt['cashier_name'] ?? '-', $width);
         $out .= $this->columns('Pelanggan', $receipt['customer_name'] ?? 'Pelanggan Umum', $width);
         $out .= $this->columns('Bayar', $receipt['payment_method_label'] ?? '-', $width);
-        if (($receipt['payment_method_label'] ?? '') === 'Tunai') {
-            $out .= $this->columns('Diterima', $this->rupiah((int) ($receipt['cash_paid'] ?? 0)), $width);
-            $out .= $this->columns('Kembali', $this->rupiah((int) ($receipt['change'] ?? 0)), $width);
-        }
         $out .= $this->separator($width);
 
         foreach (($receipt['items'] ?? []) as $item) {
             $name = $this->sanitize((string) ($item['name'] ?? '-'));
-            foreach ($this->wrap($name, $width) as $line) {
-                $out .= $line . "\n";
+            foreach ($this->wrap($name, $this->contentWidth($width)) as $line) {
+                $out .= $this->sideWatermarkLine($line, $width);
             }
 
             $qty = (int) ($item['quantity'] ?? 0);
@@ -200,6 +201,10 @@ class EscPosReceiptPrinter
         $out .= "\x1B\x45\x01";
         $out .= $this->columns('Total', $this->rupiah((int) ($receipt['total'] ?? 0)), $width);
         $out .= "\x1B\x45\x00";
+        if (($receipt['payment_method_label'] ?? '') === 'Tunai') {
+            $out .= $this->columns('Diterima', $this->rupiah((int) ($receipt['cash_paid'] ?? 0)), $width);
+            $out .= $this->columns('Kembali', $this->rupiah((int) ($receipt['change'] ?? 0)), $width);
+        }
         $out .= $this->separator($width);
 
         $out .= "\x1B\x61\x01";
@@ -218,19 +223,20 @@ class EscPosReceiptPrinter
     {
         $left = $this->sanitize($left);
         $right = $this->sanitize($right);
+        $contentWidth = $this->contentWidth($width);
         $rightWidth = min(14, max(8, strlen($right)));
-        $leftWidth = $width - $rightWidth - 1;
+        $leftWidth = $contentWidth - $rightWidth - 1;
 
         $lines = $this->wrap($left, $leftWidth);
         $out = '';
 
         foreach ($lines as $index => $line) {
             if ($index === 0) {
-                $out .= str_pad($line, $leftWidth) . ' ' . str_pad($right, $rightWidth, ' ', STR_PAD_LEFT) . "\n";
+                $out .= $this->sideWatermarkLine(str_pad($line, $leftWidth) . ' ' . str_pad($right, $rightWidth, ' ', STR_PAD_LEFT), $width);
                 continue;
             }
 
-            $out .= $line . "\n";
+            $out .= $this->sideWatermarkLine($line, $width);
         }
 
         return $out;
@@ -239,12 +245,13 @@ class EscPosReceiptPrinter
     private function line(string $text, int $width): string
     {
         $text = $this->sanitize($text);
-        return str_pad($text, $width, ' ', STR_PAD_BOTH) . "\n";
+        $contentWidth = $this->contentWidth($width);
+        return $this->sideWatermarkLine(str_pad(substr($text, 0, $contentWidth), $contentWidth, ' ', STR_PAD_BOTH), $width);
     }
 
     private function separator(int $width): string
     {
-        return str_repeat('-', $width) . "\n";
+        return $this->sideWatermarkLine(str_repeat('-', $this->contentWidth($width)), $width);
     }
 
     private function wrap(string $text, int $width): array
@@ -257,6 +264,20 @@ class EscPosReceiptPrinter
     private function rupiah(int $value): string
     {
         return 'Rp ' . number_format($value, 0, ',', '.');
+    }
+
+    private function contentWidth(int $width): int
+    {
+        return max(10, $width - 2);
+    }
+
+    private function sideWatermarkLine(string $line, int $width): string
+    {
+        $contentWidth = $this->contentWidth($width);
+        $mark = self::SIDE_WATERMARK_PATTERN[$this->sideWatermarkIndex % count(self::SIDE_WATERMARK_PATTERN)];
+        $this->sideWatermarkIndex++;
+
+        return str_pad(substr($line, 0, $contentWidth), $contentWidth) . ' ' . $mark . "\n";
     }
 
     private function sanitize(string $text): string

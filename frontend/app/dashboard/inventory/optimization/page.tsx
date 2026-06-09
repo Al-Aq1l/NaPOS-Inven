@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Card, Badge, StatCard, Button, Toast } from "@/components/ui";
 import { formatIDR, formatNumber } from "@/lib/constants";
-import { Calculator, TrendingDown, AlertTriangle, Package, BarChart3 } from "lucide-react";
+import { Calculator, TrendingDown, AlertTriangle, Package, BarChart3, ChevronDown } from "lucide-react";
 import { fetchInventoryOptimization, type InventoryOptimizationItem } from "@/lib/dashboard-api";
 import { useAuth } from "@/lib/auth-context";
 import api from "@/lib/api";
@@ -20,6 +20,11 @@ function readCachedItems(cacheKey: string) {
   }
 }
 
+function getApiErrorMessage(error: unknown, fallback: string) {
+  if (typeof error !== "object" || error === null || !("response" in error)) return fallback;
+  return (error as { response?: { data?: { message?: string } } }).response?.data?.message || fallback;
+}
+
 export default function OptimizationPage() {
   const { user } = useAuth();
   const cacheKey = `${CACHE_KEY_PREFIX}_${user?.tenant.id ?? "default"}`;
@@ -27,6 +32,7 @@ export default function OptimizationPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [formulasOpen, setFormulasOpen] = useState(false);
 
   // Apply state & toast notifications
   const [applying, setApplying] = useState<string | null>(null);
@@ -50,8 +56,8 @@ export default function OptimizationPage() {
       const data = await fetchInventoryOptimization();
       setItems(data);
       window.localStorage.setItem(cacheKey, JSON.stringify(data));
-    } catch (err: any) {
-      showToast(err.response?.data?.message || "Gagal menerapkan ROP.", "error");
+    } catch (err: unknown) {
+      showToast(getApiErrorMessage(err, "Gagal menerapkan ROP."), "error");
     } finally {
       setApplying(null);
     }
@@ -135,23 +141,38 @@ export default function OptimizationPage() {
       </div>
 
       {/* Formulas Reference */}
-      <Card>
-        <div className="flex items-center gap-2 mb-4">
-          <BarChart3 className="w-5 h-5 text-[var(--brand-600)]" />
-          <h2 className="font-semibold text-[var(--text-primary)]">Optimization Formulas</h2>
-        </div>
-        <div className="grid sm:grid-cols-2 gap-4">
-          <div className="p-4 bg-[var(--surface-raised)] rounded-lg border border-[var(--border)]">
-            <p className="text-sm font-semibold text-[var(--brand-600)] mb-1">Economic Order Quantity (EOQ)</p>
-            <p className="font-mono text-lg text-[var(--text-primary)]">EOQ = sqrt(2DS / H)</p>
-            <p className="text-xs text-[var(--text-tertiary)] mt-2">D = Annual demand - S = Ordering cost - H = Holding cost/unit</p>
+      <Card padding="none" className="overflow-hidden">
+        <button
+          type="button"
+          onClick={() => setFormulasOpen((open) => !open)}
+          className="flex w-full items-center justify-between gap-3 p-4 text-left transition-colors hover:bg-[var(--surface-raised)]"
+          aria-expanded={formulasOpen}
+        >
+          <span className="flex min-w-0 items-center gap-2">
+            <BarChart3 className="h-5 w-5 shrink-0 text-[var(--brand-600)]" />
+            <span>
+              <span className="block text-sm font-semibold text-[var(--text-primary)]">Optimization Formulas</span>
+              <span className="mt-0.5 block text-xs text-[var(--text-tertiary)]">
+                Lihat rumus EOQ dan ROP yang dipakai sistem.
+              </span>
+            </span>
+          </span>
+          <ChevronDown className={`h-4 w-4 shrink-0 text-[var(--text-tertiary)] transition-transform ${formulasOpen ? "rotate-180" : ""}`} />
+        </button>
+        {formulasOpen && (
+          <div className="grid gap-4 border-t border-[var(--border)] p-4 sm:grid-cols-2">
+            <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-raised)] p-4">
+              <p className="mb-1 text-sm font-semibold text-[var(--brand-600)]">Economic Order Quantity (EOQ)</p>
+              <p className="font-mono text-lg text-[var(--text-primary)]">EOQ = sqrt(2DS / H)</p>
+              <p className="mt-2 text-xs text-[var(--text-tertiary)]">D = Annual demand - S = Ordering cost - H = Holding cost/unit</p>
+            </div>
+            <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-raised)] p-4">
+              <p className="mb-1 text-sm font-semibold text-[var(--brand-600)]">Reorder Point (ROP)</p>
+              <p className="font-mono text-lg text-[var(--text-primary)]">ROP = (d x L) + SS</p>
+              <p className="mt-2 text-xs text-[var(--text-tertiary)]">d = Avg daily usage - L = Lead time - SS = Safety stock</p>
+            </div>
           </div>
-          <div className="p-4 bg-[var(--surface-raised)] rounded-lg border border-[var(--border)]">
-            <p className="text-sm font-semibold text-[var(--brand-600)] mb-1">Reorder Point (ROP)</p>
-            <p className="font-mono text-lg text-[var(--text-primary)]">ROP = (d x L) + SS</p>
-            <p className="text-xs text-[var(--text-tertiary)] mt-2">d = Avg daily usage - L = Lead time - SS = Safety stock</p>
-          </div>
-        </div>
+        )}
       </Card>
 
       {/* EOQ Analysis Cards */}
@@ -219,6 +240,4 @@ export default function OptimizationPage() {
     </div>
   );
 }
-
-
 

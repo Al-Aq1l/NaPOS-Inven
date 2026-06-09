@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Search, Plus, Filter, Download, Upload, AlertTriangle, Package, ArrowUpDown, Barcode as BarcodeIcon, QrCode, PackagePlus, Trash2, Pencil, Info, ChevronDown, Eye } from "lucide-react";
+import Link from "next/link";
+import { Search, Plus, Filter, Download, Upload, AlertTriangle, Package, ArrowUpDown, Barcode as BarcodeIcon, QrCode, PackagePlus, PackageMinus, ArrowRightLeft, ClipboardList, Trash2, Pencil, Info, ChevronDown, Eye } from "lucide-react";
 import Barcode from "react-barcode";
 import { QRCodeSVG } from "qrcode.react";
 import { Button, Input, Badge, Card, DataTable, Modal, Toast } from "@/components/ui";
@@ -54,6 +55,51 @@ interface ProductForm {
   unit: string;
   rop: string;
   status: "active" | "inactive";
+}
+
+const PAGE_SIZE = 10;
+
+function PaginationControls({
+  page,
+  totalPages,
+  totalItems,
+  onPageChange,
+}: {
+  page: number;
+  totalPages: number;
+  totalItems: number;
+  onPageChange: (page: number) => void;
+}) {
+  if (totalItems <= PAGE_SIZE) return null;
+
+  return (
+    <div className="flex flex-col gap-3 rounded-b-lg border border-t-0 border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+      <p className="text-xs font-medium text-[var(--text-tertiary)]">
+        Menampilkan 10 dari {totalItems} data
+      </p>
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => onPageChange(page - 1)}
+          disabled={page <= 1}
+          className="h-8 rounded-lg border border-[var(--border)] px-3 text-xs font-semibold text-[var(--text-secondary)] disabled:cursor-not-allowed disabled:opacity-50 hover:bg-[var(--surface-raised)]"
+        >
+          Sebelumnya
+        </button>
+        <span className="text-xs font-semibold text-[var(--text-secondary)]">
+          {page} / {totalPages}
+        </span>
+        <button
+          type="button"
+          onClick={() => onPageChange(page + 1)}
+          disabled={page >= totalPages}
+          className="h-8 rounded-lg border border-[var(--border)] px-3 text-xs font-semibold text-[var(--text-secondary)] disabled:cursor-not-allowed disabled:opacity-50 hover:bg-[var(--surface-raised)]"
+        >
+          Berikutnya
+        </button>
+      </div>
+    </div>
+  );
 }
 
 function mapProdukFromApi(item: ApiProduct): Produk {
@@ -160,6 +206,7 @@ export default function StokBarangPage() {
   const [toastMsg, setToastMsg] = useState("");
   const [toastType, setToastType] = useState<"success" | "error" | "info" | "warning">("info");
   const [toastVisible, setToastVisible] = useState(false);
+  const [productPage, setProductPage] = useState(1);
 
   const showToast = (msg: string, type: "success" | "error" | "info" | "warning" = "info") => {
     setToastMsg(msg);
@@ -206,6 +253,9 @@ export default function StokBarangPage() {
         p.sku.toLowerCase().includes(search.toLowerCase()) ||
         p.barcode.includes(search)),
   );
+  const productTotalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const effectiveProductPage = Math.min(productPage, productTotalPages);
+  const paginatedProducts = filtered.slice((effectiveProductPage - 1) * PAGE_SIZE, effectiveProductPage * PAGE_SIZE);
 
   const menipisStockCount = produk.filter((p) => {
     const totalStock = Object.values(p.stock).reduce((a, b) => a + b, 0);
@@ -577,6 +627,32 @@ export default function StokBarangPage() {
         </div>
       </div>
 
+      <Card padding="sm" className="rounded-lg shadow-[var(--shadow-sm)]">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-bold text-[var(--text-primary)]">Aksi cepat inventori</p>
+            <p className="mt-0.5 text-xs text-[var(--text-tertiary)]">Workflow stok harian tanpa perlu membuka semua menu sidebar.</p>
+          </div>
+          <div className="grid gap-2 sm:flex sm:flex-wrap sm:justify-end">
+            <Button size="sm" icon={<PackagePlus className="w-4 h-4" />} onClick={() => setReceivingOpen(true)}>
+              Stok Masuk
+            </Button>
+            <Link href="/dashboard/inventory/stock-out" className="inline-flex h-8 items-center justify-center gap-2 rounded-lg border border-[var(--border)] px-3 text-xs font-medium text-[var(--text-primary)] hover:bg-[var(--surface-raised)]">
+              <PackageMinus className="h-4 w-4" />
+              Stok Keluar
+            </Link>
+            <Link href="/dashboard/inventory/transfers" className="inline-flex h-8 items-center justify-center gap-2 rounded-lg border border-[var(--border)] px-3 text-xs font-medium text-[var(--text-primary)] hover:bg-[var(--surface-raised)]">
+              <ArrowRightLeft className="h-4 w-4" />
+              Transfer
+            </Link>
+            <Link href="/dashboard/inventory/opname" className="inline-flex h-8 items-center justify-center gap-2 rounded-lg border border-[var(--border)] px-3 text-xs font-medium text-[var(--text-primary)] hover:bg-[var(--surface-raised)]">
+              <ClipboardList className="h-4 w-4" />
+              Opname
+            </Link>
+          </div>
+        </div>
+      </Card>
+
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <Card hover padding="sm">
           <div className="flex items-center gap-3">
@@ -629,7 +705,10 @@ export default function StokBarangPage() {
           <Input
             placeholder="Cari nama, SKU, atau barcode..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setProductPage(1);
+            }}
             leftIcon={<Search className="w-4 h-4" />}
           />
         </div>
@@ -637,7 +716,10 @@ export default function StokBarangPage() {
           {kategori.map((cat) => (
             <button
               key={cat}
-              onClick={() => setFilterCategory(cat)}
+              onClick={() => {
+                setFilterCategory(cat);
+                setProductPage(1);
+              }}
               className={cn(
                 "px-3 py-2 rounded-lg text-xs font-medium whitespace-nowrap transition-all cursor-pointer border",
                 filterCategory === cat
@@ -651,7 +733,10 @@ export default function StokBarangPage() {
         </div>
         <select
           value={selectedBranch}
-          onChange={(e) => setSelectedBranch(e.target.value)}
+          onChange={(e) => {
+            setSelectedBranch(e.target.value);
+            setProductPage(1);
+          }}
           className="h-10 px-3 bg-[var(--surface)] border border-[var(--border)] rounded-lg text-sm text-[var(--text-primary)] cursor-pointer"
         >
           {branches.map((b) => (
@@ -674,8 +759,9 @@ export default function StokBarangPage() {
       )}
 
       {!loading && !error && (
-        <DataTable
-          columns={[
+        <>
+          <DataTable
+            columns={[
             {
               key: "sku",
               label: "SKU",
@@ -811,11 +897,18 @@ export default function StokBarangPage() {
                 </div>
               ),
             },
-          ]}
-          data={filtered}
-          keyExtractor={(p) => p.id}
-          emptyMessage="Produk tidak ditemukan"
-        />
+            ]}
+            data={paginatedProducts}
+            keyExtractor={(p) => p.id}
+            emptyMessage="Produk tidak ditemukan"
+          />
+          <PaginationControls
+            page={effectiveProductPage}
+            totalPages={productTotalPages}
+            totalItems={filtered.length}
+            onPageChange={(nextPage) => setProductPage(Math.min(Math.max(1, nextPage), productTotalPages))}
+          />
+        </>
       )}
 
       <Modal open={!!labelProduct} onClose={() => setLabelProduct(null)} title="Label Barcode / QR Produk" size="lg">

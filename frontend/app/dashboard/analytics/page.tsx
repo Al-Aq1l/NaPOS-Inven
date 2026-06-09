@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Chart, registerables } from "chart.js";
 import { useAuth } from "@/lib/auth-context";
-import { Card, Badge, StatCard, DataTable } from "@/components/ui";
+import { Card, Badge, DataTable } from "@/components/ui";
 import { formatIDR } from "@/lib/constants";
 import { AlertTriangle, Lock, Package, ReceiptText, Users, Wallet } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -26,6 +26,74 @@ function formatChartTick(value: number) {
   if (value >= 1_000_000) return `${Math.round(value / 1_000_000)} Jt`;
   if (value >= 1_000) return `${Math.round(value / 1_000)} Rb`;
   return `${Math.round(value)}`;
+}
+
+function createChartGradient(
+  ctx: CanvasRenderingContext2D,
+  color: "blue" | "emerald",
+  height = 240,
+) {
+  const gradient = ctx.createLinearGradient(0, 0, 0, height);
+  if (color === "emerald") {
+    gradient.addColorStop(0, "rgba(16, 185, 129, 0.12)");
+    gradient.addColorStop(1, "rgba(16, 185, 129, 0.00)");
+    return gradient;
+  }
+  gradient.addColorStop(0, "rgba(37, 99, 235, 0.12)");
+  gradient.addColorStop(1, "rgba(37, 99, 235, 0.00)");
+  return gradient;
+}
+
+function AnalyticsMetric({
+  label,
+  value,
+  helper,
+  icon,
+  tone,
+}: {
+  label: string;
+  value: string;
+  helper: string;
+  icon: React.ReactNode;
+  tone: "blue" | "emerald" | "amber" | "rose";
+}) {
+  const tones = {
+    blue: "bg-blue-50 text-blue-600",
+    emerald: "bg-emerald-50 text-emerald-600",
+    amber: "bg-amber-50 text-amber-600",
+    rose: "bg-rose-50 text-rose-600",
+  };
+
+  return (
+    <Card className="min-h-[92px] rounded-lg p-4 shadow-[var(--shadow-sm)]" padding="none">
+      <div className="flex h-full items-center gap-3">
+        <span className={cn("inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg", tones[tone])}>
+          {icon}
+        </span>
+        <div className="min-w-0">
+          <p className="text-xs font-semibold leading-tight text-[var(--text-secondary)] sm:text-[13px]">{label}</p>
+          <p className="mt-1 truncate text-[22px] font-black leading-none tracking-normal text-[var(--text-primary)] sm:text-2xl">
+            {value}
+          </p>
+          <p className={cn("mt-0.5 text-xs font-semibold leading-tight sm:text-[13px]", tone === "rose" ? "text-rose-500" : tone === "amber" ? "text-[var(--text-tertiary)]" : "text-emerald-500")}>
+            {helper}
+          </p>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+type TopProductRow = {
+  name: string;
+  qty: number;
+  price: number;
+  rank: number;
+};
+
+function getResponseStatus(error: unknown) {
+  if (typeof error !== "object" || error === null || !("response" in error)) return undefined;
+  return (error as { response?: { status?: number } }).response?.status;
 }
 
 function TierGate({ required, current, children }: { required: string[]; current: string; children: React.ReactNode }) {
@@ -63,19 +131,12 @@ export default function AnalitikPage() {
   const [selectedBranchId, setSelectedBranchId] = useState<number | null>(null);
   const [dateRange, setDateRange] = useState<"7d" | "30d" | "month" | "year">("month");
   const [error, setError] = useState<string | null>(null);
-  if (!user) return null;
-
-  if (!canAccess("analytics")) {
-    return (
-      <Card>
-        <p className="text-sm text-[var(--danger-500)]">Anda tidak memiliki akses ke halaman analitik.</p>
-      </Card>
-    );
-  }
-
-  const plan = user.tenant.plan;
+  const analyticsAllowed = canAccess("analytics");
+  const plan = user?.tenant.plan ?? "starter";
 
   useEffect(() => {
+    if (!user || !analyticsAllowed) return;
+
     let isMounted = true;
     async function loadData() {
       try {
@@ -89,9 +150,9 @@ export default function AnalitikPage() {
         setOrders(ordersData);
         setProducts(productsData);
         setBranches(branchesData);
-      } catch (err: any) {
+      } catch (err: unknown) {
         if (!isMounted) return;
-        const status = err?.response?.status;
+        const status = getResponseStatus(err);
         if (status === 401) {
           setError("Sesi login berakhir. Silakan login ulang.");
         } else {
@@ -106,7 +167,7 @@ export default function AnalitikPage() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [user, analyticsAllowed]);
 
   const filteredOrders = useMemo(() => {
     let result = orders;
@@ -200,7 +261,7 @@ export default function AnalitikPage() {
     return {
       labels: entries.map((e) => e[0]),
       values: entries.map((e) => e[1]),
-      colors: ["#3b82f6", "#6366f1", "#8b5cf6", "#a855f7", "#d946ef", "#ec4899"],
+      colors: ["#2563eb", "#10b981", "#f59e0b", "#ef4444", "#60a5fa", "#94a3b8"],
     };
   }, [products]);
 
@@ -225,17 +286,17 @@ export default function AnalitikPage() {
     return topProducts.map((p, index) => ({ ...p, rank: index + 1 }));
   }, [topProducts]);
 
-  const getTotalStock = (product: ApiProduct) => {
+  const getTotalStock = useCallback((product: ApiProduct) => {
     if (selectedBranchId === null) {
       return (product.branches ?? []).reduce((sum, branch) => sum + (branch.pivot?.stock ?? 0), 0);
     }
     const b = (product.branches ?? []).find((branch) => branch.id === selectedBranchId);
     return b?.pivot?.stock ?? 0;
-  };
+  }, [selectedBranchId]);
 
   const lowStockProducts = useMemo(
     () => products.filter((p) => getTotalStock(p) <= p.rop),
-    [products, selectedBranchId],
+    [products, getTotalStock],
   );
 
   const totalRevenue = useMemo(() => filteredOrders.reduce((sum, o) => sum + Number(o.total_amount), 0), [filteredOrders]);
@@ -244,11 +305,21 @@ export default function AnalitikPage() {
   const uniqueCustomers = useMemo(() => new Set(filteredOrders.map((o) => (o.customer_name || "").trim()).filter(Boolean)).size, [filteredOrders]);
   const stockValuation = useMemo(
     () => products.reduce((sum, p) => sum + Number(p.cost_price) * getTotalStock(p), 0),
-    [products, selectedBranchId],
+    [products, getTotalStock],
   );
 
   const hasSalesData = salesData.values.some((v) => v > 0);
   const hasHourlyData = hourlyData.values.some((v) => v > 0);
+
+  if (!user) return null;
+
+  if (!analyticsAllowed) {
+    return (
+      <Card>
+        <p className="text-sm text-[var(--danger-500)]">Anda tidak memiliki akses ke halaman analitik.</p>
+      </Card>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -261,7 +332,7 @@ export default function AnalitikPage() {
       </div>
 
       {/* Bilah Filter */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 p-4 bg-[var(--surface)] border border-[var(--border)] rounded-xl shadow-[var(--shadow-xs)]">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 p-4 bg-[var(--surface)] border border-[var(--border)] rounded-lg shadow-[var(--shadow-xs)]">
         {/* Dropdown Cabang */}
         <div className="flex items-center gap-2">
           <span className="text-xs font-semibold text-[var(--text-secondary)]">Cabang:</span>
@@ -298,7 +369,7 @@ export default function AnalitikPage() {
               className={cn(
                 "px-3 py-1.5 rounded-lg text-xs font-bold transition-all border whitespace-nowrap",
                 dateRange === item.val
-                  ? "bg-[var(--brand-600)] text-white border-transparent shadow-sm"
+                  ? "border-[var(--brand-600)] bg-blue-50 text-[var(--brand-600)]"
                   : "bg-[var(--surface-raised)] text-[var(--text-secondary)] border-[var(--border)] hover:bg-[var(--slate-150)] dark:hover:bg-[var(--slate-800)]"
               )}
             >
@@ -308,11 +379,11 @@ export default function AnalitikPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard label="Pendapatan" value={formatIDR(totalRevenue)} change="Berdasarkan data transaksi" changeType="positive" icon={<Wallet className="w-5 h-5" />} />
-        <StatCard label="Transaksi" value={String(totalTransactions)} change="Total transaksi" changeType="positive" icon={<ReceiptText className="w-5 h-5" />} />
-        <StatCard label="Produk Terlaris" value={String(plan === "starter" ? Math.min(5, topProducts.length) : Math.min(20, topProducts.length))} change={plan === "starter" ? "Top 5 SKU" : "Top SKU"} changeType="positive" icon={<Package className="w-5 h-5" />} />
-        <StatCard label={plan === "starter" ? "Stok Kritis" : "Pelanggan Unik"} value={plan === "starter" ? String(lowStockProducts.length) : String(uniqueCustomers)} change={plan === "starter" ? "Di bawah safety stock" : "Pelanggan tercatat"} changeType="neutral" icon={plan === "starter" ? <AlertTriangle className="w-5 h-5" /> : <Users className="w-5 h-5" />} />
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <AnalyticsMetric label="Pendapatan" value={formatIDR(totalRevenue)} helper="Berdasarkan transaksi" icon={<Wallet className="w-5 h-5" />} tone="blue" />
+        <AnalyticsMetric label="Transaksi" value={String(totalTransactions)} helper="Total transaksi" icon={<ReceiptText className="w-5 h-5" />} tone="emerald" />
+        <AnalyticsMetric label="Produk Terlaris" value={String(plan === "starter" ? Math.min(5, topProducts.length) : Math.min(20, topProducts.length))} helper={plan === "starter" ? "Top 5 SKU" : "Top SKU"} icon={<Package className="w-5 h-5" />} tone="amber" />
+        <AnalyticsMetric label={plan === "starter" ? "Stok Kritis" : "Pelanggan Unik"} value={plan === "starter" ? String(lowStockProducts.length) : String(uniqueCustomers)} helper={plan === "starter" ? "Di bawah safety stock" : "Pelanggan tercatat"} icon={plan === "starter" ? <AlertTriangle className="w-5 h-5" /> : <Users className="w-5 h-5" />} tone={plan === "starter" ? "rose" : "blue"} />
       </div>
 
       {error && (
@@ -322,32 +393,77 @@ export default function AnalitikPage() {
       )}
 
       <TierGate required={["basic", "growth", "business"]} current={plan}>
-        <div className="grid lg:grid-cols-3 gap-6">
-          <Card className="lg:col-span-2">
-            <h3 className="font-semibold text-[var(--text-primary)] mb-4">Tren Penjualan Bulanan</h3>
+        <div className="grid gap-[18px] lg:grid-cols-[minmax(0,1fr)_minmax(280px,320px)]">
+          <Card className="rounded-lg shadow-[var(--shadow-sm)] lg:h-[338px]" padding="none">
+            <div className="flex items-center justify-between gap-3 px-[18px] pb-2.5 pt-4">
+              <div>
+                <h3 className="text-base font-black leading-tight text-[var(--text-primary)]">Tren Penjualan</h3>
+                <p className="mt-0.5 text-xs leading-snug text-[var(--text-tertiary)]">Pendapatan · periode terpilih</p>
+              </div>
+              <Badge variant="brand">Analitik</Badge>
+            </div>
             {!hasSalesData ? (
-              <div className="h-64 flex items-center justify-center text-center rounded-lg border border-dashed border-[var(--border)]">
+              <div className="mx-[18px] h-[252px] flex items-center justify-center text-center rounded-lg border border-dashed border-[var(--border)]">
                 <div>
                   <p className="text-sm font-medium text-[var(--text-primary)]">Belum ada data penjualan</p>
                   <p className="text-xs text-[var(--text-tertiary)] mt-1">Grafik akan muncul setelah transaksi masuk</p>
                 </div>
               </div>
             ) : (
-              <ChartCanvas id="sales-trend" init={(ctx) => new Chart(ctx, {
-                type: "line",
-                data: { labels: salesData.labels, datasets: [{ label: "Pendapatan", data: salesData.values, borderColor: "#3b82f6", backgroundColor: "rgba(59,130,246,0.1)", fill: true, tension: 0.4, pointRadius: 4, pointBackgroundColor: "#3b82f6" }] },
-                options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, suggestedMax: Math.max(...salesData.values, 1_000_000), ticks: { callback: (v) => formatChartTick(Number(v)) }, grid: { color: "rgba(0,0,0,0.05)" } }, x: { grid: { display: false } } } },
-              })} />
+              <div className="h-[252px] px-[18px] pb-4 pt-2 max-lg:h-80">
+                <ChartCanvas id="sales-trend" init={(ctx) => new Chart(ctx, {
+                  type: "line",
+                  data: {
+                    labels: salesData.labels,
+                    datasets: [{
+                      label: "Pendapatan",
+                      data: salesData.values,
+                      borderColor: "#2563eb",
+                      backgroundColor: createChartGradient(ctx, "blue"),
+                      fill: true,
+                      tension: 0.4,
+                      borderWidth: 2,
+                      pointRadius: 0,
+                      pointHoverRadius: 4,
+                      pointHoverBackgroundColor: "#2563eb",
+                    }],
+                  },
+                  options: {
+                    maintainAspectRatio: false,
+                    responsive: true,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                      y: {
+                        beginAtZero: true,
+                        suggestedMax: Math.max(...salesData.values, 1_000_000),
+                        ticks: { color: "#9ca3af", callback: (v) => formatChartTick(Number(v)), font: { size: 12, weight: 500 } },
+                        grid: { color: "rgba(0, 0, 0, 0.04)" },
+                        border: { display: false },
+                      },
+                      x: {
+                        grid: { display: false },
+                        border: { display: false },
+                        ticks: { color: "#9ca3af", maxTicksLimit: 10, font: { size: 12, weight: 500 } },
+                      },
+                    },
+                  },
+                })} />
+              </div>
             )}
           </Card>
 
-          <Card>
-            <h3 className="font-semibold text-[var(--text-primary)] mb-4">Produk per Kategori</h3>
-            <ChartCanvas id="category" init={(ctx) => new Chart(ctx, {
-              type: "doughnut",
-              data: { labels: categoryData.labels, datasets: [{ data: categoryData.values, backgroundColor: categoryData.colors, borderWidth: 0, hoverOffset: 4 }] },
-              options: { responsive: true, cutout: "65%", plugins: { legend: { position: "bottom", labels: { boxWidth: 12, padding: 12, font: { size: 11 } } } } },
-            })} />
+          <Card className="rounded-lg shadow-[var(--shadow-sm)] lg:h-[338px]" padding="none">
+            <div className="px-[18px] pb-2.5 pt-4">
+              <h3 className="text-base font-black leading-tight text-[var(--text-primary)]">Produk per Kategori</h3>
+              <p className="mt-0.5 text-xs leading-snug text-[var(--text-tertiary)]">Komposisi SKU aktif</p>
+            </div>
+            <div className="h-[260px] px-3 pb-4">
+              <ChartCanvas id="category" init={(ctx) => new Chart(ctx, {
+                type: "doughnut",
+                data: { labels: categoryData.labels, datasets: [{ data: categoryData.values, backgroundColor: categoryData.colors, borderWidth: 0, hoverOffset: 4 }] },
+                options: { maintainAspectRatio: false, responsive: true, cutout: "65%", plugins: { legend: { position: "bottom", labels: { boxWidth: 12, padding: 12, font: { size: 11 } } } } },
+              })} />
+            </div>
           </Card>
         </div>
       </TierGate>
@@ -368,8 +484,28 @@ export default function AnalitikPage() {
           ) : (
             <ChartCanvas id="hourly" init={(ctx) => new Chart(ctx, {
               type: "bar",
-              data: { labels: hourlyData.labels.map((h) => `${h}:00`), datasets: [{ label: "Transaksi", data: hourlyData.values, backgroundColor: hourlyData.values.map((v) => (v > 35 ? "#3b82f6" : v > 20 ? "#60a5fa" : v > 10 ? "#93c5fd" : "#dbeafe")), borderRadius: 4 }] },
-              options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { callback: (v) => formatChartTick(Number(v)) }, grid: { color: "rgba(0,0,0,0.05)" } }, x: { grid: { display: false } } } },
+              data: {
+                labels: hourlyData.labels.map((h) => `${h}:00`),
+                datasets: [{
+                  label: "Transaksi",
+                  data: hourlyData.values,
+                  backgroundColor: hourlyData.values.map((v) => (v > 35 ? "#2563eb" : v > 20 ? "#60a5fa" : v > 10 ? "#bfdbfe" : "#eff6ff")),
+                  borderRadius: 6,
+                }],
+              },
+              options: {
+                responsive: true,
+                plugins: { legend: { display: false } },
+                scales: {
+                  y: {
+                    beginAtZero: true,
+                    ticks: { color: "#9ca3af", callback: (v) => Number(v) },
+                    grid: { color: "rgba(0, 0, 0, 0.04)" },
+                    border: { display: false },
+                  },
+                  x: { grid: { display: false }, border: { display: false }, ticks: { color: "#9ca3af" } },
+                },
+              },
             })} />
           )}
         </Card>
@@ -406,8 +542,8 @@ export default function AnalitikPage() {
             </div>
             <ChartCanvas id="stock-val" init={(ctx) => new Chart(ctx, {
               type: "bar",
-              data: { labels: ["Beverages", "Snacks", "Noodles", "Dairy", "Groceries"], datasets: [{ label: "Nilai Modal", data: [8200000, 3100000, 5800000, 2400000, 4100000], backgroundColor: "#93c5fd", borderRadius: 4 }, { label: "Nilai Jual", data: [12400000, 5200000, 8700000, 3900000, 6200000], backgroundColor: "#3b82f6", borderRadius: 4 }] },
-              options: { responsive: true, plugins: { legend: { position: "bottom", labels: { boxWidth: 12, padding: 16, font: { size: 11 } } } }, scales: { y: { beginAtZero: true, ticks: { callback: (v) => formatChartTick(Number(v)) }, grid: { color: "rgba(0,0,0,0.05)" } }, x: { grid: { display: false } } } },
+              data: { labels: ["Beverages", "Snacks", "Noodles", "Dairy", "Groceries"], datasets: [{ label: "Nilai Modal", data: [8200000, 3100000, 5800000, 2400000, 4100000], backgroundColor: "#bfdbfe", borderRadius: 6 }, { label: "Nilai Jual", data: [12400000, 5200000, 8700000, 3900000, 6200000], backgroundColor: "#2563eb", borderRadius: 6 }] },
+              options: { responsive: true, plugins: { legend: { position: "bottom", labels: { boxWidth: 12, padding: 16, font: { size: 11 } } } }, scales: { y: { beginAtZero: true, ticks: { color: "#9ca3af", callback: (v) => formatChartTick(Number(v)) }, grid: { color: "rgba(0, 0, 0, 0.04)" }, border: { display: false } }, x: { grid: { display: false }, border: { display: false }, ticks: { color: "#9ca3af" } } } },
             })} />
           </Card>
           <Card>
@@ -422,8 +558,8 @@ export default function AnalitikPage() {
             ) : (
               <ChartCanvas id="margin" init={(ctx) => new Chart(ctx, {
                 type: "line",
-                data: { labels: ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun"], datasets: [{ label: "Gross Margin %", data: [32, 28, 35, 33, 37, 36], borderColor: "#22c55e", backgroundColor: "rgba(34,197,94,0.1)", fill: true, tension: 0.4 }] },
-                options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { min: 20, max: 45, ticks: { callback: (v) => `${v}%` }, grid: { color: "rgba(0,0,0,0.05)" } }, x: { grid: { display: false } } } },
+                data: { labels: ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun"], datasets: [{ label: "Gross Margin %", data: [32, 28, 35, 33, 37, 36], borderColor: "#10b981", backgroundColor: createChartGradient(ctx, "emerald"), fill: true, tension: 0.4, borderWidth: 2, pointRadius: 0, pointHoverRadius: 4, pointHoverBackgroundColor: "#10b981" }] },
+                options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { min: 20, max: 45, ticks: { color: "#9ca3af", callback: (v) => `${v}%` }, grid: { color: "rgba(0, 0, 0, 0.04)" }, border: { display: false } }, x: { grid: { display: false }, border: { display: false }, ticks: { color: "#9ca3af" } } } },
               })} />
             )}
           </Card>
@@ -443,35 +579,35 @@ export default function AnalitikPage() {
           </Badge>
         </div>
         
-        <DataTable
+        <DataTable<TopProductRow>
           columns={[
             {
               key: "rank",
               label: "#",
-              render: (item: any) => <span className="font-semibold text-[var(--text-secondary)]">{item.rank}</span>,
+              render: (item) => <span className="font-semibold text-[var(--text-secondary)]">{item.rank}</span>,
               className: "w-12",
             },
             {
               key: "name",
               label: "Nama Produk",
-              render: (item: any) => <span className="font-bold text-[var(--text-primary)]">{item.name}</span>,
+              render: (item) => <span className="font-bold text-[var(--text-primary)]">{item.name}</span>,
             },
             {
               key: "qty",
               label: "Terjual",
-              render: (item: any) => <Badge variant="info">{item.qty} unit</Badge>,
+              render: (item) => <Badge variant="info">{item.qty} unit</Badge>,
               className: "w-28",
             },
             {
               key: "omset",
               label: "Total Omset",
-              render: (item: any) => <span className="font-semibold text-[var(--text-primary)]">{formatIDR(item.qty * item.price)}</span>,
+              render: (item) => <span className="font-semibold text-[var(--text-primary)]">{formatIDR(item.qty * item.price)}</span>,
               className: "w-40",
             },
             {
               key: "contribution",
               label: "Kontribusi",
-              render: (item: any) => {
+              render: (item) => {
                 const omset = item.qty * item.price;
                 const pct = totalRevenue > 0 ? (omset / totalRevenue) * 100 : 0;
                 return (
@@ -487,7 +623,7 @@ export default function AnalitikPage() {
             },
           ]}
           data={topProductsWithRank.slice(0, plan === "starter" ? 5 : 10)}
-          keyExtractor={(item: any) => String(item.rank)}
+          keyExtractor={(item) => String(item.rank)}
           emptyMessage="Belum ada transaksi untuk periode ini."
         />
       </Card>

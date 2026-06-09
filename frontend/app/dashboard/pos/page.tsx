@@ -90,6 +90,144 @@ function getItemNetTotal(item: Pick<KeranjangItem, "price" | "quantity" | "disco
   return Math.max(0, getItemBaseTotal(item) - getItemDiscount(item));
 }
 
+type EscPosPreviewItem = {
+  name: string;
+  quantity: number;
+  price: number;
+  discountAmount: number;
+  subtotal: number;
+};
+
+type EscPosPreviewReceipt = {
+  receiptId: string;
+  receiptTime: string;
+  branchName: string;
+  cashierName: string;
+  customerName: string;
+  paymentMethodLabel: string;
+  cashPaid: number | null;
+  change: number | null;
+  subtotal: number;
+  tax: number;
+  total: number;
+  isOffline: boolean;
+  items: EscPosPreviewItem[];
+};
+
+const ESC_POS_LINE_WIDTH = 32;
+const ESC_POS_WATERMARK_PATTERN = ["N", "A", "P", "S", "", "", ""];
+const ESC_POS_CONTENT_WIDTH = ESC_POS_LINE_WIDTH - 2;
+const PAYMENT_METHOD_LABELS = {
+  cash: "Tunai",
+  qris: "QRIS",
+  transfer: "Debit",
+} as const;
+
+function sanitizeEscPosText(text: string) {
+  return text
+    .replace(/[\r\n\t]/g, " ")
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^\x20-\x7E]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function wrapEscPosText(text: string, width: number) {
+  const cleanText = sanitizeEscPosText(text);
+  if (!cleanText) return ["-"];
+
+  const lines: string[] = [];
+  for (const word of cleanText.split(" ")) {
+    if (word.length > width) {
+      if (lines.length > 0 && lines[lines.length - 1]) lines.push("");
+      for (let i = 0; i < word.length; i += width) {
+        lines.push(word.slice(i, i + width));
+      }
+      continue;
+    }
+
+    const current = lines[lines.length - 1] ?? "";
+    if (lines.length === 0 || !current) {
+      lines.push(word);
+    } else if (`${current} ${word}`.length <= width) {
+      lines[lines.length - 1] = `${current} ${word}`;
+    } else {
+      lines.push(word);
+    }
+  }
+
+  return lines.length > 0 ? lines : ["-"];
+}
+
+function centerEscPosLine(text: string, width = ESC_POS_LINE_WIDTH) {
+  const cleanText = sanitizeEscPosText(text).slice(0, width);
+  const leftPadding = Math.floor((width - cleanText.length) / 2);
+  return cleanText.padStart(cleanText.length + leftPadding, " ").padEnd(width, " ");
+}
+
+function escPosColumns(left: string, right: string, width = ESC_POS_LINE_WIDTH) {
+  const cleanRight = sanitizeEscPosText(right);
+  const rightWidth = Math.min(14, Math.max(8, cleanRight.length));
+  const leftWidth = width - rightWidth - 1;
+  const leftLines = wrapEscPosText(left, leftWidth);
+
+  return leftLines.map((line, index) => {
+    if (index === 0) {
+      return line.padEnd(leftWidth, " ") + " " + cleanRight.padStart(rightWidth, " ");
+    }
+    return line;
+  });
+}
+
+function applyEscPosSideWatermark(lines: string[]) {
+  return lines.map((line, index) => {
+    const mark = ESC_POS_WATERMARK_PATTERN[index % ESC_POS_WATERMARK_PATTERN.length];
+    return `${line.slice(0, ESC_POS_CONTENT_WIDTH).padEnd(ESC_POS_CONTENT_WIDTH, " ")} ${mark}`;
+  });
+}
+
+function buildEscPosPreview(receipt: EscPosPreviewReceipt) {
+  const lines: string[] = [
+    centerEscPosLine("NAPS", ESC_POS_CONTENT_WIDTH),
+    centerEscPosLine("Smart Inventory & POS", ESC_POS_CONTENT_WIDTH),
+    centerEscPosLine(`Cabang: ${receipt.branchName || "-"}`, ESC_POS_CONTENT_WIDTH),
+    "-".repeat(ESC_POS_CONTENT_WIDTH),
+    ...escPosColumns("No", receipt.receiptId || "-", ESC_POS_CONTENT_WIDTH),
+    ...escPosColumns("Waktu", receipt.receiptTime || "-", ESC_POS_CONTENT_WIDTH),
+    ...escPosColumns("Kasir", receipt.cashierName || "-", ESC_POS_CONTENT_WIDTH),
+    ...escPosColumns("Pelanggan", receipt.customerName || "Pelanggan Umum", ESC_POS_CONTENT_WIDTH),
+    ...escPosColumns("Bayar", receipt.paymentMethodLabel || "-", ESC_POS_CONTENT_WIDTH),
+  ];
+
+  lines.push("-".repeat(ESC_POS_CONTENT_WIDTH));
+
+  for (const item of receipt.items) {
+    lines.push(...wrapEscPosText(item.name || "-", ESC_POS_CONTENT_WIDTH));
+    const grossSubtotal = item.quantity * item.price;
+    lines.push(...escPosColumns(`${item.quantity} x ${formatIDR(item.price)}`, formatIDR(grossSubtotal), ESC_POS_CONTENT_WIDTH));
+
+    if (item.discountAmount > 0) {
+      lines.push(...escPosColumns("Diskon", `-${formatIDR(item.discountAmount)}`, ESC_POS_CONTENT_WIDTH));
+      lines.push(...escPosColumns("Subtotal item", formatIDR(item.subtotal), ESC_POS_CONTENT_WIDTH));
+    }
+  }
+
+  lines.push("-".repeat(ESC_POS_CONTENT_WIDTH));
+  lines.push(...escPosColumns("Subtotal", formatIDR(receipt.subtotal), ESC_POS_CONTENT_WIDTH));
+  lines.push(...escPosColumns("PPN 11%", formatIDR(receipt.tax), ESC_POS_CONTENT_WIDTH));
+  lines.push(...escPosColumns("Total", formatIDR(receipt.total), ESC_POS_CONTENT_WIDTH));
+  if (receipt.paymentMethodLabel === "Tunai") {
+    lines.push(...escPosColumns("Diterima", formatIDR(receipt.cashPaid ?? 0), ESC_POS_CONTENT_WIDTH));
+    lines.push(...escPosColumns("Kembali", formatIDR(receipt.change ?? 0), ESC_POS_CONTENT_WIDTH));
+  }
+  lines.push("-".repeat(ESC_POS_CONTENT_WIDTH));
+  lines.push(centerEscPosLine("Terima kasih", ESC_POS_CONTENT_WIDTH));
+  lines.push(centerEscPosLine(receipt.isOffline ? "Transaksi tersimpan lokal" : "Transaksi tersimpan", ESC_POS_CONTENT_WIDTH));
+
+  return applyEscPosSideWatermark(lines).join("\n");
+}
+
 function ProductImage({ product, className, fallbackClassName }: {
   product: Pick<Produk, "name" | "image" | "imageUrl">;
   className?: string;
@@ -597,11 +735,40 @@ export default function POSPage() {
   const cashPaidAmount = parseCashAmount(cashPaid);
   const cashChange = Math.max(0, cashPaidAmount - total);
   const isCashEnough = cashPaidAmount >= total;
-  const paymentMethodLabels = {
-    cash: "Tunai",
-    qris: "QRIS",
-    transfer: "Debit",
-  };
+  const receiptPreviewText = useMemo(() => buildEscPosPreview({
+    receiptId,
+    receiptTime: receiptTime || "-",
+    branchName: activeBranchName,
+    cashierName: user?.name ?? "-",
+    customerName: customerName || "Pelanggan Umum",
+    paymentMethodLabel: PAYMENT_METHOD_LABELS[receiptMethod],
+    cashPaid: receiptMethod === "cash" ? receiptCashPaid : null,
+    change: receiptMethod === "cash" ? receiptChange : null,
+    subtotal,
+    tax,
+    total,
+    isOffline: receiptId.includes("Offline"),
+    items: cart.map((item) => ({
+      name: item.name,
+      quantity: item.quantity,
+      price: item.price,
+      discountAmount: getItemDiscount(item),
+      subtotal: getItemNetTotal(item),
+    })),
+  }), [
+    activeBranchName,
+    cart,
+    customerName,
+    receiptCashPaid,
+    receiptChange,
+    receiptId,
+    receiptMethod,
+    receiptTime,
+    subtotal,
+    tax,
+    total,
+    user?.name,
+  ]);
 
   const handleBranchChange = (nextBranchId: number) => {
     if (nextBranchId === selectedBranchId) return;
@@ -793,7 +960,7 @@ export default function POSPage() {
         branch_name: activeBranchName,
         cashier_name: user?.name ?? "-",
         customer_name: customerName || "Pelanggan Umum",
-        payment_method_label: paymentMethodLabels[receiptMethod],
+        payment_method_label: PAYMENT_METHOD_LABELS[receiptMethod],
         cash_paid: receiptMethod === "cash" ? receiptCashPaid : null,
         change: receiptMethod === "cash" ? receiptChange : null,
         subtotal,
@@ -866,7 +1033,7 @@ export default function POSPage() {
           </div>
           <div className="receipt-row">
             <span>Bayar</span>
-            <span>{paymentMethodLabels[receiptMethod]}</span>
+            <span>{PAYMENT_METHOD_LABELS[receiptMethod]}</span>
           </div>
           {receiptMethod === "cash" && (
             <>
@@ -1653,83 +1820,14 @@ export default function POSPage() {
             <p className="text-2xl font-black text-[var(--brand-600)] mt-1">{formatIDR(total)}</p>
           </div>
           
-          {/* Thermal Receipt Preview */}
-          <div className="relative mx-auto max-w-[260px] bg-white dark:bg-[var(--slate-900)] rounded-lg border border-[var(--border)] shadow-[var(--shadow-sm)] overflow-hidden">
-            <div className="pointer-events-none absolute inset-y-2 right-1 z-10 flex flex-col items-center justify-around text-[var(--brand-600)] opacity-80">
-              {["NAPS", "NAPS", "NAPS", "NAPS"].map((label, index) => (
-                <span
-                  key={`${label}-${index}`}
-                  className="[writing-mode:vertical-rl] rotate-180 text-[13px] font-black tracking-[0.08em]"
-                >
-                  {label}
-                </span>
-              ))}
-            </div>
-            <div className="relative p-4 pr-8 font-mono text-[10px] leading-relaxed text-[var(--text-primary)]">
-              <div className="text-center mb-2">
-                <p className="text-sm font-black tracking-wide">NAPS</p>
-                <p className="text-[9px] text-[var(--text-tertiary)]">Smart Inventory & POS</p>
-                <p className="text-[9px] text-[var(--text-tertiary)]">{activeBranchName}</p>
-              </div>
-              <div className="border-t border-dashed border-[var(--border)] my-2" />
-              <div className="space-y-0.5">
-                <div className="flex justify-between"><span>No</span><span>{receiptId}</span></div>
-                <div className="flex justify-between"><span>Waktu</span><span>{receiptTime || "-"}</span></div>
-                <div className="flex justify-between"><span>Kasir</span><span>{user?.name ?? "-"}</span></div>
-                <div className="flex justify-between"><span>Pelanggan</span><span>{customerName || "Umum"}</span></div>
-                <div className="flex justify-between"><span>Bayar</span><span>{paymentMethodLabels[receiptMethod]}</span></div>
-              </div>
-              <div className="border-t border-dashed border-[var(--border)] my-2" />
-              {cart.map((item) => (
-                <div key={item.id} className="mb-1">
-                  <p className="truncate">{item.name}</p>
-                  <div className="flex justify-between text-[var(--text-tertiary)]">
-                    <span>{item.quantity} x {formatIDR(item.price)}</span>
-                    <span>{formatIDR(getItemBaseTotal(item))}</span>
-                  </div>
-                  {getItemDiscount(item) > 0 && (
-                    <>
-                      <div className="flex justify-between text-[var(--danger-500)]">
-                        <span>Diskon</span>
-                        <span>-{formatIDR(getItemDiscount(item))}</span>
-                      </div>
-                      <div className="flex justify-between text-[var(--text-tertiary)]">
-                        <span>Subtotal item</span>
-                        <span>{formatIDR(getItemNetTotal(item))}</span>
-                      </div>
-                    </>
-                  )}
-                </div>
-              ))}
-              <div className="border-t border-dashed border-[var(--border)] my-2" />
-              <div className="space-y-0.5">
-                {discountTotal > 0 && (
-                  <>
-                    <div className="flex justify-between"><span>Subtotal kotor</span><span>{formatIDR(grossSubtotal)}</span></div>
-                    <div className="flex justify-between text-[var(--danger-500)]"><span>Diskon</span><span>-{formatIDR(discountTotal)}</span></div>
-                  </>
-                )}
-                <div className="flex justify-between"><span>Subtotal</span><span>{formatIDR(subtotal)}</span></div>
-                <div className="flex justify-between"><span>PPN 11%</span><span>{formatIDR(tax)}</span></div>
-                <div className="flex justify-between font-black text-[11px]"><span>TOTAL</span><span>{formatIDR(total)}</span></div>
-              </div>
-              {receiptMethod === "cash" && (
-                <>
-                  <div className="border-t border-dashed border-[var(--border)] my-2" />
-                  <div className="flex justify-between"><span>Diterima</span><span>{formatIDR(receiptCashPaid)}</span></div>
-                  <div className="flex justify-between font-bold"><span>Kembali</span><span>{formatIDR(receiptChange)}</span></div>
-                </>
-              )}
-              <div className="border-t border-dashed border-[var(--border)] my-2" />
-              <div className="text-center text-[9px] text-[var(--text-tertiary)]">
-                <p>Terima kasih atas kunjungan Anda</p>
-                <p>{receiptId.includes("Offline") ? "Transaksi tersimpan lokal" : "Transaksi tersimpan"}</p>
-              </div>
-            </div>
-            {/* Efek kertas sobek */}
-            <div className="h-3 bg-[var(--surface)] relative overflow-hidden">
-              <div className="absolute inset-x-0 top-0 h-3" style={{ backgroundImage: "radial-gradient(circle at 6px 0, transparent 6px, var(--border) 6px, var(--border) 7px, transparent 7px)", backgroundSize: "12px 12px" }} />
-            </div>
+          {/* ESC/POS Receipt Preview */}
+          <div className="mx-auto w-fit max-w-full rounded border border-[var(--border)] bg-white p-3 shadow-[var(--shadow-sm)] overflow-x-auto">
+            <pre
+              aria-label="Preview struk ESC/POS"
+              className="m-0 font-mono text-[11px] leading-[1.35] text-black whitespace-pre"
+            >
+              {receiptPreviewText}
+            </pre>
           </div>
 
           <div className="flex items-center justify-center gap-2 text-[10px] text-[var(--text-tertiary)]">

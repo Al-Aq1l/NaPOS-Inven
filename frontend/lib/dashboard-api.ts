@@ -135,13 +135,17 @@ export interface InventoryOptimizationItem {
 export interface DashboardSummary {
   total_revenue: number;
   total_orders: number;
+  today_revenue: number;
+  today_orders: number;
   branch_count: number;
-  sales_trend: Array<{ month: number; label: string; total: number }>;
+  product_count: number;
+  sales_trend: Array<{ date: string; label: string; total: number; orders: number }>;
   recent_orders: Array<{
     id: number;
     customer_name: string | null;
     total_amount: string | number;
     status: string;
+    payment_method?: string;
     created_at: string;
     item_count: number;
   }>;
@@ -149,6 +153,7 @@ export interface DashboardSummary {
     id: number;
     name: string;
     sku: string | null;
+    category_name?: string | null;
     rop: number;
     stock: number;
   }>;

@@ -50,6 +50,51 @@ const TYPE_BADGES: Record<MovementType, "success" | "warning" | "danger" | "info
   sale: "default",
 };
 
+const PAGE_SIZE = 10;
+
+function PaginationControls({
+  page,
+  totalPages,
+  totalItems,
+  onPageChange,
+}: {
+  page: number;
+  totalPages: number;
+  totalItems: number;
+  onPageChange: (page: number) => void;
+}) {
+  if (totalItems <= PAGE_SIZE) return null;
+
+  return (
+    <div className="flex flex-col gap-3 border-t border-[var(--border)] px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+      <p className="text-xs font-medium text-[var(--text-tertiary)]">
+        Menampilkan 10 dari {totalItems} riwayat
+      </p>
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => onPageChange(page - 1)}
+          disabled={page <= 1}
+          className="h-8 rounded-lg border border-[var(--border)] px-3 text-xs font-semibold text-[var(--text-secondary)] disabled:cursor-not-allowed disabled:opacity-50 hover:bg-[var(--surface-raised)]"
+        >
+          Sebelumnya
+        </button>
+        <span className="text-xs font-semibold text-[var(--text-secondary)]">
+          {page} / {totalPages}
+        </span>
+        <button
+          type="button"
+          onClick={() => onPageChange(page + 1)}
+          disabled={page >= totalPages}
+          className="h-8 rounded-lg border border-[var(--border)] px-3 text-xs font-semibold text-[var(--text-secondary)] disabled:cursor-not-allowed disabled:opacity-50 hover:bg-[var(--surface-raised)]"
+        >
+          Berikutnya
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function formatDateTime(value: string) {
   return new Intl.DateTimeFormat("id-ID", {
     day: "2-digit",
@@ -83,6 +128,7 @@ export default function StockHistoryPage() {
   const [type, setType] = useState<MovementType | "all">("all");
   const [toastMsg, setToastMsg] = useState("");
   const [toastVisible, setToastVisible] = useState(false);
+  const [historyPage, setHistoryPage] = useState(1);
 
   const showToast = (msg: string) => {
     setToastMsg(msg);
@@ -240,6 +286,10 @@ export default function StockHistoryPage() {
     });
   }, [branchId, movements, search, type]);
 
+  const historyTotalPages = Math.max(1, Math.ceil(filteredMovements.length / PAGE_SIZE));
+  const effectiveHistoryPage = Math.min(historyPage, historyTotalPages);
+  const paginatedMovements = filteredMovements.slice((effectiveHistoryPage - 1) * PAGE_SIZE, effectiveHistoryPage * PAGE_SIZE);
+
   const totalIn = filteredMovements.reduce((sum, movement) => sum + movement.qtyIn, 0);
   const totalOut = filteredMovements.reduce((sum, movement) => sum + movement.qtyOut, 0);
   const netQty = totalIn - totalOut;
@@ -297,13 +347,30 @@ export default function StockHistoryPage() {
             leftIcon={<Search className="h-4 w-4" />}
             placeholder="Cari produk, SKU, atau referensi..."
             value={search}
-            onChange={(event) => setSearch(event.target.value)}
+            onChange={(event) => {
+              setSearch(event.target.value);
+              setHistoryPage(1);
+            }}
           />
-          <select value={branchId} onChange={(event) => setBranchId(event.target.value)} className="h-10 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--text-primary)]">
+          <select
+            value={branchId}
+            onChange={(event) => {
+              setBranchId(event.target.value);
+              setHistoryPage(1);
+            }}
+            className="h-10 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--text-primary)]"
+          >
             <option value="all">Semua Cabang</option>
             {branches.map((branch) => <option key={branch.id} value={branch.id}>{branch.name}</option>)}
           </select>
-          <select value={type} onChange={(event) => setType(event.target.value as MovementType | "all")} className="h-10 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--text-primary)]">
+          <select
+            value={type}
+            onChange={(event) => {
+              setType(event.target.value as MovementType | "all");
+              setHistoryPage(1);
+            }}
+            className="h-10 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--text-primary)]"
+          >
             {Object.entries(TYPE_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
           </select>
         </div>
@@ -333,7 +400,7 @@ export default function StockHistoryPage() {
                   <td colSpan={8} className="py-8 text-center text-[var(--text-secondary)]">Tidak ada riwayat stok sesuai filter.</td>
                 </tr>
               )}
-              {!loading && filteredMovements.map((movement) => (
+              {!loading && paginatedMovements.map((movement) => (
                 <tr key={movement.id} className="hover:bg-[var(--surface-raised)]">
                   <td className="py-3 pr-4 text-xs text-[var(--text-secondary)] whitespace-nowrap">{formatDateTime(movement.date)}</td>
                   <td className="py-3 pr-4">
@@ -356,6 +423,12 @@ export default function StockHistoryPage() {
             </tbody>
           </table>
         </div>
+        <PaginationControls
+          page={effectiveHistoryPage}
+          totalPages={historyTotalPages}
+          totalItems={filteredMovements.length}
+          onPageChange={(nextPage) => setHistoryPage(Math.min(Math.max(1, nextPage), historyTotalPages))}
+        />
       </Card>
     </div>
   );
