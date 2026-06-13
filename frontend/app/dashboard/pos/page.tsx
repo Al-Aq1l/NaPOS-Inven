@@ -1125,13 +1125,13 @@ export default function POSPage() {
       {/* Mobile Cart Drawer */}
       <Drawer open={mobileCartOpen} onClose={() => setMobileCartOpen(false)} title="Keranjang Belanja">
         <div className="flex flex-col h-full">
-          <div className="flex-1 overflow-y-auto p-4 space-y-3">
+          <div className="flex-1 overflow-y-auto bg-[var(--brand-50)]/45 p-4 space-y-3">
             {cart.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
-                <div className="p-4 bg-[var(--surface-raised)] rounded-2xl mb-3">
-                  <ShoppingCart className="w-10 h-10 text-[var(--text-tertiary)] opacity-40" />
+                <div className="p-4 bg-white rounded-2xl mb-3 ring-1 ring-[var(--brand-100)]">
+                  <ShoppingCart className="w-10 h-10 text-[var(--brand-500)] opacity-60" />
                 </div>
-                <p className="text-sm font-semibold text-[var(--text-secondary)]">Keranjang Kosong</p>
+                <p className="text-sm font-semibold text-[var(--brand-800)]">Keranjang Kosong</p>
               </div>
             ) : (
               <>
@@ -1145,7 +1145,7 @@ export default function POSPage() {
                   const itemDisc = getItemDiscount(item);
                   const itemNetTotal = getItemNetTotal(item);
                   return (
-                    <div key={item.id} className="flex items-center gap-3 p-3 bg-[var(--surface-raised)]/70 border border-[var(--border)]/70 rounded-xl">
+                    <div key={item.id} className="flex items-center gap-3 p-3 bg-white border border-[var(--brand-100)] rounded-xl shadow-[var(--shadow-xs)]">
                       <button className="flex-1 min-w-0 text-left" onClick={() => { openEditItem(item); setMobileCartOpen(false); }}>
                         <p className="text-xs font-semibold text-[var(--text-primary)] truncate">{item.name}</p>
                         <p className="text-xs text-[var(--text-tertiary)] mt-0.5">{item.quantity} × {formatIDR(item.price)}{itemDisc > 0 ? ` (-${formatIDR(itemDisc)})` : ""}</p>
@@ -1164,8 +1164,8 @@ export default function POSPage() {
             )}
           </div>
           {cart.length > 0 && (
-            <div className="border-t border-[var(--border)] p-4 space-y-3">
-              <div className="flex justify-between text-base font-extrabold text-[var(--text-primary)]">
+            <div className="border-t border-[var(--brand-100)] bg-white p-4 space-y-3">
+              <div className="flex justify-between rounded-xl bg-[var(--brand-50)] px-3 py-2 text-base font-extrabold text-[var(--brand-800)]">
                 <span>Total</span>
                 <span>{formatIDR(total)}</span>
               </div>
@@ -1181,7 +1181,7 @@ export default function POSPage() {
       <div className="flex-1 flex flex-col min-w-0 border-r border-[var(--border)] bg-[var(--surface-raised)]/20">
         
         {/* Header POS */}
-        <div className="p-4 border-b border-[var(--border)] bg-[var(--surface)] space-y-3 shadow-[var(--shadow-xs)]">
+        <div className="p-4 border-b border-[var(--brand-100)] bg-[var(--brand-50)]/70 space-y-3 shadow-[var(--shadow-xs)]">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             
             {/* Pemilihan Cabang */}
@@ -1192,7 +1192,7 @@ export default function POSPage() {
                   "flex h-9 items-center rounded-lg border px-3 text-xs font-semibold",
                   cashierBranchMissing
                     ? "border-amber-300 bg-amber-50 text-amber-700"
-                    : "border-[var(--border)] bg-[var(--surface-raised)] text-[var(--text-primary)]"
+                    : "border-[var(--brand-200)] bg-white text-[var(--brand-800)]"
                 )}>
                   Cabang: {cashierBranchMissing ? "Belum diatur owner" : activeBranchName}
                 </div>
@@ -1200,7 +1200,7 @@ export default function POSPage() {
                 <select
                   value={selectedBranchId || ""}
                   onChange={(e) => handleBranchChange(Number(e.target.value))}
-                  className="h-9 px-2 bg-[var(--surface-raised)] border border-[var(--border)] rounded-lg text-xs font-semibold text-[var(--text-primary)] cursor-pointer"
+                  className="h-9 px-2 bg-white border border-[var(--brand-200)] rounded-lg text-xs font-semibold text-[var(--brand-800)] cursor-pointer"
                 >
                   {branches.length === 0 && <option>Memuat cabang...</option>}
                   {branches.map((b) => (
@@ -1233,7 +1233,7 @@ export default function POSPage() {
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className="inline-flex h-8 items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface-raised)] px-3 text-xs font-semibold text-[var(--text-secondary)] transition-colors hover:bg-[var(--danger-50)] hover:text-[var(--danger-600)]"
+                  className="inline-flex h-8 items-center gap-2 rounded-lg border border-[var(--brand-200)] bg-white px-3 text-xs font-semibold text-[var(--brand-700)] transition-colors hover:bg-[var(--danger-50)] hover:text-[var(--danger-600)]"
                 >
                   <LogOut className="h-3.5 w-3.5" />
                   Keluar
@@ -1253,7 +1253,7 @@ export default function POSPage() {
                 rightIcon={
                   <button 
                     onClick={() => setCameraOpen(true)} 
-                    className="p-1 hover:bg-[var(--surface-raised)] rounded text-[var(--brand-600)] cursor-pointer transition-colors"
+                    className="p-1 hover:bg-[var(--brand-100)] rounded text-[var(--brand-600)] cursor-pointer transition-colors"
                     title="Scan Barcode via Kamera WebRTC (F2)"
                   >
                     <Camera className="w-5 h-5" />
@@ -1286,24 +1286,27 @@ export default function POSPage() {
         {/* Daftar Produk */}
         <div className={cn("flex-1 min-h-0", cashierMode ? "flex" : "overflow-y-auto p-4 lg:p-6")}>
           {cashierMode && (
-            <aside className="hidden w-52 flex-shrink-0 flex-col border-r border-[var(--border)] bg-[var(--surface)] p-4 sm:flex">
-              <p className="mb-3 px-2 text-xs font-bold uppercase tracking-[0.08em] text-[var(--text-tertiary)]">
+            <aside className="hidden w-56 flex-shrink-0 flex-col border-r border-[var(--brand-100)] bg-[var(--brand-50)]/60 p-4 sm:flex">
+              <p className="mb-3 px-2 text-xs font-bold uppercase tracking-[0.08em] text-[var(--brand-700)]">
                 Kategori
               </p>
-              <div className="space-y-1 overflow-y-auto">
+              <div className="space-y-1.5 overflow-y-auto">
                 {kategori.map((cat) => (
                   <button
                     key={cat}
                     onClick={() => setCategory(cat)}
                     className={cn(
-                      "flex min-h-11 w-full items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-semibold transition-colors",
+                      "flex min-h-[52px] w-full items-center justify-between gap-3 rounded-lg border px-3.5 py-2.5 text-left text-sm font-bold transition-colors",
                       category === cat
-                        ? "bg-[var(--brand-600)] text-white"
-                        : "text-[var(--text-secondary)] hover:bg-[var(--surface-raised)] hover:text-[var(--text-primary)]"
+                        ? "border-transparent bg-[var(--brand-600)] text-white shadow-[var(--shadow-sm)]"
+                        : "border-[var(--brand-100)] bg-white text-[var(--brand-800)] hover:border-[var(--brand-200)] hover:bg-[var(--brand-100)]"
                     )}
                   >
                     <span className="min-w-0 truncate">{cat}</span>
-                    <span className={cn("text-xs", category === cat ? "text-white/80" : "text-[var(--text-tertiary)]")}>
+                    <span className={cn(
+                      "inline-flex h-6 min-w-6 items-center justify-center rounded-full px-2 text-xs font-extrabold",
+                      category === cat ? "bg-white/15 text-white" : "bg-[var(--brand-100)] text-[var(--brand-700)]"
+                    )}>
                       {cat === "Semua" ? produk.length : produk.filter((item) => item.category === cat).length}
                     </span>
                   </button>
@@ -1320,10 +1323,10 @@ export default function POSPage() {
                     key={cat}
                     onClick={() => setCategory(cat)}
                     className={cn(
-                      "px-4 py-2 rounded-full text-sm font-semibold whitespace-nowrap transition-all duration-200 cursor-pointer border",
+                      "min-h-10 px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-all duration-200 cursor-pointer border",
                       category === cat
                         ? "bg-[var(--brand-600)] text-white border-transparent shadow-[var(--shadow-sm)]"
-                        : "bg-[var(--surface)] text-[var(--text-secondary)] border-[var(--border)] hover:bg-[var(--surface-raised)]"
+                        : "bg-[var(--brand-50)] text-[var(--brand-800)] border-[var(--brand-100)] hover:bg-[var(--brand-100)]"
                     )}
                   >
                     {cat}
@@ -1395,10 +1398,13 @@ export default function POSPage() {
       </div>
 
       {/* Sidebar Keranjang Belanja */}
-      <div className="hidden md:flex w-80 lg:w-96 flex-col bg-[var(--surface)] border-l border-[var(--border)] shadow-[var(--shadow-sm)]">
-        <div className="p-4 border-b border-[var(--border)] bg-[var(--surface)] flex items-center justify-between">
-          <h2 className="font-bold text-[var(--text-primary)] flex items-center gap-2 text-sm lg:text-base">
-            <ShoppingCart className="w-5 h-5 text-[var(--brand-600)]" /> Keranjang Belanja
+      <div className="hidden md:flex w-80 lg:w-96 flex-col bg-[var(--brand-50)]/45 border-l border-[var(--brand-100)] shadow-[var(--shadow-sm)]">
+        <div className="p-4 border-b border-[var(--brand-100)] bg-[var(--brand-50)]/80 flex items-center justify-between">
+          <h2 className="font-bold text-[var(--brand-800)] flex items-center gap-2 text-sm lg:text-base">
+            <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-white text-[var(--brand-600)] ring-1 ring-[var(--brand-100)]">
+              <ShoppingCart className="w-5 h-5" />
+            </span>
+            Keranjang Belanja
           </h2>
           <div className="flex items-center gap-2">
             {cart.length > 0 && (
@@ -1420,11 +1426,11 @@ export default function POSPage() {
         <div className="flex-1 overflow-y-auto p-4 space-y-3.5">
           {cart.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center py-12">
-              <div className="p-4 bg-[var(--surface-raised)] rounded-2xl mb-3">
-                <ShoppingCart className="w-10 h-10 text-[var(--text-tertiary)] opacity-40" />
+              <div className="p-4 bg-white rounded-2xl mb-3 ring-1 ring-[var(--brand-100)]">
+                <ShoppingCart className="w-10 h-10 text-[var(--brand-500)] opacity-60" />
               </div>
-              <p className="text-sm font-semibold text-[var(--text-secondary)]">Keranjang Kosong</p>
-              <p className="text-xs text-[var(--text-tertiary)] mt-1 max-w-[15rem] mx-auto">
+              <p className="text-sm font-semibold text-[var(--brand-800)]">Keranjang Kosong</p>
+              <p className="text-xs text-[var(--brand-700)] mt-1 max-w-[15rem] mx-auto">
                 Silakan pilih produk di sebelah kiri untuk menambah item penjualan.
               </p>
             </div>
@@ -1434,11 +1440,11 @@ export default function POSPage() {
                 const itemDisc = getItemDiscount(item);
                 const itemNetTotal = getItemNetTotal(item);
                 return (
-                  <div key={item.id} className="flex items-center gap-3 p-3 bg-[var(--surface-raised)]/70 hover:bg-[var(--surface-raised)] border border-[var(--border)]/70 rounded-xl transition-all duration-150">
+                  <div key={item.id} className="flex items-center gap-3 p-3 bg-white hover:bg-[var(--brand-50)] border border-[var(--brand-100)] rounded-xl shadow-[var(--shadow-xs)] transition-all duration-150">
                     {item.imageUrl ? (
-                      <img src={item.imageUrl} alt={item.name} className="h-9 w-9 flex-shrink-0 rounded-lg object-cover ring-1 ring-[var(--border)]" />
+                      <img src={item.imageUrl} alt={item.name} className="h-9 w-9 flex-shrink-0 rounded-lg object-cover ring-1 ring-[var(--brand-100)]" />
                     ) : (
-                      <span className="text-xs w-9 h-9 rounded-lg bg-[var(--surface)] border border-[var(--border)] flex items-center justify-center font-bold text-[var(--brand-700)] dark:text-[var(--brand-300)] flex-shrink-0">
+                      <span className="text-xs w-9 h-9 rounded-lg bg-[var(--brand-50)] border border-[var(--brand-100)] flex items-center justify-center font-bold text-[var(--brand-700)] dark:text-[var(--brand-300)] flex-shrink-0">
                         {item.image}
                       </span>
                     )}
@@ -1479,7 +1485,7 @@ export default function POSPage() {
 
         {/* Ringkasan Biaya */}
         {cart.length > 0 && (
-          <div className="border-t border-[var(--border)] p-4 bg-[var(--surface-raised)]/35 space-y-4 shadow-[var(--shadow-lg)]">
+          <div className="border-t border-[var(--brand-100)] p-4 bg-white space-y-4 shadow-[var(--shadow-lg)]">
               <div className="space-y-2 text-xs">
               {discountTotal > 0 && (
                 <div className="flex justify-between text-[var(--text-secondary)]">
@@ -1501,7 +1507,7 @@ export default function POSPage() {
                 <span>Pajak PPN (11%)</span>
                 <span>{formatIDR(tax)}</span>
               </div>
-              <div className="flex justify-between text-base font-extrabold text-[var(--text-primary)] pt-3 border-t border-[var(--border)]">
+              <div className="flex justify-between rounded-xl bg-[var(--brand-50)] px-3 py-2 text-base font-extrabold text-[var(--brand-800)]">
                 <span>Total Bayar</span>
                 <span>{formatIDR(total)}</span>
               </div>

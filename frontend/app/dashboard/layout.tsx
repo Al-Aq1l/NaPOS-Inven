@@ -7,7 +7,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   LayoutDashboard, ShoppingCart, Package, BarChart3, Globe,
   Building2, Settings, Menu, LogOut, ChevronDown, Bell,
-  PackagePlus, PackageMinus, ArrowRightLeft, ClipboardList, Calculator, AlertTriangle, History, PanelLeftClose
+  PackagePlus, PackageMinus, ArrowRightLeft, ClipboardList, Calculator, AlertTriangle, History, PanelLeftClose, ReceiptText
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { Avatar, Badge, ConnectionStatus } from "@/components/ui";
@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
 
 const ICONS: Record<string, React.ElementType> = {
   LayoutDashboard, ShoppingCart, Package, BarChart3, Globe, Building2, Settings,
-  PackagePlus, PackageMinus, ArrowRightLeft, ClipboardList, Calculator, History,
+  PackagePlus, PackageMinus, ArrowRightLeft, ClipboardList, Calculator, History, ReceiptText
 };
 
 const SIDEBAR_SECTIONS = [
@@ -42,7 +42,7 @@ const SIDEBAR_SECTIONS = [
   {
     id: "reports",
     label: "Laporan",
-    items: ["/dashboard/analytics"],
+    items: ["/dashboard/analytics", "/dashboard/sales-history"],
   },
   {
     id: "system",

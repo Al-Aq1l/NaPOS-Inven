@@ -30,9 +30,9 @@ class OrderController extends Controller
 
         $user = auth()->user();
 
-        if ($user->role !== 'cashier') {
+        if (!in_array($user->role, ['cashier', 'owner', 'manager'])) {
             return response()->json([
-                'message' => 'Transaksi POS hanya dapat dibuat oleh akun kasir.',
+                'message' => 'Anda tidak memiliki izin untuk membuat transaksi POS.',
             ], 403);
         }
 
@@ -42,7 +42,8 @@ class OrderController extends Controller
             return response()->json(['message' => 'Cabang tidak ditemukan untuk tenant ini.'], 422);
         }
 
-        if ((int) $user->branch_id !== (int) $validated['branch_id']) {
+        // Kasir hanya bisa transaksi di cabang yang ditugaskan, owner/manager boleh di cabang mana saja
+        if ($user->role === 'cashier' && (int) $user->branch_id !== (int) $validated['branch_id']) {
             return response()->json([
                 'message' => 'Kasir hanya dapat membuat transaksi pada cabang kerja yang ditetapkan owner.',
             ], 403);
@@ -71,8 +72,20 @@ class OrderController extends Controller
                 }
 
                 $price = $product->sell_price;
+                $costPrice = $product->cost_price;
                 $grossSubtotal = $price * $quantity;
                 $discountAmount = min($grossSubtotal, max(0, (float) $itemData['discount_amount']));
+
+                // Validasi batas diskon maksimal 50% dari harga kotor
+                $maxDiscount = $grossSubtotal * 0.5;
+                if ($discountAmount > $maxDiscount) {
+                    DB::rollBack();
+                    return response()->json([
+                        'message' => "Diskon untuk {$product->name} melebihi batas maksimal 50%.",
+                        'max_discount' => $maxDiscount,
+                    ], 422);
+                }
+
                 $subtotal = $grossSubtotal - $discountAmount;
 
                 $pivot = DB::table('branch_product')
@@ -97,6 +110,7 @@ class OrderController extends Controller
                     'product_id' => $product->id,
                     'quantity' => $quantity,
                     'price' => $price,
+                    'cost_price' => $costPrice,
                     'subtotal' => $subtotal,
                 ];
 

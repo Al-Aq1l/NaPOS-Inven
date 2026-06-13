@@ -130,6 +130,7 @@ export interface NavItem {
 export const DASHBOARD_NAV: NavItem[] = [
   { label: "Dashboard", href: "/dashboard", icon: "LayoutDashboard", roles: ["owner", "manager"] },
   { label: "Kasir POS", href: "/dashboard/pos", icon: "ShoppingCart", roles: ["cashier"] },
+  { label: "Riwayat Penjualan", href: "/dashboard/sales-history", icon: "ReceiptText", roles: ["owner", "manager"] },
   { label: "Produk & Stok", href: "/dashboard/inventory", icon: "Package", roles: ["owner", "manager"] },
   { label: "Stok Masuk", href: "/dashboard/inventory/stock-in", icon: "PackagePlus", roles: ["owner", "manager"] },
   { label: "Stok Keluar", href: "/dashboard/inventory/stock-out", icon: "PackageMinus", roles: ["owner", "manager"] },

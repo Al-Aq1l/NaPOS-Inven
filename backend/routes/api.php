@@ -36,6 +36,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
         Route::middleware('role:owner,manager')->group(function () {
             Route::get('/dashboard/summary', [\App\Http\Controllers\DashboardController::class, 'summary']);
+            Route::get('/analytics', [\App\Http\Controllers\AnalyticsController::class, 'index']);
         });
 
         Route::middleware('role:owner,manager,cashier')->group(function () {

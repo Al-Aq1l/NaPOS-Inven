@@ -38,8 +38,9 @@ class InventoryOptimizationController extends Controller
         // Dynamic parameters from query or defaults
         $orderingCostInput = (float) $request->query('ordering_cost', 50000);
         $holdingCostRateInput = (float) $request->query('holding_cost_rate', 0.2); // 20%
+        $leadTimeDaysInput = (int) $request->query('lead_time_days', 5); // default 5 days
 
-        $items = $products->map(function (Product $product) use ($stockByProduct, $demandByProduct, $orderingCostInput, $holdingCostRateInput) {
+        $items = $products->map(function (Product $product) use ($stockByProduct, $demandByProduct, $orderingCostInput, $holdingCostRateInput, $leadTimeDaysInput) {
             $soldIn90Days = (int) ($demandByProduct[$product->id] ?? 0);
             $annualDemand = max(1, (int) round(($soldIn90Days / 90) * 365));
             $avgDailyUsage = max(1, (int) ceil($soldIn90Days / 90));
@@ -50,12 +51,12 @@ class InventoryOptimizationController extends Controller
             $holdingCostPerUnit = max(1, (int) round($costPrice * $holdingCostRateInput));
             
             $eoq = max(1, (int) round(sqrt((2 * $annualDemand * $orderingCost) / $holdingCostPerUnit)));
-            $leadTimeDays = 5;
+            $leadTimeDays = max(1, $leadTimeDaysInput); // Hindari nol hari
             
             // Reorder point formula: (average daily usage * lead time) + safety stock
-            // Let's assume safety stock is calculated as a buffer or based on current rop
-            $calculatedRop = (int) ceil(($avgDailyUsage * $leadTimeDays) * 1.5); // 1.5x buffer as safety stock included
-            $safetyStock = max(0, $calculatedRop - ($avgDailyUsage * $leadTimeDays));
+            // Safety stock secara sederhana diambil 50% dari kebutuhan waktu tunggu sebagai buffer
+            $safetyStock = (int) ceil(($avgDailyUsage * $leadTimeDays) * 0.5);
+            $calculatedRop = ($avgDailyUsage * $leadTimeDays) + $safetyStock;
 
             return [
                 'id' => $product->id,

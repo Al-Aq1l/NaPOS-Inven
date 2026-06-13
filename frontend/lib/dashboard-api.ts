@@ -239,7 +239,27 @@ export async function requestPlanChange(plan: string) {
   return res.data;
 }
 
-export async function fetchInventoryOptimization(params?: { ordering_cost?: number; holding_cost_rate?: number }) {
+export async function fetchInventoryOptimization(params?: { lead_time_days?: number }): Promise<InventoryOptimizationItem[]> {
   const res = await api.get<InventoryOptimizationItem[]>("/inventory/optimization", { params });
+  return res.data;
+}
+
+export interface AnalyticsData {
+  total_revenue: number;
+  total_transactions: number;
+  total_hpp: number;
+  total_margin: number;
+  avg_basket: number;
+  unique_customers: number;
+  stock_valuation: number;
+  sales_trend: Array<{ date: string; label: string; total: number; orders: number }>;
+  hourly_data: Array<{ hour: number; count: number }>;
+  top_products: Array<{ name: string; qty: number; price: number }>;
+  category_data: Array<{ name: string; count: number }>;
+  low_stock_products: Array<{ id: number; name: string; sku: string; rop: number; stock: number; category_name: string | null }>;
+}
+
+export async function fetchAnalytics(params?: { branch_id?: number | null; range?: string }) {
+  const res = await api.get<AnalyticsData>("/analytics", { params });
   return res.data;
 }

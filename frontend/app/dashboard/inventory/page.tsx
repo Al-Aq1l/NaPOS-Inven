@@ -144,6 +144,75 @@ function getApiErrorMessage(error: unknown, fallback: string) {
   return fallback;
 }
 
+function escapeHtml(value: string | number | null | undefined) {
+  const text = value === null || value === undefined ? "" : String(value);
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function downloadExcelTable(filename: string, title: string, rows: Array<Array<string | number | null | undefined>>) {
+  const [headers, ...bodyRows] = rows;
+  const html = `
+    <!doctype html>
+    <html>
+      <head>
+        <meta charset="utf-8" />
+        <style>
+          body { font-family: Arial, sans-serif; }
+          h1 { font-size: 18px; margin: 0 0 12px; }
+          table { border-collapse: collapse; width: 100%; }
+          th {
+            background: #2563eb;
+            color: #ffffff;
+            font-weight: 700;
+            border: 1px solid #1d4ed8;
+            padding: 8px;
+            text-align: left;
+          }
+          td {
+            border: 1px solid #bfdbfe;
+            padding: 8px;
+            vertical-align: top;
+          }
+          tr:nth-child(even) td { background: #eff6ff; }
+          .number { text-align: right; }
+        </style>
+      </head>
+      <body>
+        <h1>${escapeHtml(title)}</h1>
+        <table>
+          <thead>
+            <tr>${headers.map((header) => `<th>${escapeHtml(header)}</th>`).join("")}</tr>
+          </thead>
+          <tbody>
+            ${bodyRows.map((row) => `
+              <tr>
+                ${row.map((cell) => {
+                  const isNumber = typeof cell === "number";
+                  return `<td class="${isNumber ? "number" : ""}">${escapeHtml(cell)}</td>`;
+                }).join("")}
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      </body>
+    </html>
+  `;
+  const blob = new Blob([html], { type: "application/vnd.ms-excel;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
 export default function StokBarangPage() {
   const [search, setSearch] = useState("");
   const [filterCategory, setFilterCategory] = useState("Semua");
@@ -259,7 +328,7 @@ export default function StokBarangPage() {
 
   const menipisStockCount = produk.filter((p) => {
     const totalStock = Object.values(p.stock).reduce((a, b) => a + b, 0);
-    return totalStock <= p.rop;
+    return totalStock <= p.rop && totalStock > 0;
   }).length;
 
   const totalNilaiStok = produk.reduce((sum, p) => {
@@ -382,10 +451,10 @@ export default function StokBarangPage() {
 
     const branchPayload = newProduct.branchId
       ? {
-          [newProduct.branchId]: {
-            stock: Math.max(0, Number(newProduct.openingStock) || 0),
-          },
-        }
+        [newProduct.branchId]: {
+          stock: Math.max(0, Number(newProduct.openingStock) || 0),
+        },
+      }
       : undefined;
 
     try {
@@ -551,6 +620,64 @@ export default function StokBarangPage() {
     setReceivingItems([{ productId: "", quantity: "1", unitCost: "" }]);
   };
 
+  const buildInventoryCsvHeaders = () => [
+    "sku",
+    "barcode",
+    "nama_produk",
+    "kategori",
+    "hpp",
+    "harga_jual",
+    "unit",
+    "rop",
+    "status",
+    ...branches.map((branch) => `stok_${branch.name}`),
+  ];
+
+  const handleDownloadTemplate = () => {
+    const headers = buildInventoryCsvHeaders();
+    const exampleStock = branches.map((_, index) => index === 0 ? 10 : 0);
+    downloadExcelTable("template-impor-produk-stok.xls", "Template Impor Produk & Stok", [
+      headers,
+      [
+        "SKU-001",
+        "899000000001",
+        "Contoh Produk",
+        "Beverages",
+        10000,
+        15000,
+        "pcs",
+        5,
+        "active",
+        ...exampleStock,
+      ],
+    ]);
+    showToast("Template Excel berhasil diunduh.", "success");
+  };
+
+  const handleExportProducts = () => {
+    if (produk.length === 0) {
+      showToast("Belum ada produk untuk diekspor.", "warning");
+      return;
+    }
+
+    const headers = buildInventoryCsvHeaders();
+    const rows = produk.map((item) => [
+      item.sku === "-" ? "" : item.sku,
+      item.barcode === "-" ? "" : item.barcode,
+      item.name,
+      item.category === "Tanpa Kategori" ? "" : item.category,
+      item.costPrice,
+      item.sellPrice,
+      item.unit,
+      item.rop,
+      item.status,
+      ...branches.map((branch) => item.stock[branch.name] ?? 0),
+    ]);
+    const date = new Date().toISOString().slice(0, 10);
+    downloadExcelTable(`produk-stok-${date}.xls`, "Data Produk & Stok", [headers, ...rows]);
+    showToast("Data produk dan stok berhasil diekspor.", "success");
+  };
+
   const handleSubmitReceiving = async () => {
     if (!receivingBranchId) {
       showToast("Pilih cabang penerima terlebih dahulu.", "warning");
@@ -615,11 +742,11 @@ export default function StokBarangPage() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" size="sm" icon={<Upload className="w-4 h-4" />}>
-            Impor
+          <Button variant="outline" size="sm" icon={<Upload className="w-4 h-4" />} onClick={handleDownloadTemplate}>
+            Template CSV
           </Button>
-          <Button variant="outline" size="sm" icon={<Download className="w-4 h-4" />}>
-            Ekspor
+          <Button variant="outline" size="sm" icon={<Download className="w-4 h-4" />} onClick={handleExportProducts}>
+            Ekspor CSV
           </Button>
           <Button size="sm" icon={<Plus className="w-4 h-4" />} onClick={() => setProductModalOpen(true)}>
             Tambah Produk
@@ -712,25 +839,21 @@ export default function StokBarangPage() {
             leftIcon={<Search className="w-4 h-4" />}
           />
         </div>
-        <div className="flex gap-2 overflow-x-auto">
+        <select
+          value={filterCategory}
+          onChange={(e) => {
+            setFilterCategory(e.target.value);
+            setProductPage(1);
+          }}
+          className="h-10 min-w-44 px-3 bg-[var(--surface)] border border-[var(--border)] rounded-lg text-sm text-[var(--text-primary)] cursor-pointer"
+          aria-label="Filter kategori produk"
+        >
           {kategori.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => {
-                setFilterCategory(cat);
-                setProductPage(1);
-              }}
-              className={cn(
-                "px-3 py-2 rounded-lg text-xs font-medium whitespace-nowrap transition-all cursor-pointer border",
-                filterCategory === cat
-                  ? "bg-[var(--brand-50)] border-[var(--brand-300)] text-[var(--brand-700)] dark:bg-[var(--brand-950)] dark:border-[var(--brand-700)] dark:text-[var(--brand-300)]"
-                  : "border-[var(--border)] text-[var(--text-secondary)] hover:border-[var(--border-hover)]",
-              )}
-            >
-              {cat}
-            </button>
+            <option key={cat} value={cat}>
+              {cat === "Semua" ? "Semua Kategori" : cat}
+            </option>
           ))}
-        </div>
+        </select>
         <select
           value={selectedBranch}
           onChange={(e) => {
@@ -762,141 +885,173 @@ export default function StokBarangPage() {
         <>
           <DataTable
             columns={[
-            {
-              key: "sku",
-              label: "SKU",
-              render: (p: Produk) => <span className="font-mono text-xs text-[var(--text-tertiary)]">{p.sku}</span>,
-            },
-            {
-              key: "name",
-              label: "Produk",
-              render: (p: Produk) => (
-                <div className="flex items-center gap-3">
-                  {p.imageUrl ? (
-                    <img src={p.imageUrl} alt={p.name} className="h-10 w-10 rounded-lg object-cover ring-1 ring-[var(--border)]" />
-                  ) : (
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--surface-raised)] text-xs font-bold text-[var(--text-secondary)] ring-1 ring-[var(--border)]">
-                      {p.name.slice(0, 2).toUpperCase()}
+              {
+                key: "sku",
+                label: "SKU",
+                render: (p: Produk) => <span className="font-mono text-xs text-[var(--text-tertiary)]">{p.sku}</span>,
+              },
+              {
+                key: "name",
+                label: "Produk",
+                render: (p: Produk) => (
+                  <div className="flex items-center gap-3">
+                    {p.imageUrl ? (
+                      <img src={p.imageUrl} alt={p.name} className="h-10 w-10 rounded-lg object-cover ring-1 ring-[var(--border)]" />
+                    ) : (
+                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--surface-raised)] text-xs font-bold text-[var(--text-secondary)] ring-1 ring-[var(--border)]">
+                        {p.name.slice(0, 2).toUpperCase()}
+                      </div>
+                    )}
+                    <div className="min-w-0">
+                      <p className="font-medium text-[var(--text-primary)]">{p.name}</p>
+                      <p className="text-xs text-[var(--text-tertiary)]">
+                        {p.category} - {p.barcode}
+                      </p>
                     </div>
-                  )}
-                  <div className="min-w-0">
-                    <p className="font-medium text-[var(--text-primary)]">{p.name}</p>
-                    <p className="text-xs text-[var(--text-tertiary)]">
-                      {p.category} - {p.barcode}
-                    </p>
                   </div>
-                </div>
-              ),
-            },
-            {
-              key: "barcode",
-              label: "Barcode / QR",
-              render: (p: Produk) => {
-                const hasBarcode = p.barcode && p.barcode !== "-";
+                ),
+              },
+              {
+                key: "barcode",
+                label: "Barcode / QR",
+                render: (p: Produk) => {
+                  const hasBarcode = p.barcode && p.barcode !== "-";
 
-                return (
-                  <div className="flex items-center gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-8 text-xs px-2.5"
-                      icon={<QrCode className="w-3.5 h-3.5" />}
-                      onClick={() => setLabelProduct(p)}
-                    >
-                      Label
-                    </Button>
-                    {!hasBarcode && (
+                  return (
+                    <div className="flex items-center gap-2">
                       <Button
                         size="sm"
-                        variant="ghost"
+                        variant="outline"
                         className="h-8 text-xs px-2.5"
-                        loading={generatingBarcode === p.id}
-                        icon={<BarcodeIcon className="w-3.5 h-3.5" />}
-                        onClick={() => handleGenerateBarcode(p)}
+                        icon={<QrCode className="w-3.5 h-3.5" />}
+                        onClick={() => setLabelProduct(p)}
                       >
-                        Generate
+                        Label
                       </Button>
+                      {!hasBarcode && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-8 text-xs px-2.5"
+                          loading={generatingBarcode === p.id}
+                          icon={<BarcodeIcon className="w-3.5 h-3.5" />}
+                          onClick={() => handleGenerateBarcode(p)}
+                        >
+                          Generate
+                        </Button>
+                      )}
+                    </div>
+                  );
+                },
+              },
+              { key: "costPrice", label: "HPP", render: (p: Produk) => <span className="text-sm">{formatIDR(p.costPrice)}</span> },
+              {
+                key: "sellPrice",
+                label: "Harga Jual",
+                render: (p: Produk) => <span className="text-sm font-medium">{formatIDR(p.sellPrice)}</span>,
+              },
+              {
+                key: "stock_health",
+                label: `Status Stok (${selectedBranch || "Cabang"})`,
+                render: (p: Produk) => {
+                  const stock = (selectedBranch === "Semua Cabang" || selectedBranch === "") ? Object.values(p.stock).reduce((a, b) => a + b, 0) : (p.stock[selectedBranch] || 0);
+                  const isHabis = stock === 0;
+                  const isMenipis = stock <= p.rop && stock > 0;
+                  
+                  // Hitung persentase kesehatan (max 100%, 0% jika habis)
+                  // Jika stok 2x lipat dari ROP, maka kita anggap 100% penuh/sehat
+                  const maxHealthCapacity = Math.max(p.rop * 2, 10); // hindari pembagi 0
+                  const healthPercent = Math.min(100, Math.max(0, (stock / maxHealthCapacity) * 100));
+
+                  return (
+                    <div className="flex flex-col gap-1.5 min-w-[120px]">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-baseline gap-1">
+                          <span className={cn(
+                            "text-sm font-bold", 
+                            isHabis ? "text-[var(--danger-500)]" : isMenipis ? "text-[var(--warning-500)]" : "text-[var(--text-primary)]"
+                          )}>
+                            {stock}
+                          </span>
+                          <span className="text-[10px] text-[var(--text-tertiary)] font-medium" title="Batas Minimum Stok">
+                            / Min. {p.rop}
+                          </span>
+                        </div>
+                        {isHabis && <Badge variant="danger" size="sm">Habis</Badge>}
+                        {isMenipis && <Badge variant="warning" size="sm">Hampir Habis</Badge>}
+                        {!isHabis && !isMenipis && <Badge variant="success" size="sm" className="bg-[var(--success-50)] text-[var(--success-600)] border-[var(--success-200)]">Aman</Badge>}
+                      </div>
+                      
+                      {/* Visual Progress Bar */}
+                      <div className="w-full h-1.5 bg-[var(--surface-raised)] border border-[var(--border)] rounded-full overflow-hidden flex">
+                        <div 
+                          className={cn(
+                            "h-full transition-all duration-500 ease-out rounded-full",
+                            isHabis ? "bg-transparent" : 
+                            isMenipis ? "bg-[var(--warning-500)]" : 
+                            "bg-[var(--success-500)]"
+                          )}
+                          style={{ width: `${healthPercent}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                },
+              },
+              {
+                key: "margin",
+                label: "Margin",
+                render: (p: Produk) => {
+                  const margin = p.sellPrice > 0 ? Math.round(((p.sellPrice - p.costPrice) / p.sellPrice) * 100) : 0;
+                  return <Badge variant={margin > 30 ? "success" : margin > 15 ? "warning" : "danger"} size="sm">{margin}%</Badge>;
+                },
+              },
+              {
+                key: "actions",
+                label: "Aksi",
+                render: (p: Produk) => (
+                  <div className="relative flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => setOpenActionProductId((current) => current === p.id ? null : p.id)}
+                      className="inline-flex h-9 items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 text-xs font-semibold text-[var(--text-secondary)] transition-colors hover:border-[var(--border-hover)] hover:bg-[var(--surface-raised)] hover:text-[var(--text-primary)]"
+                      aria-expanded={openActionProductId === p.id}
+                      aria-label={`Aksi ${p.name}`}
+                    >
+                      Aksi
+                      <ChevronDown className="h-3.5 w-3.5" />
+                    </button>
+                    {openActionProductId === p.id && (
+                      <div className="absolute right-0 top-full z-20 mt-2 w-36 overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface)] text-left shadow-[var(--shadow-lg)]">
+                        <button
+                          type="button"
+                          onClick={() => handleProductAction(p, "detail")}
+                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--surface-raised)] hover:text-[var(--text-primary)]"
+                        >
+                          <Eye className="h-3.5 w-3.5" />
+                          Detail
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleProductAction(p, "edit")}
+                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--surface-raised)] hover:text-[var(--text-primary)]"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleProductAction(p, "delete")}
+                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-[var(--danger-500)] hover:bg-[var(--danger-50)]"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                          Hapus
+                        </button>
+                      </div>
                     )}
                   </div>
-                );
+                ),
               },
-            },
-            { key: "costPrice", label: "HPP", render: (p: Produk) => <span className="text-sm">{formatIDR(p.costPrice)}</span> },
-            {
-              key: "sellPrice",
-              label: "Harga Jual",
-              render: (p: Produk) => <span className="text-sm font-medium">{formatIDR(p.sellPrice)}</span>,
-            },
-            {
-              key: "stock",
-              label: `Stok (${selectedBranch || "Cabang"})`,
-              render: (p: Produk) => {
-                const stock = p.stock[selectedBranch] || 0;
-                const totalStock = Object.values(p.stock).reduce((a, b) => a + b, 0);
-                const isMenipis = totalStock <= p.rop;
-                return (
-                  <div className="flex items-center gap-2">
-                    <span className={cn("text-sm font-semibold", isMenipis ? "text-[var(--danger-500)]" : "text-[var(--text-primary)]")}>{stock}</span>
-                    {isMenipis && <Badge variant="danger" size="sm">Menipis</Badge>}
-                  </div>
-                );
-              },
-            },
-            { key: "rop", label: "ROP", render: (p: Produk) => <span className="text-sm text-[var(--text-tertiary)]">{p.rop}</span> },
-            {
-              key: "margin",
-              label: "Margin",
-              render: (p: Produk) => {
-                const margin = p.sellPrice > 0 ? Math.round(((p.sellPrice - p.costPrice) / p.sellPrice) * 100) : 0;
-                return <Badge variant={margin > 30 ? "success" : margin > 15 ? "warning" : "danger"} size="sm">{margin}%</Badge>;
-              },
-            },
-            {
-              key: "actions",
-              label: "Aksi",
-              render: (p: Produk) => (
-                <div className="relative flex justify-end">
-                  <button
-                    type="button"
-                    onClick={() => setOpenActionProductId((current) => current === p.id ? null : p.id)}
-                    className="inline-flex h-9 items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 text-xs font-semibold text-[var(--text-secondary)] transition-colors hover:border-[var(--border-hover)] hover:bg-[var(--surface-raised)] hover:text-[var(--text-primary)]"
-                    aria-expanded={openActionProductId === p.id}
-                    aria-label={`Aksi ${p.name}`}
-                  >
-                    Aksi
-                    <ChevronDown className="h-3.5 w-3.5" />
-                  </button>
-                  {openActionProductId === p.id && (
-                    <div className="absolute right-0 top-full z-20 mt-2 w-36 overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface)] text-left shadow-[var(--shadow-lg)]">
-                      <button
-                        type="button"
-                        onClick={() => handleProductAction(p, "detail")}
-                        className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--surface-raised)] hover:text-[var(--text-primary)]"
-                      >
-                        <Eye className="h-3.5 w-3.5" />
-                        Detail
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleProductAction(p, "edit")}
-                        className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--surface-raised)] hover:text-[var(--text-primary)]"
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                        Edit
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleProductAction(p, "delete")}
-                        className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-[var(--danger-500)] hover:bg-[var(--danger-50)]"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                        Hapus
-                      </button>
-                    </div>
-                  )}
-                </div>
-              ),
-            },
             ]}
             data={paginatedProducts}
             keyExtractor={(p) => p.id}
