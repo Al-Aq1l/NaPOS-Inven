@@ -103,9 +103,36 @@ function SidebarContent({
           </button>
         )}
       </div>
-      <div className="mx-3 mt-5 px-4 py-3 rounded-xl bg-white/[0.06] shadow-[0_10px_24px_-18px_rgba(0,0,0,0.85),inset_0_1px_0_rgba(255,255,255,0.06)] space-y-1.5">
+      <div className="mx-3 mt-5 px-4 py-3 rounded-xl bg-white/[0.06] shadow-[0_10px_24px_-18px_rgba(0,0,0,0.85),inset_0_1px_0_rgba(255,255,255,0.06)] space-y-2">
         <p className="text-sm font-semibold text-white leading-snug break-words">{user.tenant.name}</p>
-        <Badge variant="brand" size="sm" className="inline-flex w-fit">Paket {user.tenant.plan}</Badge>
+        {(() => {
+          const plan = user.tenant.plan?.toLowerCase() || 'starter';
+          if (plan === 'business') {
+            return (
+              <div className="inline-flex items-center px-3 py-0.5 rounded-full border border-[var(--brand-300)]/60 bg-gradient-to-b from-[var(--brand-700)] to-[var(--brand-900)] text-[10px] font-extrabold uppercase tracking-widest text-[var(--brand-50)] shadow-[inset_0_1px_1px_rgba(255,255,255,0.25)]">
+                Business
+              </div>
+            );
+          } else if (plan === 'growth') {
+             return (
+               <div className="inline-flex items-center px-2.5 py-0.5 rounded-full border border-[var(--brand-400)]/40 bg-[var(--brand-600)] text-[10px] font-bold uppercase tracking-widest text-white shadow-sm">
+                 Growth
+               </div>
+             );
+          } else if (plan === 'basic') {
+            return (
+              <div className="inline-flex items-center px-2.5 py-0.5 rounded-full border border-[var(--brand-500)]/30 bg-[var(--brand-500)]/15 text-[10px] font-semibold uppercase tracking-widest text-[var(--brand-200)]">
+                Basic
+              </div>
+            );
+          } else {
+            return (
+              <div className="inline-flex items-center px-2.5 py-0.5 rounded-full border border-slate-500/50 bg-transparent text-[10px] font-medium uppercase tracking-widest text-slate-400">
+                Starter
+              </div>
+            );
+          }
+        })()}
       </div>
       <nav className="flex-1 px-3 py-4 space-y-3 overflow-y-auto scrollbar-hide">
         {SIDEBAR_SECTIONS.map((section) => {
@@ -138,12 +165,12 @@ function SidebarContent({
                       ? currentHref === item.href
                       : currentHasQuery && pathname === itemPath
                         ? false
-                      : pathname === itemPath || (
-                        itemPath !== "/dashboard" &&
-                        itemPath !== "/dashboard/inventory" &&
-                        itemPath !== "/dashboard/branches" &&
-                        pathname.startsWith(`${itemPath}/`)
-                      );
+                        : pathname === itemPath || (
+                          itemPath !== "/dashboard" &&
+                          itemPath !== "/dashboard/inventory" &&
+                          itemPath !== "/dashboard/branches" &&
+                          pathname.startsWith(`${itemPath}/`)
+                        );
                     return (
                       <Link
                         key={item.href}
@@ -290,12 +317,12 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
       ? currentHref === item.href
       : currentHasQuery && pathname === itemPath
         ? false
-      : pathname === itemPath || (
-        itemPath !== "/dashboard" &&
-        itemPath !== "/dashboard/inventory" &&
-        itemPath !== "/dashboard/branches" &&
-        pathname.startsWith(`${itemPath}/`)
-      );
+        : pathname === itemPath || (
+          itemPath !== "/dashboard" &&
+          itemPath !== "/dashboard/inventory" &&
+          itemPath !== "/dashboard/branches" &&
+          pathname.startsWith(`${itemPath}/`)
+        );
   })?.label;
   const cashierPosMode = user.role === "cashier" && pathname.startsWith("/dashboard/pos");
 

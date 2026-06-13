@@ -115,8 +115,7 @@ type EscPosPreviewReceipt = {
 };
 
 const ESC_POS_LINE_WIDTH = 32;
-const ESC_POS_WATERMARK_PATTERN = ["N", "A", "P", "S", "", "", ""];
-const ESC_POS_CONTENT_WIDTH = ESC_POS_LINE_WIDTH - 2;
+const ESC_POS_CONTENT_WIDTH = ESC_POS_LINE_WIDTH;
 const PAYMENT_METHOD_LABELS = {
   cash: "Tunai",
   qris: "QRIS",
@@ -180,14 +179,7 @@ function escPosColumns(left: string, right: string, width = ESC_POS_LINE_WIDTH) 
   });
 }
 
-function applyEscPosSideWatermark(lines: string[]) {
-  return lines.map((line, index) => {
-    const mark = ESC_POS_WATERMARK_PATTERN[index % ESC_POS_WATERMARK_PATTERN.length];
-    return `${line.slice(0, ESC_POS_CONTENT_WIDTH).padEnd(ESC_POS_CONTENT_WIDTH, " ")} ${mark}`;
-  });
-}
-
-function buildEscPosPreview(receipt: EscPosPreviewReceipt) {
+function buildEscPosLines(receipt: EscPosPreviewReceipt): string[] {
   const lines: string[] = [
     centerEscPosLine("NAPS", ESC_POS_CONTENT_WIDTH),
     centerEscPosLine("Smart Inventory & POS", ESC_POS_CONTENT_WIDTH),
@@ -225,7 +217,11 @@ function buildEscPosPreview(receipt: EscPosPreviewReceipt) {
   lines.push(centerEscPosLine("Terima kasih", ESC_POS_CONTENT_WIDTH));
   lines.push(centerEscPosLine(receipt.isOffline ? "Transaksi tersimpan lokal" : "Transaksi tersimpan", ESC_POS_CONTENT_WIDTH));
 
-  return applyEscPosSideWatermark(lines).join("\n");
+  return lines;
+}
+
+function buildEscPosPreview(receipt: EscPosPreviewReceipt): string {
+  return buildEscPosLines(receipt).join("\n");
 }
 
 function ProductImage({ product, className, fallbackClassName }: {
@@ -1001,12 +997,6 @@ export default function POSPage() {
     <div className={cn("flex relative overflow-hidden", cashierMode ? "h-screen" : "h-[calc(100vh-4rem)] -m-4 lg:-m-6")}>
       <div className="receipt-print-area hidden print:block" aria-hidden="true">
         <div className="receipt-paper">
-          <div className="receipt-side-watermark" aria-hidden="true">
-            <span>NAPS</span>
-            <span>NAPS</span>
-            <span>NAPS</span>
-            <span>NAPS</span>
-          </div>
           <div className="receipt-center">
             <p className="receipt-title">NAPS</p>
             <p>Smart Inventory & POS</p>
@@ -1270,10 +1260,10 @@ export default function POSPage() {
                   key={cat}
                   onClick={() => setCategory(cat)}
                   className={cn(
-                    "px-4 py-2 rounded-full text-sm font-semibold whitespace-nowrap transition-all duration-200 cursor-pointer border",
+                    "px-5 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-all duration-300 cursor-pointer border",
                     category === cat
-                      ? "bg-[var(--brand-600)] text-white border-transparent shadow-[var(--shadow-sm)]"
-                      : "bg-[var(--surface-raised)] text-[var(--text-secondary)] border-[var(--border)] hover:bg-[var(--slate-150)] dark:hover:bg-[var(--slate-800)]"
+                      ? "bg-gradient-to-r from-[var(--brand-500)] to-[var(--brand-700)] text-white border-transparent shadow-[var(--shadow-md)] shadow-[var(--brand-500)]/30 scale-105"
+                      : "bg-[var(--surface-raised)] text-[var(--text-secondary)] border-[var(--border)] hover:bg-[var(--brand-50)] hover:text-[var(--brand-700)] hover:border-[var(--brand-200)]"
                   )}
                 >
                   {cat}
@@ -1290,22 +1280,22 @@ export default function POSPage() {
               <p className="mb-3 px-2 text-xs font-bold uppercase tracking-[0.08em] text-[var(--brand-700)]">
                 Kategori
               </p>
-              <div className="space-y-1.5 overflow-y-auto">
+              <div className="space-y-2 overflow-y-auto overflow-x-hidden px-1 pb-4 scrollbar-hide">
                 {kategori.map((cat) => (
                   <button
                     key={cat}
                     onClick={() => setCategory(cat)}
                     className={cn(
-                      "flex min-h-[52px] w-full items-center justify-between gap-3 rounded-lg border px-3.5 py-2.5 text-left text-sm font-bold transition-colors",
+                      "flex min-h-[44px] w-full items-center justify-between gap-3 rounded-[20px] border px-4 py-2.5 text-left text-sm font-bold transition-all duration-300 group",
                       category === cat
-                        ? "border-transparent bg-[var(--brand-600)] text-white shadow-[var(--shadow-sm)]"
-                        : "border-[var(--brand-100)] bg-white text-[var(--brand-800)] hover:border-[var(--brand-200)] hover:bg-[var(--brand-100)]"
+                        ? "border-transparent bg-gradient-to-r from-[var(--brand-500)] to-[var(--brand-700)] text-white shadow-[var(--shadow-md)] shadow-[var(--brand-500)]/30"
+                        : "border-[var(--brand-100)] bg-white/60 backdrop-blur-md text-[var(--text-secondary)] hover:border-[var(--brand-300)] hover:text-[var(--brand-700)] hover:bg-[var(--brand-50)] hover:shadow-[var(--shadow-sm)] hover:-translate-y-0.5"
                     )}
                   >
                     <span className="min-w-0 truncate">{cat}</span>
                     <span className={cn(
-                      "inline-flex h-6 min-w-6 items-center justify-center rounded-full px-2 text-xs font-extrabold",
-                      category === cat ? "bg-white/15 text-white" : "bg-[var(--brand-100)] text-[var(--brand-700)]"
+                      "inline-flex h-6 min-w-6 items-center justify-center rounded-full px-2 text-xs font-extrabold transition-colors",
+                      category === cat ? "bg-white/20 text-white" : "bg-[var(--brand-100)] text-[var(--brand-700)] group-hover:bg-[var(--brand-200)]"
                     )}>
                       {cat === "Semua" ? produk.length : produk.filter((item) => item.category === cat).length}
                     </span>
@@ -1323,10 +1313,10 @@ export default function POSPage() {
                     key={cat}
                     onClick={() => setCategory(cat)}
                     className={cn(
-                      "min-h-10 px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-all duration-200 cursor-pointer border",
+                      "min-h-10 px-5 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-all duration-300 cursor-pointer border",
                       category === cat
-                        ? "bg-[var(--brand-600)] text-white border-transparent shadow-[var(--shadow-sm)]"
-                        : "bg-[var(--brand-50)] text-[var(--brand-800)] border-[var(--brand-100)] hover:bg-[var(--brand-100)]"
+                        ? "bg-gradient-to-r from-[var(--brand-500)] to-[var(--brand-700)] text-white border-transparent shadow-[var(--shadow-md)] shadow-[var(--brand-500)]/30 scale-105"
+                        : "bg-[var(--brand-50)] text-[var(--text-secondary)] border-[var(--brand-100)] hover:bg-[var(--brand-100)] hover:text-[var(--brand-800)] hover:border-[var(--brand-200)]"
                     )}
                   >
                     {cat}
@@ -1360,12 +1350,12 @@ export default function POSPage() {
                   <button
                     key={product.id}
                     onClick={() => addToCart(product)}
-                    className="group flex flex-col overflow-hidden bg-[var(--surface)] border border-[var(--border)] rounded-xl transition-colors duration-150 text-left hover:border-[var(--brand-300)] cursor-pointer active:scale-[0.99]"
+                    className="group flex flex-col overflow-hidden bg-white/80 backdrop-blur-xl border border-[var(--brand-100)] rounded-2xl transition-all duration-300 text-left hover:border-[var(--brand-400)] hover:shadow-[var(--shadow-xl)] hover:shadow-[var(--brand-500)]/15 hover:-translate-y-1 cursor-pointer active:scale-[0.98]"
                   >
-                    <div className="relative aspect-square w-full bg-[var(--surface-raised)]">
+                    <div className="relative aspect-square w-full bg-[var(--surface-raised)] overflow-hidden">
                       <ProductImage
                         product={product}
-                        className="h-full w-full object-cover"
+                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                         fallbackClassName={cn("flex h-full w-full items-center justify-center font-black text-[var(--brand-700)] dark:text-[var(--brand-300)]", cashierMode ? "text-4xl" : "text-3xl")}
                       />
                       <Badge variant={product.stock <= 0 ? "danger" : product.stock < 10 ? "warning" : "success"} size="sm" className="absolute right-2 top-2 py-0 text-xs">
@@ -1398,8 +1388,8 @@ export default function POSPage() {
       </div>
 
       {/* Sidebar Keranjang Belanja */}
-      <div className="hidden md:flex w-80 lg:w-96 flex-col bg-[var(--brand-50)]/45 border-l border-[var(--brand-100)] shadow-[var(--shadow-sm)]">
-        <div className="p-4 border-b border-[var(--brand-100)] bg-[var(--brand-50)]/80 flex items-center justify-between">
+      <div className="hidden md:flex w-80 lg:w-96 flex-col bg-white/60 backdrop-blur-2xl border-l border-[var(--brand-200)] shadow-[-10px_0_30px_-15px_rgba(14,165,233,0.15)] relative z-10">
+        <div className="p-4 border-b border-[var(--brand-100)] bg-gradient-to-b from-[var(--brand-50)]/80 to-transparent flex items-center justify-between">
           <h2 className="font-bold text-[var(--brand-800)] flex items-center gap-2 text-sm lg:text-base">
             <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-white text-[var(--brand-600)] ring-1 ring-[var(--brand-100)]">
               <ShoppingCart className="w-5 h-5" />
@@ -1440,9 +1430,9 @@ export default function POSPage() {
                 const itemDisc = getItemDiscount(item);
                 const itemNetTotal = getItemNetTotal(item);
                 return (
-                  <div key={item.id} className="flex items-center gap-3 p-3 bg-white hover:bg-[var(--brand-50)] border border-[var(--brand-100)] rounded-xl shadow-[var(--shadow-xs)] transition-all duration-150">
+                  <div key={item.id} className="flex items-center gap-3 p-3 bg-white hover:bg-[var(--brand-50)]/50 border border-[var(--brand-100)] rounded-2xl shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] transition-all duration-300 hover:-translate-y-0.5">
                     {item.imageUrl ? (
-                      <img src={item.imageUrl} alt={item.name} className="h-9 w-9 flex-shrink-0 rounded-lg object-cover ring-1 ring-[var(--brand-100)]" />
+                      <img src={item.imageUrl} alt={item.name} className="h-10 w-10 flex-shrink-0 rounded-xl object-cover ring-1 ring-[var(--brand-100)]" />
                     ) : (
                       <span className="text-xs w-9 h-9 rounded-lg bg-[var(--brand-50)] border border-[var(--brand-100)] flex items-center justify-center font-bold text-[var(--brand-700)] dark:text-[var(--brand-300)] flex-shrink-0">
                         {item.image}
@@ -1512,8 +1502,8 @@ export default function POSPage() {
                 <span>{formatIDR(total)}</span>
               </div>
             </div>
-            <Button onClick={openPaymentModal} className="w-full h-11 text-sm font-bold shadow-md hover:shadow-lg" size="lg">
-              <CreditCard className="w-4 h-4" /> Proses Pembayaran
+            <Button onClick={openPaymentModal} className="w-full h-12 text-sm font-bold shadow-[var(--shadow-md)] shadow-[var(--brand-500)]/25 hover:shadow-[var(--shadow-lg)] hover:shadow-[var(--brand-500)]/40 hover:-translate-y-0.5 transition-all duration-300 bg-gradient-to-r from-[var(--brand-500)] to-[var(--brand-700)] border-0" size="lg">
+              <CreditCard className="w-5 h-5 mr-1" /> Proses Pembayaran
             </Button>
           </div>
         )}
@@ -1827,22 +1817,18 @@ export default function POSPage() {
           </div>
           
           {/* ESC/POS Receipt Preview */}
-          <div className="mx-auto w-fit max-w-full rounded border border-[var(--border)] bg-white p-3 shadow-[var(--shadow-sm)] overflow-x-auto">
-            <pre
-              aria-label="Preview struk ESC/POS"
-              className="m-0 font-mono text-[11px] leading-[1.35] text-black whitespace-pre"
-            >
-              {receiptPreviewText}
-            </pre>
+          <div className="mx-auto w-fit max-w-full overflow-x-auto">
+            <div className="relative rounded border border-[var(--border)] bg-white shadow-[var(--shadow-sm)] overflow-hidden p-3 min-w-[240px]">
+              <pre
+                aria-label="Preview struk ESC/POS"
+                className="m-0 font-mono text-[11px] leading-[1.35] text-black whitespace-pre w-max mx-auto"
+              >
+                {receiptPreviewText}
+              </pre>
+            </div>
           </div>
 
-          <div className="flex items-center justify-center gap-2 text-[10px] text-[var(--text-tertiary)]">
-            {receiptId.includes("Offline") ? (
-              <Badge variant="warning" size="sm" className="text-[9px] py-0 h-4">Antrean Lokal</Badge>
-            ) : (
-              <Badge variant="success" size="sm" className="text-[9px] py-0 h-4">Tersimpan Awan</Badge>
-            )}
-          </div>
+
           
           <Button variant="outline" size="sm" icon={<Printer className="w-3.5 h-3.5" />} className="w-full h-9 text-xs" onClick={handlePrintReceipt} disabled={receiptPrinting}>
             {receiptPrinting ? "Mencetak..." : "Cetak Struk"}

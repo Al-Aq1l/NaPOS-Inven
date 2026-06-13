@@ -217,6 +217,7 @@ export default function RegisterPage() {
       }
 
       const snapToken: string | null = res.data.snap_token;
+      const orderId: string | null = res.data.order_id;
 
       // 3. If paid plan, open Midtrans Snap popup
       if (snapToken) {
@@ -241,10 +242,18 @@ export default function RegisterPage() {
         // Open Snap popup
         await new Promise<void>((resolve) => {
           (window as any).snap.pay(snapToken, {
-            onSuccess:  () => { router.push("/dashboard"); resolve(); },
-            onPending:  () => { router.push("/dashboard?payment=pending"); resolve(); },
-            onError:    () => { router.push("/dashboard?payment=error");  resolve(); },
-            onClose:    () => { router.push("/dashboard?payment=pending"); resolve(); },
+            onSuccess:  async (result: any) => { 
+                try {
+                  await api.post("/payment/verify", { order_id: orderId || result.order_id });
+                } catch (e) {
+                  console.error("Verification failed", e);
+                }
+                window.location.href = "/dashboard"; 
+                resolve(); 
+            },
+            onPending:  () => { window.location.href = "/dashboard?payment=pending"; resolve(); },
+            onError:    () => { window.location.href = "/dashboard?payment=error";  resolve(); },
+            onClose:    () => { window.location.href = "/dashboard?payment=pending"; resolve(); },
           });
         });
       } else {

@@ -22,6 +22,7 @@ Route::post('/midtrans/notification', [PaymentWebhookController::class, 'handle'
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/me', [AuthController::class, 'me']);
     Route::post('/logout', [AuthController::class, 'logout']);
+    Route::post('/payment/verify', [PaymentWebhookController::class, 'verify']);
 
     // Protected routes requiring a tenant
     Route::middleware('tenant')->group(function () {

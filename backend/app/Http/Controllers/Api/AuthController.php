@@ -36,6 +36,7 @@ class AuthController extends Controller
         $tenant = Tenant::create([
             'name' => $request->business_name,
             'slug' => Str::slug($request->business_name) . '-' . Str::random(6),
+            'plan' => 'starter',
         ]);
 
         $user = User::create([
@@ -51,6 +52,7 @@ class AuthController extends Controller
         $plan      = strtolower($request->plan);
         $amount    = self::PLAN_PRICES[$plan] ?? 0;
         $snapToken = null;
+        $orderId   = null;
 
         if ($amount > 0) {
             // Configure Midtrans
@@ -119,6 +121,7 @@ class AuthController extends Controller
             'token_type'   => 'Bearer',
             'user'         => $user->load(['tenant', 'branch']),
             'snap_token'   => $snapToken,
+            'order_id'     => $orderId ?? null,
             'plan'         => $plan,
         ]);
     }

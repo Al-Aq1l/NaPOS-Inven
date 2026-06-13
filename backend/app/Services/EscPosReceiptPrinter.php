@@ -6,10 +6,6 @@ use RuntimeException;
 
 class EscPosReceiptPrinter
 {
-    private const SIDE_WATERMARK_PATTERN = ['N', 'A', 'P', 'S', ' ', ' ', ' '];
-
-    private int $sideWatermarkIndex = 0;
-
     public function print(array $receipt): void
     {
         if (!config('printing.enabled')) {
@@ -155,7 +151,6 @@ class EscPosReceiptPrinter
 
     private function buildReceipt(array $receipt): string
     {
-        $this->sideWatermarkIndex = 0;
         $width = max(24, min(48, (int) config('printing.line_width', 32)));
         $feedLines = max(1, min(8, (int) config('printing.feed_lines', 4)));
 
@@ -268,16 +263,12 @@ class EscPosReceiptPrinter
 
     private function contentWidth(int $width): int
     {
-        return max(10, $width - 2);
+        return max(10, $width);
     }
 
     private function sideWatermarkLine(string $line, int $width): string
     {
-        $contentWidth = $this->contentWidth($width);
-        $mark = self::SIDE_WATERMARK_PATTERN[$this->sideWatermarkIndex % count(self::SIDE_WATERMARK_PATTERN)];
-        $this->sideWatermarkIndex++;
-
-        return str_pad(substr($line, 0, $contentWidth), $contentWidth) . ' ' . $mark . "\n";
+        return substr($line, 0, $width) . "\n";
     }
 
     private function sanitize(string $text): string
