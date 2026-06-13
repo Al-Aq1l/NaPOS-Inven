@@ -239,7 +239,7 @@ export async function requestPlanChange(plan: string) {
   return res.data;
 }
 
-export async function fetchInventoryOptimization(params?: { lead_time_days?: number }): Promise<InventoryOptimizationItem[]> {
+export async function fetchInventoryOptimization(params?: { lead_time_days?: number; ordering_cost?: number; holding_cost_rate?: number }): Promise<InventoryOptimizationItem[]> {
   const res = await api.get<InventoryOptimizationItem[]>("/inventory/optimization", { params });
   return res.data;
 }
