@@ -125,6 +125,7 @@ export default function RegisterPage() {
     email: "",
     password: "",
     plan: "Growth",
+    billingCycle: "monthly",
     otp: "",
   });
 
@@ -210,6 +211,7 @@ export default function RegisterPage() {
         email:         formData.email,
         password:      formData.password,
         plan:          formData.plan.toLowerCase(),
+        billing_cycle: formData.billingCycle,
       });
 
       if (typeof window !== "undefined") {
@@ -454,49 +456,79 @@ export default function RegisterPage() {
 
           {/* Step 4 — Plan */}
           {step === 4 && (
-            <div className="space-y-3">
-              {[
-                { name: "Starter",  price: "Gratis",        desc: "50 SKU · 1 Pengguna" },
-                { name: "Basic",    price: "Rp 99K/bln",    desc: "500 SKU · 3 Pengguna" },
-                { name: "Growth",   price: "Rp 249K/bln",   desc: "5.000 SKU · 10 Pengguna", popular: true },
-                { name: "Business", price: "Rp 499K/bln",   desc: "SKU Tak Terbatas · 25 Pengguna" },
-              ].map((plan) => (
-                <label key={plan.name} className={cn(
-                  "flex items-center gap-4 p-4 border rounded-xl cursor-pointer transition-all hover:border-[var(--brand-300)]",
-                  formData.plan === plan.name
-                    ? "border-[var(--brand-500)] bg-[var(--brand-50)] dark:bg-[var(--brand-950)]"
-                    : "border-[var(--border)]"
-                )}>
-                  <input
-                    type="radio"
-                    name="plan"
-                    checked={formData.plan === plan.name}
-                    onChange={() => updateField("plan", plan.name)}
-                    className="accent-[var(--brand-600)]"
-                  />
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold text-[var(--text-primary)]">{plan.name}</span>
-                      {plan.popular && (
-                        <span className="text-xs px-2 py-0.5 bg-[var(--brand-600)] text-white rounded-full">
-                          Populer
-                        </span>
-                      )}
+            <div className="space-y-4">
+              <div className="flex justify-center mb-4">
+                <div className="inline-flex p-1 rounded-lg bg-[var(--surface-2)] border border-[var(--border)]">
+                  <button
+                    type="button"
+                    onClick={() => updateField("billingCycle", "monthly")}
+                    className={cn(
+                      "px-4 py-1.5 text-sm font-medium rounded-md transition-all",
+                      formData.billingCycle === "monthly"
+                        ? "bg-[var(--brand-600)] text-white shadow-sm"
+                        : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                    )}
+                  >
+                    Bulanan
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => updateField("billingCycle", "annual")}
+                    className={cn(
+                      "px-4 py-1.5 text-sm font-medium rounded-md transition-all flex items-center gap-1.5",
+                      formData.billingCycle === "annual"
+                        ? "bg-[var(--brand-600)] text-white shadow-sm"
+                        : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                    )}
+                  >
+                    Tahunan <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--brand-100)] text-[var(--brand-700)] dark:bg-[var(--brand-900)] dark:text-[var(--brand-300)] font-bold">Hemat 20%</span>
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                {[
+                  { name: "Starter",  priceMonthly: "Gratis", priceAnnual: "Gratis", desc: "50 SKU · 1 Pengguna" },
+                  { name: "Basic",    priceMonthly: "Rp 45K/bln", priceAnnual: "Rp 432K/thn", desc: "500 SKU · 3 Pengguna" },
+                  { name: "Growth",   priceMonthly: "Rp 95K/bln", priceAnnual: "Rp 912K/thn", desc: "5.000 SKU · 10 Pengguna", popular: true },
+                  { name: "Business", priceMonthly: "Rp 195K/bln", priceAnnual: "Rp 1,87Jt/thn", desc: "SKU Tak Terbatas · 25 Pengguna" },
+                ].map((plan) => (
+                  <label key={plan.name} className={cn(
+                    "flex items-center gap-4 p-4 border rounded-xl cursor-pointer transition-all hover:border-[var(--brand-300)]",
+                    formData.plan === plan.name
+                      ? "border-[var(--brand-500)] bg-[var(--brand-50)] dark:bg-[var(--brand-950)]"
+                      : "border-[var(--border)]"
+                  )}>
+                    <input
+                      type="radio"
+                      name="plan"
+                      checked={formData.plan === plan.name}
+                      onChange={() => updateField("plan", plan.name)}
+                      className="accent-[var(--brand-600)]"
+                    />
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-[var(--text-primary)]">{plan.name}</span>
+                        {plan.popular && (
+                          <span className="text-xs px-2 py-0.5 bg-[var(--brand-600)] text-white rounded-full">
+                            Populer
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-[var(--text-secondary)] mt-0.5">{plan.desc}</p>
                     </div>
-                    <p className="text-xs text-[var(--text-secondary)] mt-0.5">{plan.desc}</p>
-                  </div>
-                  <span className="text-sm font-semibold text-[var(--text-primary)]">{plan.price}</span>
-                </label>
-              ))}
+                    <span className="text-sm font-semibold text-[var(--text-primary)]">
+                      {formData.billingCycle === "annual" ? plan.priceAnnual : plan.priceMonthly}
+                    </span>
+                  </label>
+                ))}
+              </div>
               <div className="flex items-center gap-2 mt-3 p-3 rounded-lg bg-[var(--surface-2)] border border-[var(--border)]">
                 <CreditCard className="w-4 h-4 text-[var(--brand-600)] shrink-0" />
                 <p className="text-xs text-[var(--text-secondary)]">
                   Paket berbayar akan memunculkan halaman pembayaran Midtrans. Tersedia: Transfer Bank, GoPay, QRIS, Kartu Kredit & lainnya.
                 </p>
               </div>
-              <p className="text-xs text-[var(--text-tertiary)] mt-1">
-                Semua paket berbayar sudah termasuk uji coba gratis 14 hari.
-              </p>
             </div>
           )}
 

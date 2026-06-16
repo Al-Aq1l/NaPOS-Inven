@@ -2,9 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Building2, DollarSign, Info, Package, Users } from "lucide-react";
-import { Badge, Card, StatCard } from "@/components/ui";
+import { Badge, Button, Card, Input, Modal, StatCard } from "@/components/ui";
 import { formatIDR } from "@/lib/constants";
-import { fetchBillingInfo, fetchBranches, fetchOrders, type ApiBranch, type ApiOrder, type BillingInfo } from "@/lib/dashboard-api";
+import { createBranch, fetchBillingInfo, fetchBranches, fetchOrders, type ApiBranch, type ApiOrder, type BillingInfo } from "@/lib/dashboard-api";
 
 export default function BranchesPage() {
   const [branches, setBranches] = useState<ApiBranch[]>([]);
@@ -12,6 +12,11 @@ export default function BranchesPage() {
   const [billing, setBilling] = useState<BillingInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [newBranchData, setNewBranchData] = useState({ name: "", address: "", phone: "" });
+  const [modalError, setModalError] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -50,6 +55,31 @@ export default function BranchesPage() {
   const totalTx = branchStats.reduce((sum, branch) => sum + branch.todayTx, 0);
   const branchLimit = billing?.limits.max_branches ?? 1;
 
+  const handleAddBranch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setModalError(null);
+    setIsSubmitting(true);
+    try {
+      const newBranch = await createBranch({
+        name: newBranchData.name,
+        address: newBranchData.address,
+        phone: newBranchData.phone,
+        status: "online",
+      });
+      setBranches((prev) => [...prev, newBranch]);
+      setIsModalOpen(false);
+      setNewBranchData({ name: "", address: "", phone: "" });
+    } catch (err: any) {
+      if (err.response?.status === 403) {
+        setModalError(err.response.data.message);
+      } else {
+        setModalError(err.response?.data?.message || "Gagal menambahkan cabang.");
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col gap-2">
@@ -63,6 +93,12 @@ export default function BranchesPage() {
           </span>
         </div>
         <p className="text-sm text-[var(--text-secondary)]">Pantau performa dan status operasional tiap cabang.</p>
+      </div>
+
+      <div className="flex justify-end">
+        <Button onClick={() => setIsModalOpen(true)} disabled={loading || Boolean(billing && branchStats.length >= branchLimit)}>
+          Tambah Cabang
+        </Button>
       </div>
 
       {error && <Card className="text-sm text-[var(--danger-500)]">{error}</Card>}
@@ -106,6 +142,43 @@ export default function BranchesPage() {
       {!loading && branchStats.length === 0 && (
         <Card className="text-sm text-[var(--text-secondary)]">Belum ada data cabang untuk ditampilkan.</Card>
       )}
+
+      <Modal open={isModalOpen} onClose={() => setIsModalOpen(false)} title="Tambah Cabang Baru">
+        <form onSubmit={handleAddBranch} className="space-y-4">
+          {modalError && (
+            <div className="p-3 bg-red-50 text-red-600 rounded-lg text-sm">
+              {modalError}
+            </div>
+          )}
+          <Input
+            label="Nama Cabang"
+            value={newBranchData.name}
+            onChange={(e) => setNewBranchData({ ...newBranchData, name: e.target.value })}
+            placeholder="Contoh: Cabang Jakarta"
+            required
+          />
+          <Input
+            label="Alamat"
+            value={newBranchData.address}
+            onChange={(e) => setNewBranchData({ ...newBranchData, address: e.target.value })}
+            placeholder="Contoh: Jl. Sudirman No. 1"
+          />
+          <Input
+            label="Telepon"
+            value={newBranchData.phone}
+            onChange={(e) => setNewBranchData({ ...newBranchData, phone: e.target.value })}
+            placeholder="Contoh: 08123456789"
+          />
+          <div className="flex justify-end gap-3 pt-4 border-t">
+            <Button variant="outline" onClick={() => setIsModalOpen(false)} type="button">
+              Batal
+            </Button>
+            <Button type="submit" loading={isSubmitting}>
+              Simpan
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

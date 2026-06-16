@@ -194,6 +194,11 @@ export async function fetchBranches() {
   return res.data;
 }
 
+export async function createBranch(data: { name: string; address?: string; phone?: string; status?: "online" | "offline" }) {
+  const res = await api.post<ApiBranch>("/branches", data);
+  return res.data;
+}
+
 export async function fetchCategories() {
   const res = await api.get<ApiCategory[]>("/categories");
   return res.data;

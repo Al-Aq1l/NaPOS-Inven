@@ -1010,45 +1010,31 @@ export default function StokBarangPage() {
                 key: "actions",
                 label: "Aksi",
                 render: (p: Produk) => (
-                  <div className="relative flex justify-end">
+                  <div className="flex justify-start gap-1">
                     <button
                       type="button"
-                      onClick={() => setOpenActionProductId((current) => current === p.id ? null : p.id)}
-                      className="inline-flex h-9 items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 text-xs font-semibold text-[var(--text-secondary)] transition-colors hover:border-[var(--border-hover)] hover:bg-[var(--surface-raised)] hover:text-[var(--text-primary)]"
-                      aria-expanded={openActionProductId === p.id}
-                      aria-label={`Aksi ${p.name}`}
+                      onClick={() => handleProductAction(p, "detail")}
+                      className="p-2 text-[var(--text-tertiary)] hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-lg transition-colors"
+                      title="Detail"
                     >
-                      Aksi
-                      <ChevronDown className="h-3.5 w-3.5" />
+                      <Eye className="w-4 h-4" />
                     </button>
-                    {openActionProductId === p.id && (
-                      <div className="absolute right-0 top-full z-20 mt-2 w-36 overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface)] text-left shadow-[var(--shadow-lg)]">
-                        <button
-                          type="button"
-                          onClick={() => handleProductAction(p, "detail")}
-                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--surface-raised)] hover:text-[var(--text-primary)]"
-                        >
-                          <Eye className="h-3.5 w-3.5" />
-                          Detail
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleProductAction(p, "edit")}
-                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--surface-raised)] hover:text-[var(--text-primary)]"
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                          Edit
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleProductAction(p, "delete")}
-                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-[var(--danger-500)] hover:bg-[var(--danger-50)]"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                          Hapus
-                        </button>
-                      </div>
-                    )}
+                    <button
+                      type="button"
+                      onClick={() => handleProductAction(p, "edit")}
+                      className="p-2 text-[var(--text-tertiary)] hover:text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 rounded-lg transition-colors"
+                      title="Edit"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleProductAction(p, "delete")}
+                      className="p-2 text-[var(--text-tertiary)] hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-lg transition-colors"
+                      title="Hapus"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
                 ),
               },

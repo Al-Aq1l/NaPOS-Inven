@@ -13,6 +13,7 @@ class Subscription extends Model
         'tenant_id',
         'user_id',
         'plan',
+        'billing_cycle',
         'order_id',
         'amount',
         'snap_token',

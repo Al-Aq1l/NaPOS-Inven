@@ -17,10 +17,18 @@ class AuthController extends Controller
 {
     /** Plan pricing in IDR */
     private const PLAN_PRICES = [
-        'starter'  => 0,
-        'basic'    => 99000,
-        'growth'   => 249000,
-        'business' => 499000,
+        'monthly' => [
+            'starter'  => 0,
+            'basic'    => 45000,
+            'growth'   => 95000,
+            'business' => 195000,
+        ],
+        'annual' => [
+            'starter'  => 0,
+            'basic'    => 432000,   // 45000 * 12 * 0.8
+            'growth'   => 912000,   // 95000 * 12 * 0.8
+            'business' => 1872000,  // 195000 * 12 * 0.8
+        ],
     ];
 
     public function register(Request $request)
@@ -31,6 +39,7 @@ class AuthController extends Controller
             'email'         => 'required|string|email|max:255|unique:users',
             'password'      => 'required|string|min:8',
             'plan'          => 'required|string|in:starter,basic,growth,business',
+            'billing_cycle' => 'nullable|string|in:monthly,annual',
         ]);
 
         $tenant = Tenant::create([
@@ -49,9 +58,10 @@ class AuthController extends Controller
 
         $token = $user->createToken('auth_token')->plainTextToken;
 
-        $plan      = strtolower($request->plan);
-        $amount    = self::PLAN_PRICES[$plan] ?? 0;
-        $snapToken = null;
+        $plan         = strtolower($request->plan);
+        $billingCycle = strtolower($request->billing_cycle ?? 'monthly');
+        $amount       = self::PLAN_PRICES[$billingCycle][$plan] ?? 0;
+        $snapToken    = null;
         $orderId   = null;
 
         if ($amount > 0) {
@@ -73,10 +83,10 @@ class AuthController extends Controller
                     'email'      => $user->email,
                 ],
                 'item_details' => [[
-                    'id'       => $plan,
+                    'id'       => $plan . '_' . $billingCycle,
                     'price'    => $amount,
                     'quantity' => 1,
-                    'name'     => 'NaPOS Paket ' . ucfirst($plan) . ' (1 Bulan)',
+                    'name'     => 'NaPOS Paket ' . ucfirst($plan) . ' (' . ($billingCycle === 'annual' ? '1 Tahun' : '1 Bulan') . ')',
                 ]],
                 'enabled_payments' => [
                     'gopay',
@@ -95,24 +105,26 @@ class AuthController extends Controller
             $snapToken = Snap::getSnapToken($params);
 
             Subscription::create([
-                'tenant_id'  => $tenant->id,
-                'user_id'    => $user->id,
-                'plan'       => $plan,
-                'order_id'   => $orderId,
-                'amount'     => $amount,
-                'snap_token' => $snapToken,
-                'status'     => 'pending',
+                'tenant_id'     => $tenant->id,
+                'user_id'       => $user->id,
+                'plan'          => $plan,
+                'billing_cycle' => $billingCycle,
+                'order_id'      => $orderId,
+                'amount'        => $amount,
+                'snap_token'    => $snapToken,
+                'status'        => 'pending',
             ]);
         } else {
             // Free Starter plan
             Subscription::create([
-                'tenant_id'  => $tenant->id,
-                'user_id'    => $user->id,
-                'plan'       => 'starter',
-                'order_id'   => 'FREE-' . $user->id,
-                'amount'     => 0,
-                'status'     => 'settlement',
-                'paid_at'    => now(),
+                'tenant_id'     => $tenant->id,
+                'user_id'       => $user->id,
+                'plan'          => 'starter',
+                'billing_cycle' => $billingCycle,
+                'order_id'      => 'FREE-' . $user->id,
+                'amount'        => 0,
+                'status'        => 'settlement',
+                'paid_at'       => now(),
             ]);
         }
 
@@ -152,8 +164,48 @@ class AuthController extends Controller
 
     public function me(Request $request)
     {
+        $user = $request->user()->load(['tenant', 'branch']);
+
+        // Auto-verify any pending subscriptions with Midtrans to handle delayed webhooks
+        // especially useful on localhost where webhooks cannot reach the app
+        $pendingSub = \App\Models\Subscription::where('tenant_id', $user->tenant_id)
+            ->where('status', 'pending')
+            ->first();
+
+        if ($pendingSub) {
+            try {
+                \Midtrans\Config::$serverKey = config('services.midtrans.server_key');
+                \Midtrans\Config::$isProduction = !config('services.midtrans.is_sandbox');
+                
+                $status = \Midtrans\Transaction::status($pendingSub->order_id);
+                $transactionStatus = $status->transaction_status ?? null;
+                $fraudStatus = $status->fraud_status ?? 'accept';
+
+                if (in_array($transactionStatus, ['capture', 'settlement']) && $fraudStatus === 'accept') {
+                    $expiresAt = $pendingSub->billing_cycle === 'annual' 
+                        ? now()->addYear() 
+                        : now()->addMonth();
+
+                    $pendingSub->update([
+                        'status'       => 'settlement',
+                        'payment_type' => $status->payment_type ?? null,
+                        'paid_at'      => now(),
+                        'expires_at'   => $expiresAt,
+                    ]);
+
+                    if ($user->tenant) {
+                        $user->tenant->update(['plan' => $pendingSub->plan]);
+                        $user->refresh();
+                        $user->load(['tenant', 'branch']); // Reload tenant with new plan
+                    }
+                }
+            } catch (\Exception $e) {
+                // Ignore errors (e.g., Midtrans Sandbox offline)
+            }
+        }
+
         return response()->json([
-            'user' => $request->user()->load(['tenant', 'branch']),
+            'user' => $user,
         ]);
     }
 

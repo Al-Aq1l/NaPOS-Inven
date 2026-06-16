@@ -101,11 +101,15 @@ class PaymentWebhookController extends Controller
 
     private function markPaid(Subscription $subscription, ?string $paymentType = null): void
     {
+        $expiresAt = $subscription->billing_cycle === 'annual' 
+            ? now()->addYear() 
+            : now()->addMonth();
+
         $subscription->update([
             'status'       => 'settlement',
             'payment_type' => $paymentType,
             'paid_at'      => now(),
-            'expires_at'   => now()->addMonth(),
+            'expires_at'   => $expiresAt,
         ]);
 
         $tenant = Tenant::find($subscription->tenant_id);
