@@ -398,21 +398,30 @@ export default function StockOpnamePage() {
               <StatCard label="Produk Diinput" value={`${stats.counted} / ${itemsArray.length}`} changeType="neutral" icon={<ClipboardList className="w-5 h-5" />} />
               <StatCard label="Total Selisih (Pcs)" value={`${stats.totalVar > 0 ? "+" : ""}${stats.totalVar}`} changeType={stats.totalVar === 0 ? "neutral" : stats.totalVar > 0 ? "positive" : "negative"} icon={<Scan className="w-5 h-5" />} />
               <StatCard label="Nilai Dampak Finansial" value={formatIDR(stats.totalValueImpact)} changeType={stats.totalValueImpact === 0 ? "neutral" : stats.totalValueImpact > 0 ? "positive" : "negative"} icon={<DollarSign className="w-5 h-5" />} />
-              <Card className="flex items-center justify-between p-4 bg-[var(--brand-50)] dark:bg-[var(--brand-950)] border-none">
-                <div>
-                  <p className="text-xs text-[var(--brand-700)] dark:text-[var(--brand-300)] font-medium">Selesaikan Opname</p>
-                  <p className="text-xxs text-[var(--text-tertiary)] mt-0.5">Terapkan perubahan ke database</p>
+              <Card className="flex flex-col justify-between h-full">
+                <div className="flex items-start justify-between">
+                  <div className="space-y-1">
+                    <p className="text-sm text-[var(--text-secondary)]">Selesaikan Opname</p>
+                    <p className="text-xs text-[var(--text-tertiary)] leading-relaxed">
+                      Terapkan hasil penyesuaian stok ke database.
+                    </p>
+                  </div>
+                  <div className="p-2 bg-[var(--brand-50)] dark:bg-[var(--brand-950)] text-[var(--brand-600)] dark:text-[var(--brand-400)] rounded-lg flex-shrink-0">
+                    <Check className="w-5 h-5" />
+                  </div>
                 </div>
-                <Button 
-                  size="sm" 
-                  variant="primary" 
-                  className="bg-[var(--brand-600)] hover:bg-[var(--brand-700)] shadow-sm font-semibold text-xs" 
-                  onClick={handleSubmitOpname} 
-                  loading={submitting}
-                  disabled={stats.counted === 0}
-                >
-                  Simpan Hasil
-                </Button>
+                <div className="mt-4">
+                  <Button 
+                    size="sm" 
+                    variant="primary" 
+                    className="w-full bg-[var(--brand-600)] hover:bg-[var(--brand-700)] shadow-sm font-semibold text-xs" 
+                    onClick={handleSubmitOpname} 
+                    loading={submitting}
+                    disabled={stats.counted === 0}
+                  >
+                    Simpan Hasil
+                  </Button>
+                </div>
               </Card>
             </div>
           )}

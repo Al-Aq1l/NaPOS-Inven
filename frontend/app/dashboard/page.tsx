@@ -1,14 +1,18 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Chart, registerables } from "chart.js";
 import {
   AlertCircle,
   AlertTriangle,
+  ArrowRight,
+  BarChart3,
   DollarSign,
   FileText,
   Hexagon,
+  Package,
+  PackagePlus,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { Badge, Card, Modal, Button } from "@/components/ui";
@@ -116,6 +120,171 @@ function EmptyState({ title, description }: { title: string; description: string
   );
 }
 
+function getSmartSummary(summary: DashboardSummary, userName: string) {
+  const hour = new Date().getHours();
+  let timeGreeting = "Selamat pagi";
+  if (hour >= 11 && hour < 15) timeGreeting = "Selamat siang";
+  else if (hour >= 15 && hour < 18) timeGreeting = "Selamat sore";
+  else if (hour >= 18 || hour < 4) timeGreeting = "Selamat malam";
+
+  const firstName = userName.split(" ")[0];
+  const greeting = `${timeGreeting}, ${firstName}!`;
+
+  const trend = summary.sales_trend ?? [];
+  const todayRev = summary.today_revenue ?? 0;
+  const todayOrders = summary.today_orders ?? 0;
+  const lowStockCount = (summary.low_stock ?? []).length;
+
+  // Compare with yesterday (second to last in trend)
+  const yesterdayRev = trend.length >= 2 ? Number(trend[trend.length - 2]?.total ?? 0) : 0;
+  const diffPercent = yesterdayRev > 0 ? Math.round(((todayRev - yesterdayRev) / yesterdayRev) * 100) : 0;
+
+  const lines: string[] = [];
+
+  if (todayRev <= 0 && todayOrders <= 0) {
+    lines.push("Belum ada transaksi hari ini. Semangat jualan! 💪");
+  } else {
+    if (diffPercent > 0) {
+      lines.push(`Penjualan hari ini naik ~${diffPercent}% dari kemarin. Keren! 🎉`);
+    } else if (diffPercent < 0) {
+      lines.push(`Penjualan hari ini turun ~${Math.abs(diffPercent)}% dari kemarin.`);
+    } else if (yesterdayRev > 0) {
+      lines.push("Penjualan hari ini stabil seperti kemarin.");
+    }
+    lines.push(`Sudah ada ${todayOrders} transaksi dengan total ${formatIDR(todayRev)}.`);
+  }
+
+  let stockNotice = "";
+  if (lowStockCount > 0) {
+    stockNotice = `⚠️ Ada ${lowStockCount} barang yang stoknya menipis atau habis — segera restok ya!`;
+  }
+
+  return {
+    greeting,
+    lines,
+    stockNotice,
+    trendDirection: diffPercent > 0 ? ("up" as const) : diffPercent < 0 ? ("down" as const) : ("flat" as const),
+  };
+}
+
+function SmartInsightsCard({ summary, userName, loading }: { summary: DashboardSummary | null; userName: string; loading: boolean }) {
+  const [now, setNow] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const dayName = now.toLocaleDateString("id-ID", { weekday: "long" });
+  const dateStr = now.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" });
+  const timeStr = now.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", hour12: false }) + " WIB";
+
+  if (loading || !summary) {
+    return (
+      <div className="rounded-xl bg-gradient-to-r from-brand-950 to-brand-800 px-6 py-5 sm:px-8 sm:py-6">
+        <div className="flex items-center justify-between gap-4">
+          <div className="space-y-2">
+            <div className="h-6 w-56 rounded bg-white/10 animate-pulse" />
+            <div className="h-4 w-72 rounded bg-white/10 animate-pulse" />
+          </div>
+          <div className="hidden shrink-0 text-right sm:block space-y-1">
+            <div className="h-3 w-16 rounded bg-white/10 animate-pulse ml-auto" />
+            <div className="h-5 w-32 rounded bg-white/10 animate-pulse" />
+            <div className="h-3 w-20 rounded bg-white/10 animate-pulse ml-auto" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const insight = getSmartSummary(summary, userName);
+
+  return (
+    <div className="rounded-xl bg-gradient-to-r from-brand-950 to-brand-800 px-6 py-5 sm:px-8 sm:py-6">
+      <div className="flex items-center justify-between gap-4">
+        {/* Left: Greeting + summary */}
+        <div className="min-w-0">
+          <h2 className="text-lg font-bold leading-snug text-white sm:text-xl">
+            {insight.greeting} 👋
+          </h2>
+          <div className="mt-1.5 space-y-0.5">
+            {insight.lines.map((line, i) => (
+              <p key={i} className="text-sm leading-relaxed text-white/60">
+                {line}
+              </p>
+            ))}
+            {insight.stockNotice && (
+              <p className="text-sm font-semibold leading-relaxed text-amber-300">
+                {insight.stockNotice}
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Right: Date & time */}
+        <div className="hidden shrink-0 text-right sm:block">
+          <p className="text-xs font-medium text-white/50">{dayName}</p>
+          <p className="mt-0.5 text-lg font-bold leading-tight text-white">{dateStr}</p>
+          <p className="mt-0.5 text-xs font-medium text-white/50">{timeStr}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const QUICK_ACTIONS = [
+  {
+    label: "Produk & Stok",
+    description: "Kelola daftar produk",
+    href: "/dashboard/inventory",
+    icon: Package,
+    bg: "bg-blue-50",
+    text: "text-blue-600",
+  },
+  {
+    label: "Tambah Stok",
+    description: "Catat barang masuk",
+    href: "/dashboard/inventory/stock-in",
+    icon: PackagePlus,
+    bg: "bg-emerald-50",
+    text: "text-emerald-600",
+  },
+  {
+    label: "Lihat Laporan",
+    description: "Analitik penjualan",
+    href: "/dashboard/analytics",
+    icon: BarChart3,
+    bg: "bg-violet-50",
+    text: "text-violet-600",
+  },
+];
+
+function QuickActionsGrid() {
+  return (
+    <div className="grid gap-3 sm:grid-cols-3">
+      {QUICK_ACTIONS.map((action) => {
+        const Icon = action.icon;
+        return (
+          <Link
+            key={action.href}
+            href={action.href}
+            className="group flex items-center gap-3 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3.5 transition-colors duration-150 hover:bg-[var(--surface-raised)]"
+          >
+            <span className={cn("inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg", action.bg)}>
+              <Icon className={cn("h-4 w-4", action.text)} />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-bold leading-tight text-[var(--text-primary)]">{action.label}</p>
+              <p className="mt-0.5 text-xs leading-tight text-[var(--text-tertiary)]">{action.description}</p>
+            </div>
+            <ArrowRight className="h-3.5 w-3.5 shrink-0 text-[var(--text-tertiary)]" />
+          </Link>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function DashboardHome() {
   const { user } = useAuth();
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
@@ -124,27 +293,40 @@ export default function DashboardHome() {
   const [chartMode, setChartMode] = useState<"revenue" | "orders">("revenue");
   const [selectedOrder, setSelectedOrder] = useState<DashboardSummary["recent_orders"][0] | null>(null);
 
-  useEffect(() => {
-    let mounted = true;
+  const refreshDashboard = useCallback(async (isInitial = false) => {
+    try {
+      if (isInitial) setError(null);
+      const data = await fetchDashboardSummary();
+      setSummary(data);
+      setError(null);
+    } catch {
+      if (isInitial) setError("Gagal memuat data dashboard.");
+    } finally {
+      if (isInitial) setLoading(false);
+    }
+  }, []);
 
-    async function load() {
-      try {
-        setError(null);
-        const data = await fetchDashboardSummary();
-        if (mounted) setSummary(data);
-      } catch {
-        if (mounted) setError("Gagal memuat data dashboard.");
-      } finally {
-        if (mounted) setLoading(false);
+  // Initial load
+  useEffect(() => {
+    refreshDashboard(true);
+  }, [refreshDashboard]);
+
+  // Auto-refresh: polling setiap 30 detik
+  useEffect(() => {
+    const interval = setInterval(() => refreshDashboard(false), 30_000);
+    return () => clearInterval(interval);
+  }, [refreshDashboard]);
+
+  // Auto-refresh: saat tab kembali aktif (misal setelah pakai POS di tab lain)
+  useEffect(() => {
+    function handleVisibility() {
+      if (document.visibilityState === "visible") {
+        refreshDashboard(false);
       }
     }
-
-    load();
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
+  }, [refreshDashboard]);
 
   const salesData = useMemo(() => {
     const trend = summary?.sales_trend ?? [];
@@ -172,7 +354,10 @@ export default function DashboardHome() {
   return (
     <div className="space-y-6 animate-fade-in">
       {error && <Card className="text-sm text-[var(--danger-500)]">{error}</Card>}
-      {loading && <Card className="text-sm text-[var(--text-secondary)]">Memuat data dashboard...</Card>}
+
+      <SmartInsightsCard summary={summary} userName={user.name} loading={loading} />
+
+      <QuickActionsGrid />
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <SummaryTile

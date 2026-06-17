@@ -4,10 +4,10 @@ import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { Card, Button, Input, Avatar, Badge, Modal } from "@/components/ui";
 import { ROLES, type UserRole } from "@/lib/constants";
-import { Building2, Upload, Users, Bell, Shield, Mail, Phone, MapPin, Trash2, Eye, Pencil, ChevronDown } from "lucide-react";
+import { Building2, Upload, Users, Bell, Shield, Mail, Phone, MapPin, Trash2, Eye, Pencil, ChevronDown, MessageSquare, QrCode } from "lucide-react";
 import Link from "next/link";
 import api from "@/lib/api";
-import { fetchBranches, type ApiBranch } from "@/lib/dashboard-api";
+import { fetchBranches, type ApiBranch, fetchWhatsAppStatus, fetchWhatsAppQr, postWhatsAppLogout } from "@/lib/dashboard-api";
 
 type TeamMember = {
   id: string;
@@ -38,6 +38,83 @@ const NOTIF_ITEMS = [
 export default function PengaturanPage() {
   const { user, canAccess } = useAuth();
   const [members, setMembers] = useState<TeamMember[]>([]);
+
+  // WhatsApp States
+  const [waConnected, setWaConnected] = useState(false);
+  const [waPhone, setWaPhone] = useState<string | null>(null);
+  const [waQr, setWaQr] = useState<string | null>(null);
+  const [waLoading, setWaLoading] = useState(true);
+  const [waError, setWaError] = useState<string | null>(null);
+  const [waActionLoading, setWaActionLoading] = useState(false);
+
+  // Load WhatsApp Status
+  const loadWhatsAppStatus = async () => {
+    try {
+      const data = await fetchWhatsAppStatus();
+      setWaConnected(data.connected);
+      setWaPhone(data.phone);
+      if (data.connected) {
+        setWaQr(null);
+      }
+      setWaError(null);
+    } catch (err) {
+      setWaError("Gagal terhubung ke microservice WhatsApp.");
+    } finally {
+      setWaLoading(false);
+    }
+  };
+
+  // Load WhatsApp QR Code
+  const loadWhatsAppQr = async () => {
+    try {
+      const data = await fetchWhatsAppQr();
+      if (data.qr) {
+        setWaQr(data.qr);
+      }
+    } catch (err) {
+      console.error("Gagal memuat WhatsApp QR Code:", err);
+    }
+  };
+
+  // Logout WhatsApp
+  const handleWhatsAppLogout = async () => {
+    if (!confirm("Apakah Anda yakin ingin memutuskan koneksi WhatsApp?")) return;
+    setWaActionLoading(true);
+    try {
+      await postWhatsAppLogout();
+      setWaConnected(false);
+      setWaPhone(null);
+      setWaQr(null);
+      await loadWhatsAppQr();
+    } catch (err) {
+      alert("Gagal memutuskan koneksi WhatsApp.");
+    } finally {
+      setWaActionLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadWhatsAppStatus();
+    
+    // Polling status WhatsApp setiap 5 detik
+    const statusInterval = setInterval(() => {
+      loadWhatsAppStatus();
+    }, 5000);
+
+    return () => clearInterval(statusInterval);
+  }, []);
+
+  useEffect(() => {
+    // Jika tidak terhubung, muat QR code dan poll QR code setiap 15 detik
+    if (waConnected) return;
+
+    loadWhatsAppQr();
+    const qrInterval = setInterval(() => {
+      loadWhatsAppQr();
+    }, 15000);
+
+    return () => clearInterval(qrInterval);
+  }, [waConnected]);
   const [branches, setBranches] = useState<ApiBranch[]>([]);
   const [savingMemberId, setSavingMemberId] = useState<string | null>(null);
   const [teamError, setTeamError] = useState<string | null>(null);
@@ -517,6 +594,83 @@ export default function PengaturanPage() {
             </label>
           ))}
         </div>
+      </Card>
+
+      {/* WhatsApp Integration Card */}
+      <Card>
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-2">
+            <MessageSquare className="w-5 h-5 text-[var(--brand-600)]" />
+            <h2 className="font-semibold text-[var(--text-primary)]">Integrasi WhatsApp Struk</h2>
+          </div>
+          <Badge variant={waConnected ? "success" : "warning"}>
+            {waConnected ? "Terhubung" : "Belum Terhubung"}
+          </Badge>
+        </div>
+
+        {waError && (
+          <div className="mb-4 rounded-lg border border-[var(--danger-200)] bg-[var(--danger-50)] p-3 text-sm text-[var(--danger-600)]">
+            {waError}
+          </div>
+        )}
+
+        {waLoading ? (
+          <div className="text-center py-6 text-sm text-[var(--text-secondary)]">
+            Memuat status integrasi...
+          </div>
+        ) : waConnected ? (
+          <div className="space-y-4">
+            <div className="rounded-lg bg-[var(--surface-raised)] p-4 border border-[var(--border)]">
+              <p className="text-sm font-medium text-[var(--text-primary)]">WhatsApp Terkoneksi</p>
+              <p className="text-xs text-[var(--text-secondary)] mt-1">
+                Akun WhatsApp Anda telah aktif sebagai pengirim struk belanja otomatis.
+              </p>
+              <div className="mt-3 flex items-center gap-2 text-sm text-[var(--text-primary)] font-bold">
+                <Phone className="w-4 h-4 text-[var(--brand-600)]" />
+                +{waPhone}
+              </div>
+            </div>
+            <div className="flex justify-end">
+              <Button
+                variant="outline"
+                className="text-[var(--danger-600)] border-[var(--danger-200)] hover:bg-[var(--danger-50)]"
+                loading={waActionLoading}
+                onClick={handleWhatsAppLogout}
+              >
+                Putuskan Sesi WhatsApp
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            <div className="text-sm text-[var(--text-secondary)] leading-relaxed">
+              Pindai QR Code di bawah menggunakan WhatsApp Anda untuk mengaktifkan fitur kirim struk belanja otomatis ke pelanggan:
+              <ol className="list-decimal list-inside mt-2 space-y-1 text-xs">
+                <li>Buka aplikasi <b>WhatsApp</b> di HP Anda.</li>
+                <li>Pilih <b>Pengaturan / Setelan</b> &gt; <b>Perangkat Tertaut (Linked Devices)</b>.</li>
+                <li>Pilih <b>Tautkan Perangkat</b>, lalu arahkan kamera ke QR Code di bawah.</li>
+              </ol>
+            </div>
+
+            <div className="flex flex-col items-center justify-center p-6 bg-[var(--surface-raised)] rounded-xl border border-[var(--border)]">
+              {waQr ? (
+                <div className="relative p-3 bg-white rounded-lg border shadow-sm">
+                  <img src={waQr} className="w-48 h-48" alt="WhatsApp QR Code" />
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/5 rounded-lg pointer-events-none"></div>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center w-48 h-48 bg-white border rounded-lg">
+                  <QrCode className="w-10 h-10 text-[var(--text-tertiary)] animate-pulse" />
+                  <span className="text-[10px] text-[var(--text-tertiary)] mt-2">Menghasilkan QR...</span>
+                </div>
+              )}
+              <p className="text-[10px] text-[var(--text-tertiary)] mt-4 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
+                Status QR otomatis di-refresh berkala
+              </p>
+            </div>
+          </div>
+        )}
       </Card>
 
       <div className="grid sm:grid-cols-2 gap-4">

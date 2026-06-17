@@ -29,4 +29,8 @@ return [
         'is_sandbox'  => env('MIDTRANS_IS_SANDBOX', true),
     ],
 
+    'whatsapp' => [
+        'url' => env('WHATSAPP_SERVICE_URL', 'http://localhost:3001'),
+    ],
+
 ];

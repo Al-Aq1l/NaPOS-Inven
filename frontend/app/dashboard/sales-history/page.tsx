@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { ReceiptText, Info, Search, Calendar as CalendarIcon, ArrowUpRight, DollarSign, Activity, Eye } from "lucide-react";
-import { Badge, Card, Input, Toast, Modal, DataTable } from "@/components/ui";
-import { fetchOrders, fetchBranches, type ApiBranch, type ApiOrder } from "@/lib/dashboard-api";
+import { Badge, Card, Input, Toast, Modal, DataTable, Button } from "@/components/ui";
+import { fetchOrders, fetchBranches, type ApiBranch, type ApiOrder, postWhatsAppSendReceipt } from "@/lib/dashboard-api";
 import { formatIDR } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
@@ -72,12 +72,40 @@ export default function SalesHistoryPage() {
   const [historyPage, setHistoryPage] = useState(1);
   const [toastMsg, setToastMsg] = useState("");
   const [toastVisible, setToastVisible] = useState(false);
+  const [waToastType, setWaToastType] = useState<"success" | "error" | "info" | "warning">("info");
   const [selectedOrder, setSelectedOrder] = useState<ApiOrder | null>(null);
+  const [waRecipientPhone, setWaRecipientPhone] = useState("");
+  const [sendingWaReceipt, setSendingWaReceipt] = useState(false);
 
-  const showToast = (msg: string) => {
+  const showToast = (msg: string, type: "success" | "error" | "info" | "warning" = "info") => {
     setToastMsg(msg);
+    setWaToastType(type);
     setToastVisible(true);
     setTimeout(() => setToastVisible(false), 4000);
+  };
+
+  const handleSendWhatsAppReceipt = async () => {
+    if (!selectedOrder) return;
+    if (!waRecipientPhone) {
+      showToast("Harap masukkan nomor WhatsApp tujuan.", "warning");
+      return;
+    }
+
+    setSendingWaReceipt(true);
+    try {
+      const res = await postWhatsAppSendReceipt(selectedOrder.id, waRecipientPhone);
+      if (res.success) {
+        showToast(res.message || "Struk berhasil dikirim!", "success");
+        setWaRecipientPhone("");
+      } else {
+        showToast(res.message || "Gagal mengirim struk.", "error");
+      }
+    } catch (err: any) {
+      const errMsg = err.response?.data?.message || "Gagal mengirim struk via WhatsApp.";
+      showToast(errMsg, "error");
+    } finally {
+      setSendingWaReceipt(false);
+    }
   };
 
   useEffect(() => {
@@ -171,7 +199,7 @@ export default function SalesHistoryPage() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <Toast message={toastMsg} type="error" visible={toastVisible} />
+      <Toast message={toastMsg} type={waToastType} visible={toastVisible} />
 
       <div className="flex flex-col gap-2">
         <div className="flex items-center gap-2">
@@ -305,9 +333,9 @@ export default function SalesHistoryPage() {
                     <td className="py-3 pr-4 text-[var(--text-secondary)]">{order.branch?.name || `Cabang #${order.branch_id}`}</td>
                     <td className="py-3 pr-4 font-medium text-[var(--text-primary)]">{order.customer_name || "-"}</td>
                     <td className="py-3 pr-4">{getOrderStatusBadge(order.status)}</td>
-                    <td className="py-3 pr-4 text-right font-semibold text-emerald-600">{formatIDR(revenue)}</td>
-                    <td className="py-3 pr-4 text-right text-orange-600">{formatIDR(hpp)}</td>
-                    <td className="py-3 pr-4 text-right font-semibold text-purple-600">
+                    <td className="py-3 pr-4 text-right font-semibold text-[var(--text-primary)]">{formatIDR(revenue)}</td>
+                    <td className="py-3 pr-4 text-right text-[var(--text-secondary)]">{formatIDR(hpp)}</td>
+                    <td className="py-3 pr-4 text-right font-semibold text-[var(--text-primary)]">
                       <div className="flex flex-col items-end">
                         <span>{formatIDR(margin)}</span>
                         <span className="text-[10px] bg-purple-50 px-1.5 py-0.5 rounded text-purple-700">{marginPercent.toFixed(1)}%</span>
@@ -315,11 +343,12 @@ export default function SalesHistoryPage() {
                     </td>
                     <td className="py-3 text-center">
                       <button
+                        type="button"
                         onClick={() => setSelectedOrder(order)}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-[var(--surface-raised)] border border-[var(--border)] rounded-lg text-xs font-semibold text-[var(--text-secondary)] hover:bg-[var(--surface-raised)] dark:hover:bg-slate-700 hover:text-blue-600 hover:border-blue-200 dark:hover:border-blue-800 transition-all shadow-sm active:scale-95"
+                        className="p-2 text-[var(--text-tertiary)] hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-lg transition-colors inline-flex items-center justify-center"
+                        title="Detail"
                       >
-                        <Eye className="w-3.5 h-3.5" />
-                        Detail
+                        <Eye className="w-4 h-4" />
                       </button>
                     </td>
                   </tr>
@@ -365,54 +394,104 @@ export default function SalesHistoryPage() {
 
             <div>
               <h4 className="text-sm font-semibold text-[var(--text-primary)] mb-3">Item Produk</h4>
-              <div className="border border-[var(--border)] rounded-lg overflow-hidden overflow-x-auto">
-                <table className="w-full min-w-[640px] text-left text-sm">
-                  <thead>
-                    <tr className="bg-[var(--surface-raised)] border-b border-[var(--border)] text-xs text-[var(--text-secondary)] font-medium">
-                      <th className="py-2.5 px-4">Produk</th>
-                      <th className="py-2.5 px-4 text-center">Qty</th>
-                      <th className="py-2.5 px-4 text-right">Harga Jual</th>
-                      <th className="py-2.5 px-4 text-right">HPP</th>
-                      <th className="py-2.5 px-4 text-right">Margin Laba</th>
-                      <th className="py-2.5 px-4 text-right">Subtotal</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[var(--border)]">
-                    {(selectedOrder.items || []).map((item) => {
-                      const cost = parseFloat(item.product?.cost_price || "0");
-                      const sell = parseFloat(item.price);
-                      const subtotal = parseFloat(item.subtotal);
-                      const marginItem = (sell - cost) * item.quantity;
-                      const marginItemPercent = sell > 0 ? ((sell - cost) / sell) * 100 : 0;
-                      
-                      return (
-                        <tr key={item.id} className="text-[var(--text-primary)]">
-                          <td className="py-2.5 px-4">
-                            <p className="font-semibold">{item.product?.name || `Produk #${item.product_id}`}</p>
-                            <p className="text-xs text-[var(--text-tertiary)]">{item.product?.sku}</p>
-                          </td>
-                          <td className="py-2.5 px-4 text-center font-medium">{item.quantity}</td>
-                          <td className="py-2.5 px-4 text-right text-[var(--text-secondary)]">{formatIDR(sell)}</td>
-                          <td className="py-2.5 px-4 text-right text-[var(--text-secondary)]">{formatIDR(cost)}</td>
-                          <td className="py-2.5 px-4 text-right font-medium text-purple-600">
-                            <div className="flex flex-col items-end">
-                              <span>{formatIDR(marginItem)}</span>
-                              <span className="text-[10px] text-purple-500">{marginItemPercent.toFixed(1)}%</span>
-                            </div>
-                          </td>
-                          <td className="py-2.5 px-4 text-right font-semibold">{formatIDR(subtotal)}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                  <tfoot className="bg-[var(--surface-raised)] font-semibold border-t border-[var(--border)] text-[var(--text-primary)]">
-                    <tr>
-                      <td colSpan={5} className="py-3 px-4 text-right">Total Transaksi:</td>
-                      <td className="py-3 px-4 text-right text-emerald-600">{formatIDR(parseFloat(selectedOrder.total_amount))}</td>
-                    </tr>
-                  </tfoot>
-                </table>
+              <div className="border border-[var(--border)] rounded-lg overflow-hidden divide-y divide-[var(--border)] bg-[var(--surface)]">
+                {/* Header (desktop only) */}
+                <div className="hidden sm:grid sm:grid-cols-[2fr_0.8fr_1.2fr_1.2fr_1.2fr] gap-4 bg-[var(--surface-raised)] px-4 py-2.5 text-xs text-[var(--text-secondary)] font-semibold uppercase tracking-wider">
+                  <div>Produk</div>
+                  <div className="text-center">Qty</div>
+                  <div className="text-right">HPP</div>
+                  <div className="text-right">Margin Laba</div>
+                  <div className="text-right">Subtotal</div>
+                </div>
+
+                {/* Items */}
+                {(selectedOrder.items || []).map((item) => {
+                  const cost = parseFloat(item.product?.cost_price || "0");
+                  const sell = parseFloat(item.price);
+                  const subtotal = parseFloat(item.subtotal);
+                  const marginItem = (sell - cost) * item.quantity;
+                  const marginItemPercent = sell > 0 ? ((sell - cost) / sell) * 100 : 0;
+                  
+                  return (
+                    <div
+                      key={item.id}
+                      className="p-4 sm:px-4 sm:py-3 grid grid-cols-1 sm:grid-cols-[2fr_0.8fr_1.2fr_1.2fr_1.2fr] gap-3 sm:gap-4 items-start sm:items-center text-sm hover:bg-[var(--surface-raised)]/30 transition-colors"
+                    >
+                      {/* Column 1: Product info */}
+                      <div>
+                        <p className="font-bold text-[var(--text-primary)]">{item.product?.name || `Produk #${item.product_id}`}</p>
+                        <p className="text-xs text-[var(--text-tertiary)] mt-0.5 font-mono">{item.product?.sku || "Tanpa SKU"}</p>
+                        {/* Qty x Price info visible on mobile only */}
+                        <p className="text-xs font-semibold text-[var(--brand-600)] mt-1 sm:hidden">
+                          {item.quantity} x {formatIDR(sell)}
+                        </p>
+                      </div>
+
+                      {/* Column 2: Qty (desktop only) */}
+                      <div className="hidden sm:block text-center font-semibold text-[var(--text-primary)]">
+                        {item.quantity}
+                      </div>
+
+                      {/* Column 3: HPP (responsive grid on mobile, right aligned text on desktop) */}
+                      <div className="flex justify-between items-center sm:block sm:text-right">
+                        <span className="text-[10px] uppercase font-bold text-[var(--text-tertiary)] sm:hidden">HPP:</span>
+                        <div className="flex flex-col items-end sm:items-stretch sm:text-right text-xs sm:text-sm text-[var(--text-secondary)] font-medium">
+                          <span>{formatIDR(cost * item.quantity)}</span>
+                          <span className="text-[10px] text-[var(--text-tertiary)] font-normal block">
+                            ({formatIDR(cost)}/satuan)
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Column 4: Margin (responsive grid on mobile, right aligned text on desktop) */}
+                      <div className="flex justify-between items-center sm:block sm:text-right">
+                        <span className="text-[10px] uppercase font-bold text-[var(--text-tertiary)] sm:hidden">Margin:</span>
+                        <div className="flex flex-col items-end">
+                          <span className="font-semibold text-[var(--text-primary)]">{formatIDR(marginItem)}</span>
+                          <span className="text-[10px] bg-purple-50 dark:bg-purple-950/40 px-1.5 py-0.5 rounded text-purple-700 dark:text-purple-300 font-bold mt-0.5">
+                            {marginItemPercent.toFixed(1)}%
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Column 5: Subtotal (responsive grid on mobile, right aligned text on desktop) */}
+                      <div className="flex justify-between items-center sm:block sm:text-right">
+                        <span className="text-[10px] uppercase font-bold text-[var(--text-tertiary)] sm:hidden">Subtotal:</span>
+                        <span className="font-bold text-[var(--text-primary)]">{formatIDR(subtotal)}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {/* Footer / Total */}
+                <div className="bg-[var(--surface-raised)] px-4 py-3 flex justify-between items-center font-bold text-[var(--text-primary)] text-sm border-t border-[var(--border)]">
+                  <span>Total Transaksi:</span>
+                  <span className="text-base text-[var(--text-primary)] font-extrabold">{formatIDR(parseFloat(selectedOrder.total_amount))}</span>
+                </div>
               </div>
+            </div>
+
+            {/* WhatsApp Receipt Panel */}
+            <div className="p-4 bg-[var(--surface-raised)] rounded-lg border border-[var(--border)] flex flex-col sm:flex-row sm:items-end gap-3">
+              <div className="flex-1">
+                <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">
+                  Kirim Struk via WhatsApp
+                </label>
+                <Input
+                  placeholder="Contoh: 08123456789"
+                  value={waRecipientPhone}
+                  onChange={(e) => setWaRecipientPhone(e.target.value)}
+                  className="h-9 text-xs"
+                />
+              </div>
+              <Button
+                size="sm"
+                className="h-9 px-5 text-xs font-bold"
+                onClick={handleSendWhatsAppReceipt}
+                loading={sendingWaReceipt}
+              >
+                Kirim Struk via WhatsApp
+              </Button>
             </div>
             
             <div className="flex justify-end pt-4">

@@ -10,7 +10,7 @@ import { useRouter } from "next/navigation";
 import { Button, Badge, Input, Modal, Card, Toast, Drawer } from "@/components/ui";
 import { formatIDR } from "@/lib/constants";
 import { cn } from "@/lib/utils";
-import { fetchProducts, fetchBranches, type ApiProduct, type ApiBranch } from "@/lib/dashboard-api";
+import { fetchProducts, fetchBranches, type ApiProduct, type ApiBranch, postWhatsAppSendReceipt } from "@/lib/dashboard-api";
 import { useAuth } from "@/lib/auth-context";
 import { db } from "@/lib/db";
 import api from "@/lib/api";
@@ -343,6 +343,12 @@ export default function POSPage() {
   const [cashPaid, setCashPaid] = useState("");
   const [receiptCashPaid, setReceiptCashPaid] = useState(0);
   const [receiptChange, setReceiptChange] = useState(0);
+
+  // State WhatsApp POS
+  const [createdOrderId, setCreatedOrderId] = useState<number | null>(null);
+  const [waRecipientPhone, setWaRecipientPhone] = useState("");
+  const [sendingWaReceipt, setSendingWaReceipt] = useState(false);
+  const [waSent, setWaSent] = useState(false);
   
   // State Offline-First Sync
   const [isOnline, setIsOnline] = useState(true);
@@ -833,6 +839,7 @@ export default function POSPage() {
 
   // Proses Checkout Transaksi (Online / Offline Mode)
   const executePayment = async (method: "cash" | "qris" | "transfer") => {
+    if (loading) return;
     if (cashierBranchMissing) {
       showToast("Cabang kerja kasir belum diatur owner.", "error");
       return;
@@ -861,7 +868,7 @@ export default function POSPage() {
     if (navigator.onLine) {
       // PROSES ONLINE: Langsung POST ke API Laravel
       try {
-        await api.post("/orders", {
+        const res = await api.post("/orders", {
           branch_id: selectedBranchId,
           customer_name: customerName || "Pelanggan Umum",
           payment_method: method,
@@ -875,9 +882,26 @@ export default function POSPage() {
         playBeep();
         setReceiptId(generatedId);
         setReceiptTime(nowTime);
+        let newOrderId = null;
+        if (res.data && res.data.id) {
+          newOrderId = res.data.id;
+          setCreatedOrderId(newOrderId);
+        }
         setReceiptOpen(true);
         showToast("Transaksi berhasil diproses online!", "success");
         await loadData(true);
+
+        // Auto-send WhatsApp receipt if phone number was entered during payment
+        if (newOrderId && waRecipientPhone) {
+          try {
+            await postWhatsAppSendReceipt(newOrderId, waRecipientPhone);
+            showToast("Struk otomatis dikirim ke WhatsApp!", "success");
+            setWaSent(true);
+          } catch (waErr) {
+            console.error("Gagal mengirim struk otomatis:", waErr);
+            showToast("Gagal mengirim struk otomatis ke WhatsApp.", "warning");
+          }
+        }
 
       } catch (err: any) {
         console.error("Gagal checkout online:", err);
@@ -991,7 +1015,35 @@ export default function POSPage() {
     setCashPaid("");
     setReceiptCashPaid(0);
     setReceiptChange(0);
+    setCreatedOrderId(null);
+    setWaRecipientPhone("");
+    setWaSent(false);
   }
+
+  const handleSendWhatsAppReceipt = async () => {
+    if (!createdOrderId) return;
+    if (!waRecipientPhone) {
+      showToast("Harap masukkan nomor WhatsApp tujuan.", "warning");
+      return;
+    }
+
+    setSendingWaReceipt(true);
+    try {
+      const res = await postWhatsAppSendReceipt(createdOrderId, waRecipientPhone);
+      if (res.success) {
+        showToast(res.message || "Struk berhasil dikirim ke WhatsApp!", "success");
+        setWaSent(true);
+        setWaRecipientPhone("");
+      } else {
+        showToast(res.message || "Gagal mengirim struk.", "error");
+      }
+    } catch (err: any) {
+      const errMsg = err.response?.data?.message || "Gagal mengirim struk via WhatsApp.";
+      showToast(errMsg, "error");
+    } finally {
+      setSendingWaReceipt(false);
+    }
+  };
 
   return (
     <div className={cn("flex relative overflow-hidden", cashierMode ? "h-screen" : "h-[calc(100vh-4rem)] -m-4 lg:-m-6")}>
@@ -1659,7 +1711,7 @@ export default function POSPage() {
       {/* MODAL PEMBAYARAN */}
       <Modal open={paymentOpen} onClose={closePaymentModal} title="Pilih Metode Pembayaran" size="lg">
         <div className="space-y-4">
-          <div className="grid gap-3 md:grid-cols-[0.85fr_1.15fr] md:items-end">
+          <div className="grid gap-3 md:grid-cols-3 md:items-end">
             <div className="text-center md:text-left p-3 bg-[var(--surface-raised)] rounded-xl border border-[var(--border)]">
               <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-tertiary)]">Tagihan Pembayaran</p>
               <p className="text-xl font-black text-[var(--text-primary)] mt-1">{formatIDR(total)}</p>
@@ -1670,6 +1722,14 @@ export default function POSPage() {
               placeholder="Ketik nama pelanggan..."
               value={customerName}
               onChange={(e) => setCustomerName(e.target.value)}
+              className="h-9 text-xs"
+            />
+
+            <Input
+              label="WhatsApp Pelanggan (Opsional)"
+              placeholder="Contoh: 08123456789"
+              value={waRecipientPhone}
+              onChange={(e) => setWaRecipientPhone(e.target.value)}
               className="h-9 text-xs"
             />
           </div>
@@ -1684,12 +1744,14 @@ export default function POSPage() {
               ].map(({ icon: Icon, label, val, color }) => (
                 <button
                   key={label}
+                  disabled={loading}
                   onClick={() => (val === "cash" ? setSelectedPaymentMethod("cash") : executePayment(val))}
                   className={cn(
                     "flex h-12 items-center justify-center gap-2 rounded-xl border px-3 text-center transition-all duration-200 active:scale-95 cursor-pointer",
                     selectedPaymentMethod === val
                       ? "border-[var(--brand-500)] bg-[var(--brand-50)] text-[var(--brand-700)] dark:bg-[var(--brand-950)] dark:text-[var(--brand-300)]"
                       : "border-[var(--border)] text-[var(--text-secondary)]",
+                    loading && "opacity-50 cursor-not-allowed active:scale-100",
                     color
                   )}
                 >
@@ -1794,7 +1856,8 @@ export default function POSPage() {
               <Button
                 className="w-full h-9 text-xs font-bold shadow-sm"
                 onClick={() => executePayment("cash")}
-                disabled={!isCashEnough}
+                disabled={!isCashEnough || loading}
+                loading={loading}
               >
                 <Banknote className="w-3.5 h-3.5" /> Bayar Tunai
               </Button>
@@ -1830,6 +1893,57 @@ export default function POSPage() {
 
 
           
+          {/* WhatsApp Receipt Section */}
+          {createdOrderId ? (
+            <div className="p-3 bg-[var(--surface-raised)] rounded-lg border border-[var(--border)] space-y-2.5">
+              {waSent ? (
+                <div className="flex flex-col items-center justify-center py-2 text-center space-y-1">
+                  <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-bold text-xs">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                    Struk terkirim ke WhatsApp!
+                  </div>
+                  <p className="text-[10px] text-[var(--text-tertiary)]">
+                    Telah dikirim otomatis ke nomor yang diinput saat pembayaran.
+                  </p>
+                  <button
+                    onClick={() => setWaSent(false)}
+                    className="text-[10px] text-[var(--brand-600)] hover:underline mt-1 cursor-pointer font-semibold"
+                  >
+                    Kirim ulang / Kirim ke nomor lain
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <label className="block text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider text-left">
+                    Kirim Struk via WhatsApp
+                  </label>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Contoh: 08123456789"
+                      value={waRecipientPhone}
+                      onChange={(e) => setWaRecipientPhone(e.target.value)}
+                      className="h-9 text-xs flex-1"
+                    />
+                    <Button
+                      size="sm"
+                      className="h-9 px-4 text-xs font-bold"
+                      onClick={handleSendWhatsAppReceipt}
+                      loading={sendingWaReceipt}
+                    >
+                      Kirim
+                    </Button>
+                  </div>
+                </>
+              )}
+            </div>
+          ) : (
+            <div className="p-3 bg-[var(--surface-raised)]/50 rounded-lg border border-[var(--border)] text-center text-[10px] text-[var(--text-tertiary)]">
+              Kirim WhatsApp tidak tersedia dalam mode offline
+            </div>
+          )}
+
           <Button variant="outline" size="sm" icon={<Printer className="w-3.5 h-3.5" />} className="w-full h-9 text-xs" onClick={handlePrintReceipt} disabled={receiptPrinting}>
             {receiptPrinting ? "Mencetak..." : "Cetak Struk"}
           </Button>

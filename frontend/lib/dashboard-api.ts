@@ -25,6 +25,7 @@ export interface ApiProduct {
   cost_price: string;
   sell_price: string;
   rop: number;
+  lead_time?: number | null;
   unit: string;
   status: "active" | "inactive";
   category?: ApiCategory | null;
@@ -125,7 +126,10 @@ export interface InventoryOptimizationItem {
   eoq: number;
   currentOrderQty: number;
   leadTimeDays: number;
+  hasCustomLeadTime: boolean;
   avgDailyUsage: number;
+  totalSold: number;
+  activeDays: number;
   safetyStock: number;
   rop: number;
   suggested_rop: number;
@@ -266,5 +270,31 @@ export interface AnalyticsData {
 
 export async function fetchAnalytics(params?: { branch_id?: number | null; range?: string }) {
   const res = await api.get<AnalyticsData>("/analytics", { params });
+  return res.data;
+}
+
+export interface WhatsAppStatus {
+  connected: boolean;
+  phone: string | null;
+  error?: string;
+}
+
+export async function fetchWhatsAppStatus() {
+  const res = await api.get<WhatsAppStatus>("/whatsapp/status");
+  return res.data;
+}
+
+export async function fetchWhatsAppQr() {
+  const res = await api.get<{ qr?: string; message?: string }>("/whatsapp/qr");
+  return res.data;
+}
+
+export async function postWhatsAppLogout() {
+  const res = await api.post<{ success: boolean; message?: string }>("/whatsapp/logout");
+  return res.data;
+}
+
+export async function postWhatsAppSendReceipt(orderId: number, phone: string) {
+  const res = await api.post<{ success: boolean; message: string }>(`/whatsapp/send-receipt/${orderId}`, { phone });
   return res.data;
 }

@@ -3,6 +3,7 @@
 import React from "react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
+import { CheckCircle2, XCircle, Info, AlertTriangle } from "lucide-react";
 
 // ===== Button =====
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
@@ -437,35 +438,82 @@ interface ToastProps {
   visible: boolean;
 }
 
+const toastConfig = {
+  success: {
+    border: "border-l-emerald-500",
+    icon: <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0" />,
+    shadow: "shadow-[0_10px_25px_-5px_rgba(16,185,129,0.15)]",
+  },
+  error: {
+    border: "border-l-rose-500",
+    icon: <XCircle className="h-5 w-5 text-rose-500 shrink-0" />,
+    shadow: "shadow-[0_10px_25px_-5px_rgba(244,63,94,0.15)]",
+  },
+  info: {
+    border: "border-l-blue-500",
+    icon: <Info className="h-5 w-5 text-blue-500 shrink-0" />,
+    shadow: "shadow-[0_10px_25px_-5px_rgba(59,130,246,0.15)]",
+  },
+  warning: {
+    border: "border-l-amber-500",
+    icon: <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0" />,
+    shadow: "shadow-[0_10px_25px_-5px_rgba(245,158,11,0.15)]",
+  },
+};
+
 export function Toast({ message, type = "info", visible }: ToastProps) {
   if (!visible) return null;
 
-  const icons = {
-    success: "OK",
-    error: "X",
-    info: "i",
-    warning: "!",
-  };
-
-  const colors = {
-    success: "bg-[var(--success-500)]",
-    error: "bg-[var(--danger-500)]",
-    info: "bg-[var(--brand-600)]",
-    warning: "bg-[var(--warning-500)]",
-  };
+  const cfg = toastConfig[type];
+  const isShakeType = type === "warning" || type === "success";
+  const animationValue = isShakeType
+    ? "toast-slide-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards, toast-shake 0.5s ease-in-out 0.35s"
+    : "toast-slide-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards";
 
   return (
-    <div className="fixed bottom-6 right-6 z-[100]">
+    <>
+      <style>{`
+        @keyframes toast-slide-in {
+          from {
+            transform: translateX(120%);
+            opacity: 0;
+          }
+          to {
+            transform: translateX(0);
+            opacity: 1;
+          }
+        }
+        @keyframes toast-shake {
+          0%, 100% { transform: translateX(0); }
+          15%, 45%, 75% { transform: translateX(-6px); }
+          30%, 60%, 90% { transform: translateX(6px); }
+        }
+      `}</style>
       <div
-        className={cn(
-          "flex items-center gap-3 px-4 py-3 rounded-lg text-white shadow-[var(--shadow-md)]",
-          colors[type]
-        )}
+        className="fixed top-6 right-6 z-[100] max-w-sm"
+        style={{
+          animation: animationValue,
+        }}
       >
-        <span className="text-lg">{icons[type]}</span>
-        <span className="text-sm font-medium">{message}</span>
+        <div
+          className={cn(
+            "flex items-start gap-3.5 px-4 py-3.5 rounded-xl border border-l-4 bg-[var(--surface)] border-[var(--border)] shadow-xl",
+            cfg.border,
+            cfg.shadow
+          )}
+        >
+          <div className="mt-0.5">{cfg.icon}</div>
+          <div className="space-y-0.5 min-w-0 flex-1">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-tertiary)]">
+              {type === "success" ? "Berhasil" : type === "error" ? "Gagal" : type === "warning" ? "Peringatan" : "Info"}
+            </p>
+            <p className="text-sm font-medium text-[var(--text-primary)] leading-normal break-words">
+              {message}
+            </p>
+          </div>
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 

@@ -38,6 +38,7 @@ class ProductController extends Controller
             'cost_price' => 'numeric|min:0',
             'sell_price' => 'numeric|min:0',
             'rop' => 'integer|min:0',
+            'lead_time' => 'nullable|integer|min:1',
             'unit' => 'string|max:50',
             'status' => 'in:active,inactive',
         ]);
@@ -75,6 +76,7 @@ class ProductController extends Controller
             'cost_price' => 'numeric|min:0',
             'sell_price' => 'numeric|min:0',
             'rop' => 'integer|min:0',
+            'lead_time' => 'nullable|integer|min:1',
             'unit' => 'string|max:50',
             'status' => 'in:active,inactive',
         ]);

@@ -134,7 +134,6 @@ export const DASHBOARD_NAV: NavItem[] = [
   { label: "Produk & Stok", href: "/dashboard/inventory", icon: "Package", roles: ["owner", "manager"] },
   { label: "Stok Masuk", href: "/dashboard/inventory/stock-in", icon: "PackagePlus", roles: ["owner", "manager"] },
   { label: "Stok Keluar", href: "/dashboard/inventory/stock-out", icon: "PackageMinus", roles: ["owner", "manager"] },
-  { label: "Riwayat Stok", href: "/dashboard/inventory/history", icon: "History", roles: ["owner", "manager"] },
   { label: "Transfer Stok", href: "/dashboard/inventory/transfers", icon: "ArrowRightLeft", roles: ["owner", "manager"] },
   { label: "Stok Opname", href: "/dashboard/inventory/opname", icon: "ClipboardList", roles: ["owner", "manager"] },
   { label: "Rekomendasi Restock", href: "/dashboard/inventory/optimization", icon: "Calculator", roles: ["owner", "manager"] },

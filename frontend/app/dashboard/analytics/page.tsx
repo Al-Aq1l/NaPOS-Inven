@@ -138,6 +138,7 @@ export default function AnalitikPage() {
   const [dateRange, setDateRange] = useState<"7d" | "30d" | "month" | "year">("month");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<"sales" | "inventory" | "margin">("sales");
   const analyticsAllowed = canAccess("analytics");
   const plan = user?.tenant.plan ?? "starter";
 
@@ -287,281 +288,354 @@ export default function AnalitikPage() {
         </div>
       </div>
 
-      <div className="grid gap-3 grid-cols-2 lg:grid-cols-3">
-        <AnalyticsMetric label="Pendapatan" value={formatIDR(totalRevenue)} helper="Total" icon={<Wallet className="w-5 h-5" />} tone="blue" />
-        <AnalyticsMetric label="Transaksi" value={String(totalTransactions)} helper="Selesai" icon={<ReceiptText className="w-5 h-5" />} tone="emerald" />
-        <AnalyticsMetric label="Terlaris" value={String(plan === "starter" ? Math.min(5, topProducts.length) : Math.min(20, topProducts.length))} helper={plan === "starter" ? "Top 5 SKU" : "Top SKU"} icon={<Package className="w-5 h-5" />} tone="amber" />
-        <AnalyticsMetric label={plan === "starter" ? "Stok Kritis" : "Pelanggan"} value={plan === "starter" ? String(lowStockProducts.length) : String(uniqueCustomers)} helper={plan === "starter" ? "Perlu restock" : "Unik"} icon={plan === "starter" ? <AlertTriangle className="w-5 h-5" /> : <Users className="w-5 h-5" />} tone={plan === "starter" ? "rose" : "blue"} />
-        <AnalyticsMetric label="Modal Stok" value={formatIDR(stockValuation)} helper="Nilai HPP" icon={<Package className="w-5 h-5" />} tone="blue" />
-        <AnalyticsMetric label="Rata Belanja" value={formatIDR(avgBasket)} helper="Per pesanan" icon={<ReceiptText className="w-5 h-5" />} tone="emerald" />
-      </div>
-
       {error && (
         <Card>
           <p className="text-sm text-[var(--danger-500)]">{error}</p>
         </Card>
       )}
 
-      <TierGate required={["basic", "growth", "business"]} current={plan}>
-        <div className="grid gap-4 lg:grid-cols-3">
-          <Card className="rounded-lg shadow-[var(--shadow-sm)] h-[320px] flex flex-col" padding="none">
-            <div className="flex items-center justify-between gap-3 px-4 pb-2 pt-4">
-              <div>
-                <h3 className="text-sm font-bold leading-tight text-[var(--text-primary)]">Tren Penjualan</h3>
-                <p className="text-[11px] leading-snug text-[var(--text-tertiary)] mt-0.5">Pendapatan periode terpilih</p>
-              </div>
-              <Badge variant="brand" size="sm">Analitik</Badge>
-            </div>
-            {!hasSalesData ? (
-              <div className="flex-1 m-4 flex items-center justify-center text-center rounded-lg border border-dashed border-[var(--border)]">
-                <div>
-                  <p className="text-sm font-medium text-[var(--text-primary)]">Belum ada data penjualan</p>
-                  <p className="text-xs text-[var(--text-tertiary)] mt-1">Grafik akan muncul setelah transaksi masuk</p>
-                </div>
-              </div>
-            ) : (
-              <div className="flex-1 min-h-0 px-4 pb-4 pt-2">
-                <ChartCanvas id="sales-trend" init={(ctx) => new Chart(ctx, {
-                  type: "line",
-                  data: {
-                    labels: salesData.labels,
-                    datasets: [{
-                      label: "Pendapatan",
-                      data: salesData.values,
-                      borderColor: "#2563eb",
-                      backgroundColor: createChartGradient(ctx, "blue", 240),
-                      fill: true,
-                      tension: 0.4,
-                      borderWidth: 2,
-                      pointRadius: 0,
-                      pointHoverRadius: 4,
-                      pointHoverBackgroundColor: "#2563eb",
-                    }],
-                  },
-                  options: {
-                    maintainAspectRatio: false,
-                    responsive: true,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                      y: {
-                        beginAtZero: true,
-                        suggestedMax: Math.max(...salesData.values, 1_000_000),
-                        ticks: { color: "#9ca3af", callback: (v) => formatChartTick(Number(v)), font: { size: 10, weight: 500 } },
-                        grid: { color: "rgba(0, 0, 0, 0.04)" },
-                        border: { display: false },
-                      },
-                      x: {
-                        grid: { display: false },
-                        border: { display: false },
-                        ticks: { color: "#9ca3af", maxTicksLimit: 6, font: { size: 10, weight: 500 } },
-                      },
-                    },
-                  },
-                })} />
-              </div>
-            )}
-          </Card>
+      {/* Tab Navigation */}
+      <div className="flex border-b border-[var(--border)] gap-2 overflow-x-auto scrollbar-hide pb-0.5">
+        {(
+          [
+            { id: "sales", label: "Ikhtisar Penjualan", premium: false },
+            { id: "inventory", label: "Stok & Produk", premium: false },
+            { id: "margin", label: "Analisis Margin", premium: true },
+          ] as const
+        ).map((tab) => {
+          const isActive = activeTab === tab.id;
+          const showPremiumBadge = tab.premium && (plan === "starter" || plan === "basic");
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={cn(
+                "px-4 py-2.5 text-xs sm:text-sm font-bold transition-all border-b-2 -mb-[1.5px] whitespace-nowrap flex items-center gap-1.5",
+                isActive
+                  ? "border-[var(--brand-600)] text-[var(--brand-600)]"
+                  : "border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+              )}
+            >
+              {tab.label}
+              {showPremiumBadge && (
+                <span className="inline-flex items-center gap-0.5 rounded bg-purple-50 dark:bg-purple-950/40 px-1.5 py-0.5 text-[9px] font-bold text-purple-700 dark:text-purple-300 border border-purple-200/50 dark:border-purple-800/30">
+                  <Lock className="w-2.5 h-2.5" /> Pro
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
 
-          <Card className="rounded-lg shadow-[var(--shadow-sm)] h-[320px] flex flex-col" padding="none">
-            <div className="px-4 pb-2 pt-4">
-              <h3 className="text-sm font-bold leading-tight text-[var(--text-primary)]">Produk per Kategori</h3>
-              <p className="text-[11px] leading-snug text-[var(--text-tertiary)] mt-0.5">Komposisi SKU aktif</p>
-            </div>
-            <div className="flex-1 min-h-0 px-3 pb-4 relative">
-              <ChartCanvas id="category" init={(ctx) => new Chart(ctx, {
-                type: "doughnut",
-                data: { labels: categoryData.labels, datasets: [{ data: categoryData.values, backgroundColor: categoryData.colors, borderWidth: 0, hoverOffset: 4 }] },
-                options: { maintainAspectRatio: false, responsive: true, cutout: "65%", plugins: { legend: { position: "bottom", labels: { boxWidth: 10, padding: 8, font: { size: 10 } } } } },
-              })} />
-            </div>
-          </Card>
-
-          <Card className="rounded-lg shadow-[var(--shadow-sm)] h-[320px] flex flex-col" padding="none">
-            <div className="flex items-center justify-between px-4 pb-2 pt-4">
-              <div>
-                <h3 className="text-sm font-bold leading-tight text-[var(--text-primary)]">Analisis Jam Ramai</h3>
-                <p className="text-[11px] leading-snug text-[var(--text-tertiary)] mt-0.5">Volume transaksi harian</p>
-              </div>
-              <Badge variant="info" size="sm">Basic+</Badge>
-            </div>
-            {!hasHourlyData ? (
-              <div className="flex-1 m-4 flex items-center justify-center text-center rounded-lg border border-dashed border-[var(--border)]">
-                <div>
-                  <p className="text-sm font-medium text-[var(--text-primary)]">Belum ada transaksi</p>
-                  <p className="text-xs text-[var(--text-tertiary)] mt-1">Data muncul saat transaksi berjalan</p>
-                </div>
-              </div>
-            ) : (
-              <div className="flex-1 min-h-0 px-4 pb-4 pt-2">
-                <ChartCanvas id="hourly" init={(ctx) => new Chart(ctx, {
-                  type: "bar",
-                  data: {
-                    labels: hourlyData.labels.map((h) => `${h}:00`),
-                    datasets: [{
-                      label: "Transaksi",
-                      data: hourlyData.values,
-                      backgroundColor: hourlyData.values.map((v) => (v > 35 ? "#2563eb" : v > 20 ? "#60a5fa" : v > 10 ? "#bfdbfe" : "#eff6ff")),
-                      borderRadius: 4,
-                    }],
-                  },
-                  options: {
-                    maintainAspectRatio: false,
-                    responsive: true,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                      y: {
-                        beginAtZero: true,
-                        ticks: { color: "#9ca3af", callback: (v) => Number(v), font: { size: 10, weight: 500 } },
-                        grid: { color: "rgba(0, 0, 0, 0.04)" },
-                        border: { display: false },
-                      },
-                      x: { grid: { display: false }, border: { display: false }, ticks: { color: "#9ca3af", maxTicksLimit: 6, font: { size: 10, weight: 500 } } },
-                    },
-                  },
-                })} />
-              </div>
-            )}
-          </Card>
-        </div>
-      </TierGate>
-
-
-
-      <TierGate required={["growth", "business"]} current={plan}>
-        <div className="grid lg:grid-cols-2 gap-6">
-          <Card>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-[var(--text-primary)]">Penilaian Nilai Stok</h3>
-              <Badge variant="brand">Growth+</Badge>
-            </div>
-            <ChartCanvas id="stock-val" init={(ctx) => new Chart(ctx, {
-              type: "bar",
-              data: { labels: ["Beverages", "Snacks", "Noodles", "Dairy", "Groceries"], datasets: [{ label: "Nilai Modal", data: [8200000, 3100000, 5800000, 2400000, 4100000], backgroundColor: "#bfdbfe", borderRadius: 6 }, { label: "Nilai Jual", data: [12400000, 5200000, 8700000, 3900000, 6200000], backgroundColor: "#2563eb", borderRadius: 6 }] },
-              options: { responsive: true, plugins: { legend: { position: "bottom", labels: { boxWidth: 12, padding: 16, font: { size: 11 } } } }, scales: { y: { beginAtZero: true, ticks: { color: "#9ca3af", callback: (v) => formatChartTick(Number(v)) }, grid: { color: "rgba(0, 0, 0, 0.04)" }, border: { display: false } }, x: { grid: { display: false }, border: { display: false }, ticks: { color: "#9ca3af" } } } },
-            })} />
-          </Card>
-          <Card>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-[var(--text-primary)]">Tren Margin Kotor</h3>
-              <Badge variant="brand">Growth+</Badge>
-            </div>
-            {!canAccess("analytics.profit") ? (
-              <div className="h-48 flex items-center justify-center text-center">
-                <div><Lock className="w-8 h-8 mx-auto text-[var(--text-tertiary)] mb-2" /><p className="text-sm text-[var(--text-secondary)]">Khusus Owner/Manager</p></div>
-              </div>
-            ) : (
-              <ChartCanvas id="margin" init={(ctx) => new Chart(ctx, {
-                type: "line",
-                data: { labels: ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun"], datasets: [{ label: "Gross Margin %", data: [32, 28, 35, 33, 37, 36], borderColor: "#10b981", backgroundColor: createChartGradient(ctx, "emerald"), fill: true, tension: 0.4, borderWidth: 2, pointRadius: 0, pointHoverRadius: 4, pointHoverBackgroundColor: "#10b981" }] },
-                options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { min: 20, max: 45, ticks: { color: "#9ca3af", callback: (v) => `${v}%` }, grid: { color: "rgba(0, 0, 0, 0.04)" }, border: { display: false } }, x: { grid: { display: false }, border: { display: false }, ticks: { color: "#9ca3af" } } } },
-              })} />
-            )}
-          </Card>
-        </div>
-      </TierGate>
-
-      <Card>
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h3 className="font-semibold text-[var(--text-primary)]">Produk Terlaris</h3>
-            <p className="mt-1 text-xs text-[var(--text-tertiary)]">
-              Daftar produk paling laku berdasarkan volume penjualan untuk periode terpilih.
-            </p>
+      {/* Tab Contents */}
+      {activeTab === "sales" && (
+        <div className="space-y-6 animate-fade-in">
+          {/* Metrik Utama */}
+          <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+            <AnalyticsMetric label="Pendapatan" value={formatIDR(totalRevenue)} helper="Total" icon={<Wallet className="w-5 h-5" />} tone="blue" />
+            <AnalyticsMetric label="Transaksi" value={String(totalTransactions)} helper="Selesai" icon={<ReceiptText className="w-5 h-5" />} tone="emerald" />
+            <AnalyticsMetric label="Rata Belanja" value={formatIDR(avgBasket)} helper="Per pesanan" icon={<ReceiptText className="w-5 h-5" />} tone="emerald" />
+            <AnalyticsMetric label="Terlaris" value={String(plan === "starter" ? Math.min(5, topProducts.length) : Math.min(20, topProducts.length))} helper={plan === "starter" ? "Top 5 SKU" : "Top SKU"} icon={<Package className="w-5 h-5" />} tone="amber" />
           </div>
-          <Badge variant="brand">
-            {plan === "starter" ? "Top 5 SKU" : "Top 10 SKU"}
-          </Badge>
-        </div>
-        
-        <DataTable<TopProductRow>
-          columns={[
-            {
-              key: "rank",
-              label: "#",
-              render: (item) => <span className="font-semibold text-[var(--text-secondary)]">{item.rank}</span>,
-              className: "w-12",
-            },
-            {
-              key: "name",
-              label: "Nama Produk",
-              render: (item) => <span className="font-bold text-[var(--text-primary)]">{item.name}</span>,
-            },
-            {
-              key: "qty",
-              label: "Terjual",
-              render: (item) => <Badge variant="info">{item.qty} unit</Badge>,
-              className: "w-28",
-            },
-            {
-              key: "omset",
-              label: "Total Omset",
-              render: (item) => <span className="font-semibold text-[var(--text-primary)]">{formatIDR(item.qty * item.price)}</span>,
-              className: "w-40",
-            },
-            {
-              key: "contribution",
-              label: "Kontribusi",
-              render: (item) => {
-                const omset = item.qty * item.price;
-                const pct = totalRevenue > 0 ? (omset / totalRevenue) * 100 : 0;
-                return (
-                  <div className="flex items-center gap-2 min-w-[5rem]">
-                    <div className="flex-1 bg-[var(--slate-100)] dark:bg-[var(--slate-800)] h-1.5 rounded-full overflow-hidden">
-                      <div className="bg-[var(--brand-600)] h-full rounded-full" style={{ width: `${Math.min(100, pct)}%` }} />
+
+          <TierGate required={["basic", "growth", "business"]} current={plan}>
+            <div className="grid gap-4 lg:grid-cols-2">
+              <Card className="rounded-lg shadow-[var(--shadow-sm)] h-[320px] flex flex-col" padding="none">
+                <div className="flex items-center justify-between gap-3 px-4 pb-2 pt-4">
+                  <div>
+                    <h3 className="text-sm font-bold leading-tight text-[var(--text-primary)]">Tren Penjualan</h3>
+                    <p className="text-[11px] leading-snug text-[var(--text-tertiary)] mt-0.5">Pendapatan periode terpilih</p>
+                  </div>
+                  <Badge variant="brand" size="sm">Analitik</Badge>
+                </div>
+                {!hasSalesData ? (
+                  <div className="flex-1 m-4 flex items-center justify-center text-center rounded-lg border border-dashed border-[var(--border)]">
+                    <div>
+                      <p className="text-sm font-medium text-[var(--text-primary)]">Belum ada data penjualan</p>
+                      <p className="text-xs text-[var(--text-tertiary)] mt-1">Grafik akan muncul setelah transaksi masuk</p>
                     </div>
-                    <span className="font-mono text-xs font-semibold text-[var(--text-secondary)]">{pct.toFixed(1)}%</span>
+                  </div>
+                ) : (
+                  <div className="flex-1 min-h-0 px-4 pb-4 pt-2">
+                    <ChartCanvas id="sales-trend" init={(ctx) => new Chart(ctx, {
+                      type: "line",
+                      data: {
+                        labels: salesData.labels,
+                        datasets: [{
+                          label: "Pendapatan",
+                          data: salesData.values,
+                          borderColor: "#2563eb",
+                          backgroundColor: createChartGradient(ctx, "blue", 240),
+                          fill: true,
+                          tension: 0.4,
+                          borderWidth: 2,
+                          pointRadius: 0,
+                          pointHoverRadius: 4,
+                          pointHoverBackgroundColor: "#2563eb",
+                        }],
+                      },
+                      options: {
+                        maintainAspectRatio: false,
+                        responsive: true,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                          y: {
+                            beginAtZero: true,
+                            suggestedMax: Math.max(...salesData.values, 1_000_000),
+                            ticks: { color: "#9ca3af", callback: (v) => formatChartTick(Number(v)), font: { size: 10, weight: 500 } },
+                            grid: { color: "rgba(0, 0, 0, 0.04)" },
+                            border: { display: false },
+                          },
+                          x: {
+                            grid: { display: false },
+                            border: { display: false },
+                            ticks: { color: "#9ca3af", maxTicksLimit: 6, font: { size: 10, weight: 500 } },
+                          },
+                        },
+                      },
+                    })} />
+                  </div>
+                )}
+              </Card>
+
+              <Card className="rounded-lg shadow-[var(--shadow-sm)] h-[320px] flex flex-col" padding="none">
+                <div className="flex items-center justify-between px-4 pb-2 pt-4">
+                  <div>
+                    <h3 className="text-sm font-bold leading-tight text-[var(--text-primary)]">Analisis Jam Ramai</h3>
+                    <p className="text-[11px] leading-snug text-[var(--text-tertiary)] mt-0.5">Volume transaksi harian</p>
+                  </div>
+                  <Badge variant="info" size="sm">Basic+</Badge>
+                </div>
+                {!hasHourlyData ? (
+                  <div className="flex-1 m-4 flex items-center justify-center text-center rounded-lg border border-dashed border-[var(--border)]">
+                    <div>
+                      <p className="text-sm font-medium text-[var(--text-primary)]">Belum ada transaksi</p>
+                      <p className="text-xs text-[var(--text-tertiary)] mt-1">Data muncul saat transaksi berjalan</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex-1 min-h-0 px-4 pb-4 pt-2">
+                    <ChartCanvas id="hourly" init={(ctx) => new Chart(ctx, {
+                      type: "bar",
+                      data: {
+                        labels: hourlyData.labels.map((h) => `${h}:00`),
+                        datasets: [{
+                          label: "Transaksi",
+                          data: hourlyData.values,
+                          backgroundColor: hourlyData.values.map((v) => (v > 35 ? "#2563eb" : v > 20 ? "#60a5fa" : v > 10 ? "#bfdbfe" : "#eff6ff")),
+                          borderRadius: 4,
+                        }],
+                      },
+                      options: {
+                        maintainAspectRatio: false,
+                        responsive: true,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                          y: {
+                            beginAtZero: true,
+                            ticks: { color: "#9ca3af", callback: (v) => Number(v), font: { size: 10, weight: 500 } },
+                            grid: { color: "rgba(0, 0, 0, 0.04)" },
+                            border: { display: false },
+                          },
+                          x: { grid: { display: false }, border: { display: false }, ticks: { color: "#9ca3af", maxTicksLimit: 6, font: { size: 10, weight: 500 } } },
+                        },
+                      },
+                    })} />
+                  </div>
+                )}
+              </Card>
+            </div>
+          </TierGate>
+
+          <Card>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="font-semibold text-[var(--text-primary)]">Produk Terlaris</h3>
+                <p className="mt-1 text-xs text-[var(--text-tertiary)]">
+                  Daftar produk paling laku berdasarkan volume penjualan untuk periode terpilih.
+                </p>
+              </div>
+              <Badge variant="brand">
+                {plan === "starter" ? "Top 5 SKU" : "Top 10 SKU"}
+              </Badge>
+            </div>
+            
+            <DataTable<TopProductRow>
+              columns={[
+                {
+                  key: "rank",
+                  label: "#",
+                  render: (item) => <span className="font-semibold text-[var(--text-secondary)]">{item.rank}</span>,
+                  className: "w-12",
+                },
+                {
+                  key: "name",
+                  label: "Nama Produk",
+                  render: (item) => <span className="font-bold text-[var(--text-primary)]">{item.name}</span>,
+                },
+                {
+                  key: "qty",
+                  label: "Terjual",
+                  render: (item) => <Badge variant="info">{item.qty} unit</Badge>,
+                  className: "w-28",
+                },
+                {
+                  key: "omset",
+                  label: "Total Omset",
+                  render: (item) => <span className="font-semibold text-[var(--text-primary)]">{formatIDR(item.qty * item.price)}</span>,
+                  className: "w-40",
+                },
+                {
+                  key: "contribution",
+                  label: "Kontribusi",
+                  render: (item) => {
+                    const omset = item.qty * item.price;
+                    const pct = totalRevenue > 0 ? (omset / totalRevenue) * 100 : 0;
+                    return (
+                      <div className="flex items-center gap-2 min-w-[5rem]">
+                        <div className="flex-1 bg-[var(--slate-100)] dark:bg-[var(--slate-800)] h-1.5 rounded-full overflow-hidden">
+                          <div className="bg-[var(--brand-600)] h-full rounded-full" style={{ width: `${Math.min(100, pct)}%` }} />
+                        </div>
+                        <span className="font-mono text-xs font-semibold text-[var(--text-secondary)]">{pct.toFixed(1)}%</span>
+                      </div>
+                    );
+                  },
+                  className: "w-48",
+                },
+              ]}
+              data={topProductsWithRank.slice(0, plan === "starter" ? 5 : 10)}
+              keyExtractor={(item) => String(item.rank)}
+              emptyMessage="Belum ada transaksi untuk periode ini."
+            />
+          </Card>
+        </div>
+      )}
+
+      {activeTab === "inventory" && (
+        <div className="space-y-6 animate-fade-in">
+          {/* Metrik Stok */}
+          <div className="grid gap-3 grid-cols-2">
+            <AnalyticsMetric label="Modal Stok" value={formatIDR(stockValuation)} helper="Nilai HPP" icon={<Package className="w-5 h-5" />} tone="blue" />
+            <AnalyticsMetric label="Stok Kritis" value={String(lowStockProducts.length)} helper="Perlu restock" icon={<AlertTriangle className="w-5 h-5" />} tone="rose" />
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-2">
+            <TierGate required={["basic", "growth", "business"]} current={plan}>
+              <Card className="rounded-lg shadow-[var(--shadow-sm)] h-[320px] flex flex-col" padding="none">
+                <div className="px-4 pb-2 pt-4">
+                  <h3 className="text-sm font-bold leading-tight text-[var(--text-primary)]">Produk per Kategori</h3>
+                  <p className="text-[11px] leading-snug text-[var(--text-tertiary)] mt-0.5">Komposisi SKU aktif</p>
+                </div>
+                <div className="flex-1 min-h-0 px-3 pb-4 relative">
+                  <ChartCanvas id="category" init={(ctx) => new Chart(ctx, {
+                    type: "doughnut",
+                    data: { labels: categoryData.labels, datasets: [{ data: categoryData.values, backgroundColor: categoryData.colors, borderWidth: 0, hoverOffset: 4 }] },
+                    options: { maintainAspectRatio: false, responsive: true, cutout: "65%", plugins: { legend: { position: "bottom", labels: { boxWidth: 10, padding: 8, font: { size: 10 } } } } },
+                  })} />
+                </div>
+              </Card>
+            </TierGate>
+
+            <TierGate required={["growth", "business"]} current={plan}>
+              <Card className="rounded-lg shadow-[var(--shadow-sm)] h-[320px] flex flex-col" padding="none">
+                <div className="flex items-center justify-between px-4 pb-2 pt-4">
+                  <div>
+                    <h3 className="text-sm font-bold leading-tight text-[var(--text-primary)]">Penilaian Nilai Stok</h3>
+                    <p className="text-[11px] leading-snug text-[var(--text-tertiary)] mt-0.5">Nilai modal vs jual per kategori</p>
+                  </div>
+                  <Badge variant="brand" size="sm">Growth+</Badge>
+                </div>
+                <div className="flex-1 min-h-0 px-4 pb-4 pt-2">
+                  <ChartCanvas id="stock-val" init={(ctx) => new Chart(ctx, {
+                    type: "bar",
+                    data: { labels: ["Beverages", "Snacks", "Noodles", "Dairy", "Groceries"], datasets: [{ label: "Nilai Modal", data: [8200000, 3100000, 5800000, 2400000, 4100000], backgroundColor: "#bfdbfe", borderRadius: 6 }, { label: "Nilai Jual", data: [12400000, 5200000, 8700000, 3900000, 6200000], backgroundColor: "#2563eb", borderRadius: 6 }] },
+                    options: { maintainAspectRatio: false, responsive: true, plugins: { legend: { position: "bottom", labels: { boxWidth: 12, padding: 16, font: { size: 11 } } } }, scales: { y: { beginAtZero: true, ticks: { color: "#9ca3af", font: { size: 10 }, callback: (v) => formatChartTick(Number(v)) }, grid: { color: "rgba(0, 0, 0, 0.04)" }, border: { display: false } }, x: { grid: { display: false }, border: { display: false }, ticks: { color: "#9ca3af", font: { size: 10 } } } } },
+                  })} />
+                </div>
+              </Card>
+            </TierGate>
+          </div>
+
+          <Card>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="font-semibold text-[var(--text-primary)]">Stok Kritis (Perlu Restock)</h3>
+                <p className="mt-1 text-xs text-[var(--text-tertiary)]">Produk yang stoknya hampir habis atau sudah mencapai batas minimum.</p>
+              </div>
+              <Badge variant="warning">{lowStockProducts.length} produk</Badge>
+            </div>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
+              {lowStockProducts.slice(0, plan === "starter" ? 5 : 12).map((p) => {
+                const stock = p.stock;
+                return (
+                  <div
+                    key={p.id}
+                    className={cn(
+                      "rounded-lg border border-[var(--border)] bg-[var(--surface-raised)] p-3",
+                      stock <= 0 ? "border-l-4 border-l-rose-400" : "border-l-4 border-l-amber-400"
+                    )}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium text-[var(--text-primary)]">{p.name}</p>
+                        <p className="text-xs text-[var(--text-tertiary)] mt-1">{p.sku || "Tanpa SKU"} · Min. {p.rop}</p>
+                      </div>
+                      <Badge variant={stock <= 0 ? "danger" : "warning"} size="sm">{stock} stok</Badge>
+                    </div>
+                    <div className="mt-3 flex items-center gap-2 text-xs text-[var(--text-secondary)]">
+                      <AlertTriangle className={cn("h-3.5 w-3.5", stock <= 0 ? "text-rose-500" : "text-amber-500")} />
+                      {stock <= 0 ? "Produk habis, perlu restock." : "Stok sudah di bawah batas aman."}
+                    </div>
                   </div>
                 );
-              },
-              className: "w-48",
-            },
-          ]}
-          data={topProductsWithRank.slice(0, plan === "starter" ? 5 : 10)}
-          keyExtractor={(item) => String(item.rank)}
-          emptyMessage="Belum ada transaksi untuk periode ini."
-        />
-      </Card>
-
-      <Card>
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h3 className="font-semibold text-[var(--text-primary)]">Stok Kritis (Perlu Restock)</h3>
-            <p className="mt-1 text-xs text-[var(--text-tertiary)]">Produk yang stoknya hampir habis atau sudah mencapai batas minimum.</p>
-          </div>
-          <Badge variant="warning">{lowStockProducts.length} produk</Badge>
-        </div>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
-          {lowStockProducts.slice(0, plan === "starter" ? 5 : 12).map((p) => {
-            const stock = p.stock;
-            return (
-              <div
-                key={p.id}
-                className={cn(
-                  "rounded-lg border border-[var(--border)] bg-[var(--surface-raised)] p-3",
-                  stock <= 0 ? "border-l-4 border-l-rose-400" : "border-l-4 border-l-amber-400"
-                )}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-[var(--text-primary)]">{p.name}</p>
-                    <p className="text-xs text-[var(--text-tertiary)] mt-1">{p.sku || "Tanpa SKU"} · Min. {p.rop}</p>
-                  </div>
-                  <Badge variant={stock <= 0 ? "danger" : "warning"} size="sm">{stock} stok</Badge>
+              })}
+              {lowStockProducts.length === 0 && (
+                <div className="rounded-lg border border-dashed border-[var(--border)] p-4 text-sm text-[var(--text-secondary)]">
+                  Tidak ada stok kritis saat ini.
                 </div>
-                <div className="mt-3 flex items-center gap-2 text-xs text-[var(--text-secondary)]">
-                  <AlertTriangle className={cn("h-3.5 w-3.5", stock <= 0 ? "text-rose-500" : "text-amber-500")} />
-                  {stock <= 0 ? "Produk habis, perlu restock." : "Stok sudah di bawah batas aman."}
-                </div>
-              </div>
-            );
-          })}
-          {lowStockProducts.length === 0 && (
-            <div className="rounded-lg border border-dashed border-[var(--border)] p-4 text-sm text-[var(--text-secondary)]">
-              Tidak ada stok kritis saat ini.
+              )}
             </div>
-          )}
+          </Card>
         </div>
-      </Card>
+      )}
+
+      {activeTab === "margin" && (
+        <div className="space-y-6 animate-fade-in">
+          {/* Metrik Pelanggan */}
+          <div className="grid gap-3 grid-cols-2">
+            <AnalyticsMetric label="Pelanggan" value={String(uniqueCustomers)} helper="Unik" icon={<Users className="w-5 h-5" />} tone="blue" />
+          </div>
+
+          <TierGate required={["growth", "business"]} current={plan}>
+            <Card className="rounded-lg shadow-[var(--shadow-sm)] h-[320px] flex flex-col" padding="none">
+              <div className="flex items-center justify-between px-4 pb-2 pt-4">
+                <div>
+                  <h3 className="text-sm font-bold leading-tight text-[var(--text-primary)]">Tren Margin Kotor</h3>
+                  <p className="text-[11px] leading-snug text-[var(--text-tertiary)] mt-0.5">Persentase profit bulanan</p>
+                </div>
+                <Badge variant="brand" size="sm">Growth+</Badge>
+              </div>
+              <div className="flex-1 min-h-0 px-4 pb-4 pt-2">
+                {!canAccess("analytics.profit") ? (
+                  <div className="h-full flex items-center justify-center text-center">
+                    <div>
+                      <Lock className="w-8 h-8 mx-auto text-[var(--text-tertiary)] mb-2" />
+                      <p className="text-sm font-bold text-[var(--text-primary)]">Akses Terbatas</p>
+                      <p className="text-xs text-[var(--text-secondary)] mt-1">Khusus Owner/Manager</p>
+                    </div>
+                  </div>
+                ) : (
+                  <ChartCanvas id="margin" init={(ctx) => new Chart(ctx, {
+                    type: "line",
+                    data: { labels: ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun"], datasets: [{ label: "Gross Margin %", data: [32, 28, 35, 33, 37, 36], borderColor: "#10b981", backgroundColor: createChartGradient(ctx, "emerald", 240), fill: true, tension: 0.4, borderWidth: 2, pointRadius: 0, pointHoverRadius: 4, pointHoverBackgroundColor: "#10b981" }] },
+                    options: { maintainAspectRatio: false, responsive: true, plugins: { legend: { display: false } }, scales: { y: { min: 20, max: 45, ticks: { color: "#9ca3af", font: { size: 10 }, callback: (v) => `${v}%` }, grid: { color: "rgba(0, 0, 0, 0.04)" }, border: { display: false } }, x: { grid: { display: false }, border: { display: false }, ticks: { color: "#9ca3af", font: { size: 10 } } } } },
+                  })} />
+                )}
+              </div>
+            </Card>
+          </TierGate>
+        </div>
+      )}
     </div>
   );
 }

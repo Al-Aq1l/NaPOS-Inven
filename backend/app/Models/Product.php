@@ -21,6 +21,7 @@ class Product extends Model
         'cost_price',
         'sell_price',
         'rop',
+        'lead_time',
         'unit',
         'status',
     ];
@@ -28,6 +29,7 @@ class Product extends Model
     protected $casts = [
         'cost_price' => 'decimal:2',
         'sell_price' => 'decimal:2',
+        'lead_time' => 'integer',
     ];
 
     protected $appends = [

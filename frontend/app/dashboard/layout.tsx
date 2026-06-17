@@ -33,7 +33,6 @@ const SIDEBAR_SECTIONS = [
       "/dashboard/inventory",
       "/dashboard/inventory/stock-in",
       "/dashboard/inventory/stock-out",
-      "/dashboard/inventory/history",
       "/dashboard/inventory/transfers",
       "/dashboard/inventory/opname",
       "/dashboard/inventory/optimization",
@@ -107,31 +106,19 @@ function SidebarContent({
         <p className="text-sm font-semibold text-white leading-snug break-words">{user.tenant.name}</p>
         {(() => {
           const plan = user.tenant.plan?.toLowerCase() || 'starter';
-          if (plan === 'business') {
-            return (
-              <div className="inline-flex items-center px-3 py-0.5 rounded-full border border-[var(--brand-300)]/60 bg-gradient-to-b from-[var(--brand-700)] to-[var(--brand-900)] text-[10px] font-extrabold uppercase tracking-widest text-[var(--brand-50)] shadow-[inset_0_1px_1px_rgba(255,255,255,0.25)]">
-                Business
-              </div>
-            );
-          } else if (plan === 'growth') {
-             return (
-               <div className="inline-flex items-center px-2.5 py-0.5 rounded-full border border-[var(--brand-400)]/40 bg-[var(--brand-600)] text-[10px] font-bold uppercase tracking-widest text-white shadow-sm">
-                 Growth
-               </div>
-             );
-          } else if (plan === 'basic') {
-            return (
-              <div className="inline-flex items-center px-2.5 py-0.5 rounded-full border border-[var(--brand-500)]/30 bg-[var(--brand-500)]/15 text-[10px] font-semibold uppercase tracking-widest text-[var(--brand-200)]">
-                Basic
-              </div>
-            );
-          } else {
-            return (
-              <div className="inline-flex items-center px-2.5 py-0.5 rounded-full border border-slate-500/50 bg-transparent text-[10px] font-medium uppercase tracking-widest text-slate-400">
-                Starter
-              </div>
-            );
-          }
+          const cfg: Record<string, { label: string; dot: string; text: string; border: string; bg: string }> = {
+            starter:  { label: "Starter",  dot: "bg-slate-400",              text: "text-slate-400",              border: "border-slate-500/50",              bg: "bg-slate-400/10" },
+            basic:    { label: "Basic",    dot: "bg-[var(--brand-400)]",     text: "text-[var(--brand-200)]",     border: "border-[var(--brand-500)]/30",     bg: "bg-[var(--brand-500)]/15" },
+            growth:   { label: "Growth",   dot: "bg-[var(--brand-300)]",     text: "text-[var(--brand-100)]",     border: "border-[var(--brand-400)]/40",     bg: "bg-[var(--brand-500)]/20" },
+            business: { label: "Business", dot: "bg-[var(--brand-200)]",     text: "text-[var(--brand-50)]",      border: "border-[var(--brand-300)]/60",     bg: "bg-[var(--brand-600)]/25" },
+          };
+          const c = cfg[plan] || cfg.starter;
+          return (
+            <div className={cn("inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5", c.border, c.bg)}>
+              <span className={cn("h-1.5 w-1.5 rounded-full", c.dot)} />
+              <span className={cn("text-[11px] font-semibold uppercase tracking-wide", c.text)}>{c.label}</span>
+            </div>
+          );
         })()}
       </div>
       <nav className="flex-1 px-3 py-4 space-y-3 overflow-y-auto scrollbar-hide">
@@ -295,7 +282,6 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
     "/dashboard/inventory": "inventory",
     "/dashboard/inventory/stock-in": "inventory",
     "/dashboard/inventory/stock-out": "inventory",
-    "/dashboard/inventory/history": "inventory",
     "/dashboard/inventory/transfers": "inventory.transfers",
     "/dashboard/inventory/opname": "inventory.opname",
     "/dashboard/inventory/optimization": "inventory.optimization",
@@ -507,32 +493,56 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
       </div>
 
       {user.role !== "cashier" && notificationToastOpen && stockAlerts.length > 0 && (
-        <div className="fixed right-4 top-20 z-[60] w-[22rem] max-w-[calc(100vw-2rem)] rounded-lg border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-md)]">
-          <button
-            onClick={() => setNotificationToastOpen(false)}
-            className="absolute right-2 top-2 rounded-md px-1.5 text-sm font-bold text-[var(--text-tertiary)] hover:bg-[var(--surface-raised)] hover:text-[var(--text-primary)]"
-            aria-label="Tutup notifikasi"
-          >
-            x
-          </button>
-          <button
-            onClick={() => {
-              setNotificationToastOpen(false);
-              setNotificationOpen(true);
+        <>
+          <style>{`
+            @keyframes layout-toast-slide-in {
+              from {
+                transform: translateX(120%);
+                opacity: 0;
+              }
+              to {
+                transform: translateX(0);
+                opacity: 1;
+              }
+            }
+            @keyframes layout-toast-shake {
+              0%, 100% { transform: translateX(0); }
+              15%, 45%, 75% { transform: translateX(-6px); }
+              30%, 60%, 90% { transform: translateX(6px); }
+            }
+          `}</style>
+          <div
+            className="fixed right-4 top-20 z-[60] w-[22rem] max-w-[calc(100vw-2rem)] rounded-lg border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-md)]"
+            style={{
+              animation: "layout-toast-slide-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards, layout-toast-shake 0.5s ease-in-out 0.35s",
             }}
-            className="flex w-full items-start gap-3 p-4 pr-8 text-left"
           >
-            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-amber-50 text-amber-600 ring-1 ring-inset ring-amber-100">
-              <AlertTriangle className="h-5 w-5" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-sm font-bold text-[var(--text-primary)]">Notifikasi Stok</p>
-              <p className="mt-1 text-xs text-[var(--text-secondary)]">
-                Ada {stockAlerts.length} produk menipis atau habis. Klik untuk lihat rincian.
-              </p>
-            </div>
-          </button>
-        </div>
+            <button
+              onClick={() => setNotificationToastOpen(false)}
+              className="absolute right-2 top-2 rounded-md px-1.5 text-sm font-bold text-[var(--text-tertiary)] hover:bg-[var(--surface-raised)] hover:text-[var(--text-primary)]"
+              aria-label="Tutup notifikasi"
+            >
+              x
+            </button>
+            <button
+              onClick={() => {
+                setNotificationToastOpen(false);
+                setNotificationOpen(true);
+              }}
+              className="flex w-full items-start gap-3 p-4 pr-8 text-left"
+            >
+              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-amber-50 text-amber-600 ring-1 ring-inset ring-amber-100">
+                <AlertTriangle className="h-5 w-5" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-bold text-[var(--text-primary)]">Notifikasi Stok</p>
+                <p className="mt-1 text-xs text-[var(--text-secondary)]">
+                  Ada {stockAlerts.length} produk menipis atau habis. Klik untuk lihat rincian.
+                </p>
+              </div>
+            </button>
+          </div>
+        </>
       )}
     </div>
   );

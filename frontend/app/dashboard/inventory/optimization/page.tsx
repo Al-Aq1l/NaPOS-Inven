@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { Card, Badge, StatCard, Button, Toast } from "@/components/ui";
 import { formatIDR, formatNumber } from "@/lib/constants";
-import { Calculator, TrendingDown, AlertTriangle, Package, BarChart3, ChevronDown } from "lucide-react";
+import { Calculator, TrendingDown, AlertTriangle, Package, BarChart3, ChevronDown, Pencil, X } from "lucide-react";
 import { fetchInventoryOptimization, type InventoryOptimizationItem } from "@/lib/dashboard-api";
 import { useAuth } from "@/lib/auth-context";
 import api from "@/lib/api";
@@ -43,11 +43,58 @@ export default function OptimizationPage() {
   const [toastType, setToastType] = useState<"success" | "error" | "info" | "warning">("info");
   const [toastVisible, setToastVisible] = useState(false);
 
+  // Inline lead time editing
+  const [editingLeadTimeId, setEditingLeadTimeId] = useState<number | null>(null);
+  const [tempLeadTime, setTempLeadTime] = useState("");
+  const [savingLeadTime, setSavingLeadTime] = useState(false);
+  const leadTimeInputRef = useRef<HTMLInputElement>(null);
+  // Track data version to force refetch after lead time save
+  const [dataVersion, setDataVersion] = useState(0);
+
   const showToast = (msg: string, type: "success" | "error" | "info" | "warning" = "info") => {
     setToastMsg(msg);
     setToastType(type);
     setToastVisible(true);
     setTimeout(() => setToastVisible(false), 4000);
+  };
+
+  const startEditLeadTime = (item: InventoryOptimizationItem) => {
+    setEditingLeadTimeId(item.id);
+    setTempLeadTime(item.hasCustomLeadTime ? String(item.leadTimeDays) : "");
+    setTimeout(() => leadTimeInputRef.current?.focus(), 50);
+  };
+
+  const cancelEditLeadTime = () => {
+    setEditingLeadTimeId(null);
+    setTempLeadTime("");
+  };
+
+  const handleSaveLeadTime = async (productId: number) => {
+    if (savingLeadTime) return;
+    const val = tempLeadTime.trim();
+    const numVal = val === "" ? null : Math.max(1, parseInt(val) || 1);
+
+    try {
+      setSavingLeadTime(true);
+      const formData = new FormData();
+      formData.append("_method", "PUT");
+      formData.append("lead_time", numVal === null ? "" : String(numVal));
+      await api.post(`/products/${productId}`, formData, { headers: { "Content-Type": "multipart/form-data" } });
+      showToast(
+        numVal
+          ? `Waktu kirim produk diperbarui ke ${numVal} hari.`
+          : "Waktu kirim produk dikembalikan ke default.",
+        "success"
+      );
+      setEditingLeadTimeId(null);
+      setTempLeadTime("");
+      // Trigger refetch
+      setDataVersion((v) => v + 1);
+    } catch (err: unknown) {
+      showToast(getApiErrorMessage(err, "Gagal memperbarui waktu kirim."), "error");
+    } finally {
+      setSavingLeadTime(false);
+    }
   };
 
   const handleApply = async (productsToApply: { id: number; rop: number }[]) => {
@@ -66,8 +113,8 @@ export default function OptimizationPage() {
     let active = true;
 
     async function load() {
-      // Don't use cache if parameters changed from defaults to avoid stale custom data
-      const useCache = leadTimeDays === 5 && orderingCost === 50000 && holdingCostRate === 20;
+      // Don't use cache if parameters changed from defaults or after inline edit
+      const useCache = dataVersion === 0 && leadTimeDays === 5 && orderingCost === 50000 && holdingCostRate === 20;
       const cachedItems = readCachedItems(cacheKey);
       if (useCache && cachedItems.length > 0) {
         setItems(cachedItems);
@@ -103,7 +150,7 @@ export default function OptimizationPage() {
       active = false;
       clearTimeout(timer);
     };
-  }, [cacheKey, leadTimeDays, orderingCost, holdingCostRate]);
+  }, [cacheKey, leadTimeDays, orderingCost, holdingCostRate, dataVersion]);
 
   // Auto-apply: setiap kali data berhasil dimuat, langsung terapkan suggested_rop ke database
   useEffect(() => {
@@ -143,8 +190,8 @@ export default function OptimizationPage() {
         <div className="flex flex-col gap-6">
           <div className="flex flex-col sm:flex-row sm:items-center gap-4 justify-between pb-4 border-b border-[var(--border)]">
             <div className="w-full sm:w-1/2">
-              <h3 className="font-medium text-[var(--text-primary)]">Waktu Pengiriman Supplier</h3>
-              <p className="text-xs text-[var(--text-tertiary)] mt-1">Estimasi hari sejak pesan hingga barang tiba di toko.</p>
+              <h3 className="font-medium text-[var(--text-primary)]">Waktu Pengiriman Supplier <span className="text-xs font-normal text-[var(--text-tertiary)]">(Default)</span></h3>
+              <p className="text-xs text-[var(--text-tertiary)] mt-1">Berlaku untuk produk yang belum diatur waktu kirim spesifiknya. Atur per produk di kartu analisis bawah.</p>
             </div>
             <div className="flex items-center gap-4 w-full sm:w-1/2 lg:w-1/3">
               <span className="text-sm font-semibold w-16 text-right">{leadTimeDays} Hari</span>
@@ -276,8 +323,66 @@ export default function OptimizationPage() {
                 </div>
                 {/* Details */}
                 <div className="space-y-2 text-xs mb-4 p-3 bg-[var(--surface-raised)] rounded-lg border border-[var(--border)]">
-                  <div className="flex justify-between items-center"><span className="text-[var(--text-tertiary)]">Terjual /Hari</span><span className="text-[var(--text-primary)] font-medium">{item.avgDailyUsage} unit</span></div>
+                  <div className="flex justify-between items-start">
+                    <div className="flex flex-col">
+                      <span className="text-[var(--text-tertiary)]">Terjual /Hari</span>
+                      <span className="text-[10px] text-[var(--text-tertiary)] opacity-75">
+                        Total: {item.totalSold} unit ({item.activeDays} hari)
+                      </span>
+                    </div>
+                    <span className="text-[var(--text-primary)] font-medium">{item.avgDailyUsage} unit</span>
+                  </div>
                   <div className="flex justify-between items-center"><span className="text-[var(--text-tertiary)]">Stok Cadangan</span><span className="text-[var(--text-primary)] font-medium">{item.safetyStock} unit</span></div>
+                  {/* Inline Lead Time */}
+                  <div className="flex justify-between items-center">
+                    <span className="text-[var(--text-tertiary)]">Waktu Kirim</span>
+                    {editingLeadTimeId === item.id ? (
+                      <div className="flex items-center gap-1.5">
+                        <input
+                          ref={leadTimeInputRef}
+                          type="number"
+                          min="1"
+                          max="90"
+                          placeholder={String(leadTimeDays)}
+                          value={tempLeadTime}
+                          onChange={(e) => setTempLeadTime(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") handleSaveLeadTime(item.id);
+                            if (e.key === "Escape") cancelEditLeadTime();
+                          }}
+                          onBlur={() => {
+                            // Small delay to allow click on cancel button
+                            setTimeout(() => {
+                              if (editingLeadTimeId === item.id && !savingLeadTime) handleSaveLeadTime(item.id);
+                            }, 150);
+                          }}
+                          disabled={savingLeadTime}
+                          className="w-14 h-6 px-1.5 text-xs text-center bg-[var(--surface)] border border-[var(--brand-300)] dark:border-[var(--brand-700)] rounded focus:outline-none focus:ring-1 focus:ring-[var(--brand-500)] text-[var(--text-primary)]"
+                        />
+                        <span className="text-[var(--text-tertiary)] text-[10px]">hari</span>
+                        <button type="button" onClick={cancelEditLeadTime} className="p-0.5 text-[var(--text-tertiary)] hover:text-[var(--danger-500)] transition-colors" title="Batal">
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => startEditLeadTime(item)}
+                        className="flex items-center gap-1.5 group cursor-pointer"
+                        title="Klik untuk mengatur waktu kirim spesifik"
+                      >
+                        <span className="text-[var(--text-primary)] font-medium">{item.leadTimeDays} hari</span>
+                        <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded-full ${
+                          item.hasCustomLeadTime
+                            ? "bg-[var(--brand-50)] dark:bg-[var(--brand-950)] text-[var(--brand-600)] dark:text-[var(--brand-400)]"
+                            : "bg-[var(--slate-100)] dark:bg-[var(--slate-800)] text-[var(--text-tertiary)]"
+                        }`}>
+                          {item.hasCustomLeadTime ? "Kustom" : "Default"}
+                        </span>
+                        <Pencil className="w-3 h-3 text-[var(--text-tertiary)] opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </button>
+                    )}
+                  </div>
                   <div className="pt-2 mt-2 border-t border-[var(--border)] flex justify-between items-center">
                     <span className="text-[var(--text-secondary)] font-medium">Saran Batas Min.</span>
                     <span className="text-emerald-600 dark:text-emerald-400 font-bold text-sm bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 rounded">{item.suggested_rop} unit</span>
