@@ -93,54 +93,114 @@ class WhatsAppService
         // Load relationships if not loaded
         $order->load(['branch', 'items.product', 'user']);
 
-        $tenantName = auth()->user()->tenant->name ?? 'NaPOS Store';
-        $branchName = $order->branch->name ?? 'Utama';
-        $branchAddress = $order->branch->address ?? '';
-        $branchPhone = $order->branch->phone ?? '';
+        $width = 32;
+        $lines = [];
+
+        $tenantName = auth()->user()->tenant->name ?? 'NAPS';
+        $lines[] = $this->centerText($tenantName, $width);
+        $lines[] = $this->centerText("Smart Inventory & POS", $width);
+        
+        $branchName = $order->branch->name ?? '-';
+        $lines[] = $this->centerText("Cabang: {$branchName}", $width);
+        
+        $lines[] = str_repeat('-', $width);
 
         $invoiceNum = 'INV-' . str_pad($order->id, 6, '0', STR_PAD_LEFT);
         $date = $order->created_at->timezone('Asia/Jakarta')->format('d M Y H:i');
-        $cashier = $order->user->name ?? 'Kasir';
-
-        $receipt = "*=== STRUK BELANJA ===*\n";
-        $receipt .= "*{$tenantName}*\n";
-        $receipt .= "Cabang: {$branchName}\n";
-        if ($branchAddress) {
-            $receipt .= "{$branchAddress}\n";
-        }
-        if ($branchPhone) {
-            $receipt .= "Telp: {$branchPhone}\n";
-        }
-        $receipt .= "--------------------------------------------------\n";
-        $receipt .= "No. Transaksi : {$invoiceNum}\n";
-        $receipt .= "Tanggal : {$date}\n";
-        $receipt .= "Kasir : {$cashier}\n";
+        $cashier = $order->user->name ?? '-';
         $customerName = $order->customer_name ?: 'Pelanggan Umum';
-        $receipt .= "Pelanggan : {$customerName}\n";
-        $receipt .= "--------------------------------------------------\n\n";
+        
+        $pm = $order->payment_method;
+        if ($pm === 'cash') $paymentMethodLabel = 'Tunai';
+        elseif ($pm === 'qris') $paymentMethodLabel = 'QRIS';
+        elseif ($pm === 'transfer') $paymentMethodLabel = 'Transfer';
+        else $paymentMethodLabel = strtoupper($pm);
 
-        $itemCount = 0;
+        $lines = array_merge($lines, $this->columns("No", $invoiceNum, $width));
+        $lines = array_merge($lines, $this->columns("Waktu", $date, $width));
+        $lines = array_merge($lines, $this->columns("Kasir", $cashier, $width));
+        $lines = array_merge($lines, $this->columns("Pelanggan", $customerName, $width));
+        $lines = array_merge($lines, $this->columns("Bayar", $paymentMethodLabel, $width));
+        
+        $lines[] = str_repeat('-', $width);
+
+        $subtotalOrder = 0;
         foreach ($order->items as $item) {
-            $productName = $item->product->name ?? 'Produk';
+            $productName = $item->product->name ?? '-';
+            $lines = array_merge($lines, $this->wrapText($productName, $width));
+            
             $qty = (int) $item->quantity;
-            $price = number_format((float) $item->price, 0, ',', '.');
-            $subtotal = number_format((float) $item->subtotal, 0, ',', '.');
+            $price = (float) $item->price;
+            $subtotal = (float) $item->subtotal;
+            $grossSubtotal = $qty * $price;
+            $discountAmount = max(0, $grossSubtotal - $subtotal);
+            $subtotalOrder += $subtotal;
+            
+            $lines = array_merge($lines, $this->columns("{$qty} x " . $this->rupiah($price), $this->rupiah($grossSubtotal), $width));
 
-            $receipt .= "*{$productName}*\n";
-            $receipt .= "  {$qty} x Rp {$price} = Rp {$subtotal}\n";
-            $itemCount += $qty;
+            if ($discountAmount > 0) {
+                $lines = array_merge($lines, $this->columns("Diskon", "-" . $this->rupiah($discountAmount), $width));
+                $lines = array_merge($lines, $this->columns("Subtotal item", $this->rupiah($subtotal), $width));
+            }
         }
 
-        $receipt .= "\n--------------------------------------------------\n";
-        $receipt .= "Total Item : {$itemCount} item\n";
-        $receipt .= "*TOTAL : Rp " . number_format((float) $order->total_amount, 0, ',', '.') . "*\n";
+        $lines[] = str_repeat('-', $width);
         
-        $paymentMethod = strtoupper(str_replace('_', ' ', $order->payment_method));
-        $receipt .= "Pembayaran : {$paymentMethod}\n";
-        $receipt .= "--------------------------------------------------\n";
-        $receipt .= "Terima kasih atas kunjungan Anda!\n";
-        $receipt .= "_Powered by NaPOS - Smart Inventory & POS_";
+        $lines = array_merge($lines, $this->columns("Subtotal", $this->rupiah($subtotalOrder), $width));
+        
+        $tax = (float) $order->total_amount - $subtotalOrder;
+        if ($tax > 0) {
+            $lines = array_merge($lines, $this->columns("PPN 11%", $this->rupiah($tax), $width));
+        }
+        
+        $lines = array_merge($lines, $this->columns("Total", $this->rupiah((float) $order->total_amount), $width));
+        
+        $lines[] = str_repeat('-', $width);
+        $lines[] = $this->centerText("Terima kasih", $width);
+        $lines[] = $this->centerText("Transaksi tersimpan", $width);
 
-        return $receipt;
+        // Menggunakan triple backticks agar teks menjadi monospace di WhatsApp
+        return "```\n" . implode("\n", $lines) . "\n```";
+    }
+
+    private function centerText(string $text, int $width): string
+    {
+        $len = strlen($text);
+        if ($len >= $width) {
+            return substr($text, 0, $width);
+        }
+        $leftPadding = (int) floor(($width - $len) / 2);
+        $rightPadding = $width - $len - $leftPadding;
+        return str_repeat(' ', $leftPadding) . $text . str_repeat(' ', $rightPadding);
+    }
+
+    private function columns(string $left, string $right, int $width): array
+    {
+        $rightWidth = min(14, max(8, strlen($right)));
+        $leftWidth = $width - $rightWidth - 1;
+
+        $wrappedLeft = explode("\n", wordwrap($left, $leftWidth, "\n", true));
+        $lines = [];
+
+        foreach ($wrappedLeft as $index => $line) {
+            if ($index === 0) {
+                $lines[] = str_pad($line, $leftWidth) . ' ' . str_pad($right, $rightWidth, ' ', STR_PAD_LEFT);
+            } else {
+                $lines[] = str_pad($line, $width);
+            }
+        }
+
+        return $lines;
+    }
+
+    private function wrapText(string $text, int $width): array
+    {
+        $wrapped = wordwrap($text, $width, "\n", true);
+        return explode("\n", $wrapped === '' ? '-' : $wrapped);
+    }
+
+    private function rupiah(float $value): string
+    {
+        return 'Rp ' . number_format($value, 0, ',', '.');
     }
 }
