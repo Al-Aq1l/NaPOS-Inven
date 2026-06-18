@@ -2121,7 +2121,7 @@ export default function POSPage() {
               onClick={handleNewOrder}
               className="w-full h-11 text-xs font-bold border border-slate-200 hover:bg-slate-50 rounded-xl"
             >
-              Tutup / Mulai Pesanan Baru
+              Tutup
             </Button>
           </div>
         </div>
