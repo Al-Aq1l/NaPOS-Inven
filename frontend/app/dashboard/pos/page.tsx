@@ -109,6 +109,7 @@ type EscPosPreviewReceipt = {
   change: number | null;
   subtotal: number;
   tax: number;
+  taxRate?: number;
   total: number;
   isOffline: boolean;
   items: EscPosPreviewItem[];
@@ -205,9 +206,10 @@ function buildEscPosLines(receipt: EscPosPreviewReceipt): string[] {
     }
   }
 
+  const tRate = receipt.taxRate !== undefined ? receipt.taxRate : 11;
   lines.push("-".repeat(ESC_POS_CONTENT_WIDTH));
   lines.push(...escPosColumns("Subtotal", formatIDR(receipt.subtotal), ESC_POS_CONTENT_WIDTH));
-  lines.push(...escPosColumns("PPN 11%", formatIDR(receipt.tax), ESC_POS_CONTENT_WIDTH));
+  lines.push(...escPosColumns(`PPN ${tRate}%`, formatIDR(receipt.tax), ESC_POS_CONTENT_WIDTH));
   lines.push(...escPosColumns("Total", formatIDR(receipt.total), ESC_POS_CONTENT_WIDTH));
   if (receipt.paymentMethodLabel === "Tunai") {
     lines.push(...escPosColumns("Diterima", formatIDR(receipt.cashPaid ?? 0), ESC_POS_CONTENT_WIDTH));
@@ -318,6 +320,7 @@ export default function POSPage() {
   const router = useRouter();
   const { user, logout } = useAuth();
   const cashierMode = user?.role === "cashier";
+  const taxRate = user?.tenant?.tax_rate !== undefined ? user.tenant.tax_rate : 11;
 
   // State Data & UI
   const [search, setSearch] = useState("");
@@ -379,6 +382,7 @@ export default function POSPage() {
 
   // Ref untuk search input (keyboard shortcut)
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const cashInputRef = useRef<HTMLInputElement>(null);
 
   const showToast = (msg: string, type: "success" | "error" | "info" | "warning" = "info") => {
     setToastMsg(msg);
@@ -729,7 +733,7 @@ export default function POSPage() {
   const grossSubtotal = cart.reduce((sum, c) => sum + getItemBaseTotal(c), 0);
   const discountTotal = cart.reduce((sum, c) => sum + getItemDiscount(c), 0);
   const subtotal = cart.reduce((sum, c) => sum + getItemNetTotal(c), 0);
-  const tax = Math.round(subtotal * 0.11);
+  const tax = Math.round(subtotal * (taxRate / 100));
   const total = subtotal + tax;
   const itemCount = cart.reduce((sum, c) => sum + c.quantity, 0);
   const activeBranchName = branches.find((branch) => branch.id === selectedBranchId)?.name ?? "-";
@@ -748,6 +752,7 @@ export default function POSPage() {
     change: receiptMethod === "cash" ? receiptChange : null,
     subtotal,
     tax,
+    taxRate,
     total,
     isOffline: receiptId.includes("Offline"),
     items: cart.map((item) => ({
@@ -768,6 +773,7 @@ export default function POSPage() {
     receiptTime,
     subtotal,
     tax,
+    taxRate,
     total,
     user?.name,
   ]);
@@ -1131,7 +1137,7 @@ export default function POSPage() {
             <span>{formatIDR(subtotal)}</span>
           </div>
           <div className="receipt-row">
-            <span>PPN 11%</span>
+            <span>PPN {taxRate}%</span>
             <span>{formatIDR(tax)}</span>
           </div>
           <div className="receipt-row receipt-total">
@@ -1546,7 +1552,7 @@ export default function POSPage() {
                 <span>{formatIDR(subtotal)}</span>
               </div>
               <div className="flex justify-between text-[var(--text-secondary)]">
-                <span>Pajak PPN (11%)</span>
+                <span>Pajak PPN ({taxRate}%)</span>
                 <span>{formatIDR(tax)}</span>
               </div>
               <div className="flex justify-between rounded-xl bg-[var(--brand-50)] px-3 py-2 text-base font-extrabold text-[var(--brand-800)]">
@@ -1709,195 +1715,351 @@ export default function POSPage() {
       </Modal>
 
       {/* MODAL PEMBAYARAN */}
-      <Modal open={paymentOpen} onClose={closePaymentModal} title="Pilih Metode Pembayaran" size="lg">
-        <div className="space-y-4">
-          <div className="grid gap-3 md:grid-cols-3 md:items-end">
-            <div className="text-center md:text-left p-3 bg-[var(--surface-raised)] rounded-xl border border-[var(--border)]">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-tertiary)]">Tagihan Pembayaran</p>
-              <p className="text-xl font-black text-[var(--text-primary)] mt-1">{formatIDR(total)}</p>
+      <Modal open={paymentOpen} onClose={closePaymentModal} title="Pembayaran" size="5xl">
+        <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_1.2fr] gap-0">
+          {/* Left Column: Order Summary */}
+          <div className="md:pr-5 md:border-r border-[var(--border)] pb-4 md:pb-0">
+            {/* Items List */}
+            <div className="space-y-0 max-h-[300px] overflow-y-auto scrollbar-thin pr-1">
+              {cart.map((item, idx) => {
+                const baseTotal = getItemBaseTotal(item);
+                const disc = getItemDiscount(item);
+                const netTotal = getItemNetTotal(item);
+                return (
+                  <div key={item.id} className={cn("py-3", idx > 0 && "border-t border-dashed border-[var(--border)]")}>
+                    <div className="flex items-start gap-2.5">
+                      <span className="text-xs sm:text-sm font-black text-[var(--text-tertiary)] mt-0.5 min-w-[1.5rem]">{item.quantity}x</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs sm:text-sm font-semibold text-[var(--text-primary)] leading-snug truncate">{item.name}</p>
+                        <p className="text-[11px] sm:text-xs text-[var(--text-tertiary)] mt-0.5">
+                          @ {formatIDR(item.price)}
+                        </p>
+                      </div>
+                      <div className="text-right flex-shrink-0">
+                        {disc > 0 ? (
+                          <>
+                            <p className="text-[11px] sm:text-xs text-[var(--text-tertiary)] line-through">{formatIDR(baseTotal)}</p>
+                            <p className="text-xs sm:text-sm font-bold text-[var(--text-primary)]">{formatIDR(netTotal)}</p>
+                          </>
+                        ) : (
+                          <p className="text-xs sm:text-sm font-bold text-[var(--text-primary)]">{formatIDR(baseTotal)}</p>
+                        )}
+                      </div>
+                    </div>
+                    {disc > 0 && (
+                      <p className="text-[11px] sm:text-xs text-[var(--danger-500)] ml-[1.8rem] mt-0.5">
+                        Diskon: -{formatIDR(disc)}
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
             </div>
 
-            <Input
-              label="Nama Pelanggan (Opsional)"
-              placeholder="Ketik nama pelanggan..."
-              value={customerName}
-              onChange={(e) => setCustomerName(e.target.value)}
-              className="h-9 text-xs"
-            />
-
-            <Input
-              label="WhatsApp Pelanggan (Opsional)"
-              placeholder="Contoh: 08123456789"
-              value={waRecipientPhone}
-              onChange={(e) => setWaRecipientPhone(e.target.value)}
-              className="h-9 text-xs"
-            />
+            {/* Order Totals */}
+            <div className="border-t border-[var(--border)] mt-3 pt-3 space-y-1.5">
+              <div className="flex justify-between text-xs sm:text-sm text-[var(--text-secondary)]">
+                <span>Subtotal ({itemCount} item)</span>
+                <span>{formatIDR(subtotal)}</span>
+              </div>
+              {discountTotal > 0 && (
+                <div className="flex justify-between text-xs sm:text-sm text-[var(--danger-500)]">
+                  <span>Total Diskon</span>
+                  <span>-{formatIDR(discountTotal)}</span>
+                </div>
+              )}
+              <div className="flex justify-between text-xs sm:text-sm text-[var(--text-secondary)]">
+                <span>PPN {taxRate}%</span>
+                <span>{formatIDR(tax)}</span>
+              </div>
+              <div className="flex justify-between text-sm sm:text-base font-black text-[var(--text-primary)] pt-2 border-t border-[var(--border)]">
+                <span>Total Bayar</span>
+                <span className="text-base sm:text-lg text-[var(--brand-600)]">{formatIDR(total)}</span>
+              </div>
+            </div>
           </div>
 
-          <div className="space-y-2">
-            <p className="text-[10px] font-bold text-[var(--text-primary)] uppercase tracking-wider">Metode Pembayaran</p>
-            <div className="grid grid-cols-3 gap-2">
+          {/* Right Column: Payment Method & Interaction */}
+          <div className="border-t md:border-t-0 pt-4 md:pt-0 md:pl-5 flex flex-col">
+            {/* Customer Info Section (Moved to the right column top) */}
+            <div className="bg-[var(--surface-raised)] border border-[var(--border)] rounded-xl p-3.5 mb-4 space-y-2">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">Data Pelanggan (Opsional)</p>
+              <div className="grid grid-cols-2 gap-2.5">
+                <Input
+                  placeholder="Nama Pelanggan"
+                  value={customerName}
+                  onChange={(e) => setCustomerName(e.target.value)}
+                  className="h-10 text-xs sm:text-sm"
+                />
+                <Input
+                  placeholder="No. WhatsApp"
+                  value={waRecipientPhone}
+                  onChange={(e) => setWaRecipientPhone(e.target.value)}
+                  className="h-10 text-xs sm:text-sm"
+                />
+              </div>
+            </div>
+
+            {/* Payment Method Tabs (Redesigned as larger cards) */}
+            <div className="grid grid-cols-3 gap-2.5 mb-4">
               {[
-                { icon: Banknote, label: "Tunai", val: "cash" as const, color: "hover:border-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/20" },
-                { icon: QrCode, label: "QRIS", val: "qris" as const, color: "hover:border-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950/20" },
-                { icon: CreditCard, label: "Debit", val: "transfer" as const, color: "hover:border-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/20" },
-              ].map(({ icon: Icon, label, val, color }) => (
+                { icon: Banknote, label: "Tunai", val: "cash" as const, activeColor: "border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300 dark:border-emerald-500 border-2" },
+                { icon: QrCode, label: "QRIS", val: "qris" as const, activeColor: "border-purple-500 bg-purple-50 text-purple-700 dark:bg-purple-950/30 dark:text-purple-300 dark:border-purple-500 border-2" },
+                { icon: CreditCard, label: "Debit", val: "transfer" as const, activeColor: "border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-950/30 dark:text-blue-300 dark:border-blue-500 border-2" },
+              ].map(({ icon: Icon, label, val, activeColor }) => (
                 <button
                   key={label}
                   disabled={loading}
-                  onClick={() => (val === "cash" ? setSelectedPaymentMethod("cash") : executePayment(val))}
+                  type="button"
+                  onClick={() => setSelectedPaymentMethod(val)}
                   className={cn(
-                    "flex h-12 items-center justify-center gap-2 rounded-xl border px-3 text-center transition-all duration-200 active:scale-95 cursor-pointer",
+                    "flex flex-col items-center justify-center gap-2 h-16 rounded-2xl border text-center transition-all duration-200 active:scale-95 cursor-pointer",
                     selectedPaymentMethod === val
-                      ? "border-[var(--brand-500)] bg-[var(--brand-50)] text-[var(--brand-700)] dark:bg-[var(--brand-950)] dark:text-[var(--brand-300)]"
-                      : "border-[var(--border)] text-[var(--text-secondary)]",
-                    loading && "opacity-50 cursor-not-allowed active:scale-100",
-                    color
+                      ? activeColor
+                      : "border-[var(--border)] text-[var(--text-secondary)] bg-[var(--surface)] hover:bg-[var(--surface-raised)]",
+                    loading && "opacity-50 cursor-not-allowed active:scale-100"
                   )}
                 >
-                  <Icon className="w-4 h-4 flex-shrink-0" />
-                  <span className="text-xs font-black text-[var(--text-primary)]">{label}</span>
+                  <Icon className="w-5 h-5 flex-shrink-0" />
+                  <span className="text-xs sm:text-sm font-bold">{label}</span>
                 </button>
               ))}
             </div>
-          </div>
 
-          {selectedPaymentMethod === "cash" && (
-            <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-raised)]/45 p-3.5 space-y-2.5">
-              <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_13rem]">
-                <div className="space-y-2.5">
-                  {/* Smart Money Suggestions */}
-                  <div className="flex flex-wrap gap-1.5">
-                    {calculateSmartShortcuts(total).map((amount) => (
-                      <button
-                        key={amount}
-                        onClick={() => setCashPaid(String(amount))}
-                        className={cn(
-                          "flex-1 min-w-[4.8rem] h-8 rounded-lg border text-[10px] font-bold transition-all active:scale-95 cursor-pointer",
-                          cashPaidAmount === amount
-                            ? "border-[var(--brand-500)] bg-[var(--brand-50)] text-[var(--brand-700)] dark:bg-[var(--brand-950)] dark:text-[var(--brand-300)]"
-                            : "border-[var(--border)] text-[var(--text-primary)] hover:bg-[var(--surface-raised)]"
-                        )}
-                      >
-                        {amount === total ? "Uang Pas" : formatIDR(amount)}
-                      </button>
-                    ))}
-                  </div>
+            {/* Payment Interaction Panel */}
+            <div className="flex-1 flex flex-col justify-between">
+              {selectedPaymentMethod === "cash" && (
+                <div className="space-y-3 flex flex-col justify-between h-full">
+                  <div className="space-y-2.5">
+                    {/* Smart Money Shortcuts */}
+                    <div className="grid grid-cols-3 gap-2">
+                      {calculateSmartShortcuts(total).map((amount) => (
+                        <button
+                          key={amount}
+                          type="button"
+                          onClick={() => {
+                            setCashPaid(String(amount));
+                            cashInputRef.current?.focus();
+                          }}
+                          className={cn(
+                            "h-12 rounded-xl border text-xs sm:text-sm font-bold transition-all active:scale-95 cursor-pointer flex items-center justify-center",
+                            cashPaidAmount === amount
+                              ? "border-[var(--brand-500)] bg-[var(--brand-50)] text-[var(--brand-700)] dark:bg-[var(--brand-950)] dark:text-[var(--brand-300)] border-2"
+                              : "border-[var(--border)] text-[var(--text-primary)] hover:bg-[var(--surface-raised)] bg-[var(--surface)]"
+                          )}
+                        >
+                          {amount === total ? "Uang Pas" : formatIDR(amount)}
+                        </button>
+                      ))}
+                    </div>
 
-                  <div className="hidden md:block">
                     <Input
+                      ref={cashInputRef}
                       label="Uang Diterima"
-                      placeholder="Contoh: 15000 atau 15k"
+                      type="number"
+                      inputMode="none"
+                      placeholder="Contoh: 50000"
                       value={cashPaid}
                       onChange={(e) => setCashPaid(e.target.value)}
-                      className="h-10 text-sm font-semibold"
+                      className="h-12 text-base font-bold"
+                      autoFocus
                     />
+
+                    {/* Virtual Numpad (3-Column Mobile Style, Hidden on Desktop) */}
+                    <div className="grid grid-cols-3 gap-1.5 mt-2.5 md:hidden">
+                      {["1","2","3","4","5","6","7","8","9","000","0"].map((key) => (
+                        <button
+                          key={key}
+                          type="button"
+                          onClick={() => {
+                            setCashPaid((prev) => prev + key);
+                            cashInputRef.current?.focus();
+                          }}
+                          className="h-10 rounded-xl border border-[var(--border)] bg-[var(--surface)] text-sm font-bold text-[var(--text-primary)] hover:bg-[var(--surface-raised)] active:scale-95 transition-all cursor-pointer flex items-center justify-center"
+                        >
+                          {key}
+                        </button>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCashPaid((prev) => prev.slice(0, -1));
+                          cashInputRef.current?.focus();
+                        }}
+                        className="h-10 rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] hover:bg-[var(--surface-raised)] active:scale-95 transition-all cursor-pointer flex items-center justify-center"
+                      >
+                        <Delete className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
 
-                  {/* Cash Display - Mobile */}
-                  <div className="rounded-xl bg-[var(--surface)] border border-[var(--border)] p-2 text-center md:hidden">
-                    <p className="text-[10px] text-[var(--text-tertiary)] mb-0.5">Uang Diterima</p>
-                    <p className="text-xl font-black text-[var(--text-primary)]">
-                      {cashPaid ? formatIDR(parseCashAmount(cashPaid)) : "Rp0"}
+                  {/* Cash Summary & Pay Button */}
+                  <div className="space-y-2.5 pt-2.5 border-t border-[var(--border)]">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="rounded-xl bg-[var(--surface-raised)] border border-[var(--border)] p-2">
+                        <p className="text-[10px] text-[var(--text-secondary)] font-semibold uppercase tracking-wider">Kurang</p>
+                        <p className={cn("mt-0.5 text-sm font-black", isCashEnough ? "text-[var(--success-600)]" : "text-[var(--danger-500)]")}>
+                          {isCashEnough ? formatIDR(0) : formatIDR(total - cashPaidAmount)}
+                        </p>
+                      </div>
+                      <div className="rounded-xl bg-[var(--surface-raised)] border border-[var(--border)] p-2">
+                        <p className="text-[10px] text-[var(--text-secondary)] font-semibold uppercase tracking-wider">Kembalian</p>
+                        <p className="mt-0.5 text-sm font-black text-[var(--text-primary)]">{formatIDR(cashChange)}</p>
+                      </div>
+                    </div>
+
+                    <Button
+                      className="w-full h-12 text-sm font-bold shadow-md rounded-2xl"
+                      onClick={() => executePayment("cash")}
+                      disabled={!isCashEnough || loading}
+                      loading={loading}
+                    >
+                      <Banknote className="w-5 h-5 mr-2" /> Bayar Tunai — {formatIDR(total)}
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {selectedPaymentMethod === "qris" && (
+                <div className="space-y-4 h-full flex flex-col justify-between">
+                  <div className="flex-1 flex flex-col justify-center items-center py-2">
+                    <div className="flex flex-col items-center justify-center p-3.5 bg-white dark:bg-slate-900 border border-[var(--border)] rounded-2xl w-full max-w-[14rem] shadow-sm">
+                      <div className="w-36 h-36 bg-slate-100 dark:bg-slate-800 flex items-center justify-center rounded-xl border border-[var(--border)] relative overflow-hidden">
+                        <img
+                          src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=napos_payment_${total}`}
+                          alt="QRIS QR Code"
+                          className="w-32 h-32 object-contain"
+                        />
+                      </div>
+                      <p className="text-xs font-black text-slate-800 dark:text-slate-100 mt-2.5">{formatIDR(total)}</p>
+                      <p className="text-[9px] text-slate-400 mt-0.5 font-bold">Scan GPN / QRIS Standard</p>
+                    </div>
+                    
+                    <p className="text-[11px] text-[var(--text-secondary)] text-center max-w-[17rem] leading-relaxed mt-3">
+                      Tunjukkan QR Code di atas kepada pelanggan untuk dipindai melalui aplikasi e-wallet.
                     </p>
                   </div>
 
-                  {/* Virtual Numpad - Mobile/Touch */}
-                  <div className="grid grid-cols-3 gap-1.5 md:hidden">
-                    {["1","2","3","4","5","6","7","8","9","000","0"].map((key) => (
-                      <button
-                        key={key}
-                        onClick={() => setCashPaid((prev) => prev + key)}
-                        className="h-10 rounded-xl border border-[var(--border)] bg-[var(--surface)] text-sm font-bold text-[var(--text-primary)] hover:bg-[var(--surface-raised)] active:scale-95 transition-all cursor-pointer"
-                      >
-                        {key}
-                      </button>
-                    ))}
-                    <button
-                      onClick={() => setCashPaid((prev) => prev.slice(0, -1))}
-                      className="h-10 rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] hover:bg-[var(--surface-raised)] active:scale-95 transition-all cursor-pointer flex items-center justify-center"
-                    >
-                      <Delete className="w-4 h-4" />
-                    </button>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2.5 text-[10px]">
-                    <div className="rounded-xl bg-[var(--surface)] border border-[var(--border)] p-2">
-                      <p className="text-[var(--text-secondary)] font-semibold">Kurang</p>
-                      <p className={cn("mt-0.5 font-bold", isCashEnough ? "text-[var(--success-600)]" : "text-[var(--danger-500)]")}>
-                        {isCashEnough ? formatIDR(0) : formatIDR(total - cashPaidAmount)}
-                      </p>
-                    </div>
-                    <div className="rounded-xl bg-[var(--surface)] border border-[var(--border)] p-2">
-                      <p className="text-[var(--text-secondary)] font-semibold">Kembalian</p>
-                      <p className="mt-0.5 font-bold text-[var(--text-primary)]">{formatIDR(cashChange)}</p>
-                    </div>
-                  </div>
+                  <Button
+                    className="w-full h-12 text-sm font-bold shadow-md bg-purple-600 hover:bg-purple-700 text-white border-none rounded-2xl"
+                    onClick={() => executePayment("qris")}
+                    disabled={loading}
+                    loading={loading}
+                  >
+                    <QrCode className="w-5 h-5 mr-2" /> Konfirmasi QRIS — {formatIDR(total)}
+                  </Button>
                 </div>
+              )}
 
-                <div className="hidden md:flex flex-col justify-between rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3">
-                  <div className="space-y-2">
-                    <div>
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-tertiary)]">Diterima</p>
-                      <p className="mt-1 text-lg font-black text-[var(--text-primary)]">
-                        {cashPaid ? formatIDR(parseCashAmount(cashPaid)) : "Rp0"}
+              {selectedPaymentMethod === "transfer" && (
+                <div className="space-y-4 h-full flex flex-col justify-between">
+                  <div className="flex-1 flex flex-col justify-center items-center py-2">
+                    <div className="flex flex-col items-center justify-center p-5 bg-[var(--surface-raised)] border border-[var(--border)] rounded-2xl text-center w-full shadow-sm">
+                      <CreditCard className="w-12 h-12 text-[var(--brand-600)] mb-3 animate-pulse" />
+                      <p className="text-sm font-bold text-[var(--text-primary)]">Pembayaran Kartu / EDC</p>
+                      <p className="text-xs text-[var(--text-secondary)] mt-2 max-w-[15rem] leading-relaxed">
+                        Silakan gesek atau masukkan kartu Debit/Kredit pada mesin EDC Anda sebesar:
                       </p>
+                      <p className="text-lg font-black text-[var(--brand-600)] mt-2">{formatIDR(total)}</p>
                     </div>
-                    <div className="border-t border-[var(--border)] pt-2">
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-tertiary)]">Kembali</p>
-                      <p className={cn("mt-1 text-lg font-black", isCashEnough ? "text-[var(--success-600)]" : "text-[var(--danger-500)]")}>
-                        {isCashEnough ? formatIDR(cashChange) : formatIDR(total - cashPaidAmount)}
-                      </p>
-                    </div>
+                    
+                    <p className="text-[11px] text-[var(--text-secondary)] text-center max-w-[17rem] leading-relaxed mt-3">
+                      Tekan tombol konfirmasi di bawah jika transaksi EDC sudah selesai diproses.
+                    </p>
                   </div>
-                </div>
-              </div>
 
-              <Button
-                className="w-full h-9 text-xs font-bold shadow-sm"
-                onClick={() => executePayment("cash")}
-                disabled={!isCashEnough || loading}
-                loading={loading}
-              >
-                <Banknote className="w-3.5 h-3.5" /> Bayar Tunai
-              </Button>
+                  <Button
+                    className="w-full h-12 text-sm font-bold shadow-md bg-blue-600 hover:bg-blue-700 text-white border-none rounded-2xl"
+                    onClick={() => executePayment("transfer")}
+                    disabled={loading}
+                    loading={loading}
+                  >
+                    <CreditCard className="w-5 h-5 mr-2" /> Konfirmasi Debit — {formatIDR(total)}
+                  </Button>
+                </div>
+              )}
             </div>
-          )}
+          </div>
         </div>
       </Modal>
 
       {/* MODAL STRUK SUKSES */}
       <Modal open={receiptOpen} onClose={handleNewOrder} title="Struk Pembayaran" size="sm">
-        <div className="space-y-5">
-          <div className="text-center">
-            <div className="w-14 h-14 mx-auto bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-3.5 dark:bg-green-900/30 dark:text-green-400">
+        <div className="space-y-5 text-center">
+          {/* Header Success */}
+          <div>
+            <div className="w-14 h-14 mx-auto bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-3 dark:bg-green-900/30 dark:text-green-400">
               <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
                 <polyline points="20 6 9 17 4 12" />
               </svg>
             </div>
-            <h3 className="text-base font-bold text-[var(--text-primary)]">Pembayaran Sukses</h3>
-            <p className="text-2xl font-black text-[var(--brand-600)] mt-1">{formatIDR(total)}</p>
+            <h3 className="text-base font-bold text-[var(--text-primary)]">Pembayaran Berhasil</h3>
           </div>
-          
-          {/* ESC/POS Receipt Preview */}
-          <div className="mx-auto w-fit max-w-full overflow-x-auto">
-            <div className="relative rounded border border-[var(--border)] bg-white shadow-[var(--shadow-sm)] overflow-hidden p-3 min-w-[240px]">
-              <pre
-                aria-label="Preview struk ESC/POS"
-                className="m-0 font-mono text-[11px] leading-[1.35] text-black whitespace-pre w-max mx-auto"
-              >
-                {receiptPreviewText}
-              </pre>
+
+          {/* Structured Receipt Summary Card */}
+          <div className="relative rounded-2xl border border-[var(--border)] bg-white shadow-[var(--shadow-sm)] p-5 space-y-4">
+            {/* Header: Payment Method */}
+            <div className="flex justify-between items-center border-b border-[var(--border)] pb-3">
+              <span className="text-xs font-extrabold text-[var(--text-primary)] uppercase tracking-wide">
+                {receiptMethod === "qris" && "QRIS Dinamis"}
+                {receiptMethod === "cash" && "Tunai / Cash"}
+                {receiptMethod === "transfer" && "Transfer Bank / EDC"}
+              </span>
+              <div>
+                {receiptMethod === "qris" && <QrCode className="w-5 h-5 text-purple-600" />}
+                {receiptMethod === "cash" && <Banknote className="w-5 h-5 text-emerald-600" />}
+                {receiptMethod === "transfer" && <CreditCard className="w-5 h-5 text-blue-600" />}
+              </div>
+            </div>
+
+            {/* Amount Paid */}
+            <div className="space-y-1 py-1 text-left">
+              <span className="text-[10px] font-bold text-[var(--text-tertiary)] uppercase tracking-wider">
+                Jumlah Pembayaran
+              </span>
+              <p className="text-2xl font-black text-[var(--text-primary)]">
+                {formatIDR(total)}
+              </p>
+            </div>
+
+            {/* Details List */}
+            <div className="space-y-3 border-t border-[var(--border)] pt-4 text-xs">
+              <div className="flex flex-col space-y-0.5 text-left">
+                <span className="text-[10px] font-bold text-[var(--text-tertiary)] uppercase tracking-wider">Nomor Pesanan</span>
+                <span className="font-bold text-[var(--text-primary)]">{receiptId}</span>
+              </div>
+              <div className="flex flex-col space-y-0.5 text-left">
+                <span className="text-[10px] font-bold text-[var(--text-tertiary)] uppercase tracking-wider">Tanggal Pembayaran</span>
+                <span className="font-bold text-[var(--text-primary)]">{receiptTime || "-"}</span>
+              </div>
+              <div className="flex flex-col space-y-0.5 text-left">
+                <span className="text-[10px] font-bold text-[var(--text-tertiary)] uppercase tracking-wider">Nama Kasir</span>
+                <span className="font-bold text-[var(--text-primary)]">{user?.name || "-"}</span>
+              </div>
+              <div className="flex flex-col space-y-0.5 text-left">
+                <span className="text-[10px] font-bold text-[var(--text-tertiary)] uppercase tracking-wider">Nama Pelanggan</span>
+                <span className="font-bold text-[var(--text-primary)]">{customerName || "Pelanggan Umum"}</span>
+              </div>
+              {receiptMethod === "cash" && (
+                <>
+                  <div className="flex justify-between items-center pt-2 border-t border-[var(--border)] border-dashed">
+                    <span className="text-[10px] font-bold text-[var(--text-tertiary)] uppercase tracking-wider">Uang Diterima</span>
+                    <span className="font-bold text-[var(--text-primary)]">{formatIDR(receiptCashPaid)}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-[10px] font-bold text-[var(--text-tertiary)] uppercase tracking-wider">Kembalian</span>
+                    <span className="font-bold text-[var(--success-600)]">{formatIDR(receiptChange)}</span>
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
-
-          
           {/* WhatsApp Receipt Section */}
           {createdOrderId ? (
             <div className="p-3 bg-[var(--surface-raised)] rounded-lg border border-[var(--border)] space-y-2.5">
               {waSent ? (
-                <div className="flex flex-col items-center justify-center py-2 text-center space-y-1">
+                <div className="flex flex-col items-center justify-center py-1 text-center space-y-1">
                   <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-bold text-xs">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
                       <polyline points="20 6 9 17 4 12" />
@@ -1944,12 +2106,24 @@ export default function POSPage() {
             </div>
           )}
 
-          <Button variant="outline" size="sm" icon={<Printer className="w-3.5 h-3.5" />} className="w-full h-9 text-xs" onClick={handlePrintReceipt} disabled={receiptPrinting}>
-            {receiptPrinting ? "Mencetak..." : "Cetak Struk"}
-          </Button>
-          <Button onClick={handleNewOrder} className="w-full h-10 text-xs font-bold shadow-sm">
-            Mulai Pesanan Baru (Enter)
-          </Button>
+          {/* Action Buttons */}
+          <div className="space-y-2.5">
+            <Button
+              className="w-full h-11 text-xs font-bold shadow-sm bg-blue-600 hover:bg-blue-700 text-white rounded-xl border-none"
+              onClick={handlePrintReceipt}
+              disabled={receiptPrinting}
+            >
+              <Printer className="w-4 h-4 mr-2" />
+              {receiptPrinting ? "Mencetak..." : "Cetak Struk"}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleNewOrder}
+              className="w-full h-11 text-xs font-bold border border-slate-200 hover:bg-slate-50 rounded-xl"
+            >
+              Tutup / Mulai Pesanan Baru
+            </Button>
+          </div>
         </div>
       </Modal>
     </div>

@@ -12,6 +12,7 @@ export interface Tenant {
   plan: "starter" | "basic" | "growth" | "business";
   trialEndsAt: string | null;
   isActive: boolean;
+  tax_rate?: number;
 }
 
 export interface User {
@@ -38,6 +39,7 @@ interface AuthContextType extends AuthState {
   switchRole: (_role: UserRole) => void;
   hasRole: (...roles: UserRole[]) => boolean;
   canAccess: (feature: string) => boolean;
+  refreshUser: () => Promise<void>;
 }
 
 const FEATURE_ACCESS: Record<string, UserRole[]> = {
@@ -136,8 +138,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return planFeatures.includes(feature) || planFeatures.some((item) => feature.startsWith(`${item}.`));
   }, [state.user]);
 
+  const refreshUser = useCallback(async () => {
+    if (typeof window !== "undefined" && localStorage.getItem("access_token")) {
+      try {
+        const res = await api.get("/me");
+        setState({ user: res.data.user, isAuthenticated: true, isLoading: false });
+      } catch {
+        localStorage.removeItem("access_token");
+        setState({ user: null, isAuthenticated: false, isLoading: false });
+      }
+    }
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ ...state, login, logout, switchRole, hasRole, canAccess }}>
+    <AuthContext.Provider value={{ ...state, login, logout, switchRole, hasRole, canAccess, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

@@ -32,7 +32,7 @@ Route::middleware('auth:sanctum')->group(function () {
         });
         
         Route::middleware('role:owner')->group(function () {
-            // Route::put('/settings', [SettingsController::class, 'update']);
+            Route::put('/settings', [\App\Http\Controllers\SettingsController::class, 'update']);
         });
 
         Route::middleware('role:owner,manager')->group(function () {

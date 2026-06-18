@@ -142,10 +142,10 @@ function getSmartSummary(summary: DashboardSummary, userName: string) {
   const lines: string[] = [];
 
   if (todayRev <= 0 && todayOrders <= 0) {
-    lines.push("Belum ada transaksi hari ini. Semangat jualan! 💪");
+    lines.push("Belum ada transaksi hari ini.");
   } else {
     if (diffPercent > 0) {
-      lines.push(`Penjualan hari ini naik ~${diffPercent}% dari kemarin. Keren! 🎉`);
+      lines.push(`Penjualan hari ini naik ~${diffPercent}% dari kemarin.`);
     } else if (diffPercent < 0) {
       lines.push(`Penjualan hari ini turun ~${Math.abs(diffPercent)}% dari kemarin.`);
     } else if (yesterdayRev > 0) {
@@ -205,7 +205,7 @@ function SmartInsightsCard({ summary, userName, loading }: { summary: DashboardS
         {/* Left: Greeting + summary */}
         <div className="min-w-0">
           <h2 className="text-lg font-bold leading-snug text-white sm:text-xl">
-            {insight.greeting} 👋
+            {insight.greeting}
           </h2>
           <div className="mt-1.5 space-y-0.5">
             {insight.lines.map((line, i) => (

@@ -192,7 +192,11 @@ class EscPosReceiptPrinter
 
         $out .= $this->separator($width);
         $out .= $this->columns('Subtotal', $this->rupiah((int) ($receipt['subtotal'] ?? 0)), $width);
-        $out .= $this->columns('PPN 11%', $this->rupiah((int) ($receipt['tax'] ?? 0)), $width);
+        $taxRate = 11;
+        if (auth()->check() && auth()->user()->tenant) {
+            $taxRate = auth()->user()->tenant->tax_rate;
+        }
+        $out .= $this->columns("PPN {$taxRate}%", $this->rupiah((int) ($receipt['tax'] ?? 0)), $width);
         $out .= "\x1B\x45\x01";
         $out .= $this->columns('Total', $this->rupiah((int) ($receipt['total'] ?? 0)), $width);
         $out .= "\x1B\x45\x00";

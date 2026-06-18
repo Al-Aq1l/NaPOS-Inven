@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { Card, Button, Input, Avatar, Badge, Modal } from "@/components/ui";
 import { ROLES, type UserRole } from "@/lib/constants";
-import { Building2, Upload, Users, Bell, Shield, Mail, Phone, MapPin, Trash2, Eye, Pencil, ChevronDown, MessageSquare, QrCode } from "lucide-react";
+import { Building2, Upload, Users, Bell, Shield, Mail, Phone, MapPin, Trash2, Eye, Pencil, ChevronDown, MessageSquare, QrCode, Percent } from "lucide-react";
 import Link from "next/link";
 import api from "@/lib/api";
 import { fetchBranches, type ApiBranch, fetchWhatsAppStatus, fetchWhatsAppQr, postWhatsAppLogout } from "@/lib/dashboard-api";
@@ -36,8 +36,53 @@ const NOTIF_ITEMS = [
 ];
 
 export default function PengaturanPage() {
-  const { user, canAccess } = useAuth();
+  const { user, canAccess, refreshUser } = useAuth();
   const [members, setMembers] = useState<TeamMember[]>([]);
+
+  // Profile Settings States
+  const [businessName, setBusinessName] = useState("");
+  const [taxRate, setTaxRate] = useState("11");
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileSuccess, setProfileSuccess] = useState<string | null>(null);
+  const [profileError, setProfileError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (user?.tenant) {
+      setBusinessName(user.tenant.name);
+      setTaxRate(user.tenant.tax_rate !== undefined ? String(user.tenant.tax_rate) : "11");
+    }
+  }, [user]);
+
+  const handleSaveProfile = async () => {
+    if (!businessName.trim()) {
+      setProfileError("Nama usaha tidak boleh kosong.");
+      return;
+    }
+    const taxNum = parseInt(taxRate, 10);
+    if (isNaN(taxNum) || taxNum < 0 || taxNum > 100) {
+      setProfileError("Tarif PPN harus berupa angka antara 0% dan 100%.");
+      return;
+    }
+
+    setProfileSaving(true);
+    setProfileError(null);
+    setProfileSuccess(null);
+
+    try {
+      await api.put("/settings", {
+        name: businessName,
+        tax_rate: taxNum,
+      });
+      await refreshUser();
+      setProfileSuccess("Profil usaha berhasil diperbarui.");
+      setTimeout(() => setProfileSuccess(null), 3000);
+    } catch (err: any) {
+      console.error(err);
+      setProfileError(err.response?.data?.message || "Gagal menyimpan perubahan.");
+    } finally {
+      setProfileSaving(false);
+    }
+  };
 
   // WhatsApp States
   const [waConnected, setWaConnected] = useState(false);
@@ -317,13 +362,43 @@ export default function PengaturanPage() {
             <Button variant="ghost" size="sm" className="mt-1"><Upload className="w-3.5 h-3.5" /> Ubah Logo</Button>
           </div>
         </div>
+
+        {profileSuccess && (
+          <div className="mb-4 rounded-lg border border-[var(--success-200)] bg-[var(--success-50)] p-3 text-sm text-[var(--success-600)]">
+            {profileSuccess}
+          </div>
+        )}
+        {profileError && (
+          <div className="mb-4 rounded-lg border border-[var(--danger-200)] bg-[var(--danger-50)] p-3 text-sm text-[var(--danger-600)]">
+            {profileError}
+          </div>
+        )}
+
         <div className="grid sm:grid-cols-2 gap-4">
-          <Input label="Nama Usaha" defaultValue={user.tenant.name} leftIcon={<Building2 className="w-4 h-4" />} />
-          <Input label="Email" defaultValue={user.email} leftIcon={<Mail className="w-4 h-4" />} />
-          <Input label="Telepon" defaultValue={user.phone || "-"} leftIcon={<Phone className="w-4 h-4" />} />
-          <Input label="Alamat" defaultValue="-" leftIcon={<MapPin className="w-4 h-4" />} />
+          <Input
+            label="Nama Usaha"
+            value={businessName}
+            onChange={(e) => setBusinessName(e.target.value)}
+            leftIcon={<Building2 className="w-4 h-4" />}
+          />
+          <Input
+            label="Tarif PPN (%)"
+            type="number"
+            value={taxRate}
+            onChange={(e) => setTaxRate(e.target.value)}
+            leftIcon={<Percent className="w-4 h-4" />}
+            placeholder="Contoh: 11"
+            min={0}
+            max={100}
+          />
+          <Input label="Email Akun" disabled defaultValue={user.email} leftIcon={<Mail className="w-4 h-4" />} />
+          <Input label="Telepon" disabled defaultValue={user.phone || "-"} leftIcon={<Phone className="w-4 h-4" />} />
         </div>
-        <div className="mt-4 flex justify-end"><Button size="sm">Simpan Perubahan</Button></div>
+        <div className="mt-5 flex justify-end">
+          <Button size="sm" onClick={handleSaveProfile} loading={profileSaving}>
+            Simpan Perubahan
+          </Button>
+        </div>
       </Card>
 
       {canAccess("settings.users") ? (

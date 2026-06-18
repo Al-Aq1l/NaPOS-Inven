@@ -16,11 +16,13 @@ class Tenant extends Model
         'plan',
         'trial_ends_at',
         'is_active',
+        'tax_rate',
     ];
 
     protected $casts = [
         'trial_ends_at' => 'datetime',
         'is_active' => 'boolean',
+        'tax_rate' => 'integer',
     ];
 
     public function users(): HasMany

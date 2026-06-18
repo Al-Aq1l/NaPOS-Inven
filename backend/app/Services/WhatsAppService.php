@@ -148,9 +148,11 @@ class WhatsAppService
         
         $lines = array_merge($lines, $this->columns("Subtotal", $this->rupiah($subtotalOrder), $width));
         
+        $tenant = \App\Models\Tenant::find($order->tenant_id);
+        $taxRate = $tenant ? $tenant->tax_rate : 11;
         $tax = (float) $order->total_amount - $subtotalOrder;
         if ($tax > 0) {
-            $lines = array_merge($lines, $this->columns("PPN 11%", $this->rupiah($tax), $width));
+            $lines = array_merge($lines, $this->columns("PPN {$taxRate}%", $this->rupiah($tax), $width));
         }
         
         $lines = array_merge($lines, $this->columns("Total", $this->rupiah((float) $order->total_amount), $width));
