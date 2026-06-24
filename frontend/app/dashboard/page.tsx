@@ -593,46 +593,77 @@ export default function DashboardHome() {
             <EmptyState title="Belum ada transaksi" description="Transaksi yang masuk dari POS akan tampil di sini." />
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-[760px] w-full text-left">
-              <thead className="bg-[var(--surface-raised)] text-xs font-black uppercase tracking-[0.08em] text-[var(--text-tertiary)]">
-                <tr>
-                  <th className="px-5 py-4">No. Referensi</th>
-                  <th className="px-5 py-4">Jumlah Item</th>
-                  <th className="px-5 py-4">Pembayaran</th>
-                  <th className="px-5 py-4">Status</th>
-                  <th className="px-5 py-4">Total</th>
-                  <th className="px-5 py-4">Tanggal</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[var(--border)]">
-                {recentOrders.slice(0, 5).map((order) => (
-                  <tr
-                    key={order.id}
-                    onClick={() => setSelectedOrder(order)}
-                    className="cursor-pointer transition-colors hover:bg-[var(--surface-raised)]"
-                  >
-                    <td className="px-5 py-4 font-mono text-sm font-black text-[var(--brand-600)]">
-                      INV-{String(order.id).padStart(6, "0")}
-                    </td>
-                    <td className="px-5 py-4 text-sm font-semibold text-[var(--text-secondary)]">{order.item_count} item</td>
-                    <td className="px-5 py-4">
-                      <Badge variant="default" size="md">{formatPaymentMethod(order.payment_method)}</Badge>
-                    </td>
-                    <td className="px-5 py-4">
-                      <Badge variant={order.status === "completed" ? "success" : "warning"} size="md">
-                        {order.status === "completed" ? "Selesai" : "Proses"}
-                      </Badge>
-                    </td>
-                    <td className="px-5 py-4 text-sm font-black text-[var(--text-primary)]">{formatIDR(Number(order.total_amount))}</td>
-                    <td className="px-5 py-4 text-sm font-medium text-[var(--text-tertiary)]">
-                      {formatOrderDate(order.created_at)}, {formatOrderTime(order.created_at)}
-                    </td>
+          <>
+            {/* Desktop Table View */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="min-w-[760px] w-full text-left">
+                <thead className="bg-[var(--surface-raised)] text-xs font-black uppercase tracking-[0.08em] text-[var(--text-tertiary)]">
+                  <tr>
+                    <th className="px-5 py-4">No. Referensi</th>
+                    <th className="px-5 py-4">Jumlah Item</th>
+                    <th className="px-5 py-4">Pembayaran</th>
+                    <th className="px-5 py-4">Status</th>
+                    <th className="px-5 py-4">Total</th>
+                    <th className="px-5 py-4">Tanggal</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-[var(--border)]">
+                  {recentOrders.slice(0, 5).map((order) => (
+                    <tr
+                      key={order.id}
+                      onClick={() => setSelectedOrder(order)}
+                      className="cursor-pointer transition-colors hover:bg-[var(--surface-raised)]"
+                    >
+                      <td className="px-5 py-4 font-mono text-sm font-black text-[var(--brand-600)]">
+                        INV-{String(order.id).padStart(6, "0")}
+                      </td>
+                      <td className="px-5 py-4 text-sm font-semibold text-[var(--text-secondary)]">{order.item_count} item</td>
+                      <td className="px-5 py-4">
+                        <Badge variant="default" size="md">{formatPaymentMethod(order.payment_method)}</Badge>
+                      </td>
+                      <td className="px-5 py-4">
+                        <Badge variant={order.status === "completed" ? "success" : "warning"} size="md">
+                          {order.status === "completed" ? "Selesai" : "Proses"}
+                        </Badge>
+                      </td>
+                      <td className="px-5 py-4 text-sm font-black text-[var(--text-primary)]">{formatIDR(Number(order.total_amount))}</td>
+                      <td className="px-5 py-4 text-sm font-medium text-[var(--text-tertiary)]">
+                        {formatOrderDate(order.created_at)}, {formatOrderTime(order.created_at)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile Card List View */}
+            <div className="block md:hidden divide-y divide-[var(--border)] px-5">
+              {recentOrders.slice(0, 5).map((order) => (
+                <div
+                  key={order.id}
+                  onClick={() => setSelectedOrder(order)}
+                  className="py-4 flex flex-col gap-2 cursor-pointer active:bg-[var(--surface-raised)] transition-colors"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-sm font-black text-[var(--brand-600)]">
+                      INV-{String(order.id).padStart(6, "0")}
+                    </span>
+                    <Badge variant={order.status === "completed" ? "success" : "warning"} size="sm">
+                      {order.status === "completed" ? "Selesai" : "Proses"}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between text-xs text-[var(--text-tertiary)]">
+                    <span>{order.item_count} item · {formatPaymentMethod(order.payment_method)}</span>
+                    <span>{formatOrderDate(order.created_at)}, {formatOrderTime(order.created_at)}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-[var(--text-secondary)] font-medium">Total:</span>
+                    <span className="text-sm font-black text-[var(--text-primary)]">{formatIDR(Number(order.total_amount))}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
         )}
       </Card>
 

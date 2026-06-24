@@ -187,7 +187,8 @@ export default function StockTransfersPage() {
       {loading && <Card className="text-sm text-[var(--text-secondary)]">Memuat data transfer stok...</Card>}
 
       <Card className="overflow-hidden p-0 border border-[var(--border)]">
-        <div className="overflow-x-auto">
+        {/* Desktop View */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-[var(--border)] bg-[var(--surface-raised)] text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider">
@@ -229,7 +230,7 @@ export default function StockTransfersPage() {
                         <button
                           type="button"
                           onClick={() => setOpenActionTransferId((current) => current === transfer.id ? null : transfer.id)}
-                          className="inline-flex h-9 items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 text-xs font-semibold text-[var(--text-secondary)] transition-colors hover:border-[var(--border-hover)] hover:bg-[var(--surface-raised)] hover:text-[var(--text-primary)]"
+                          className="inline-flex h-9 items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 text-xs font-semibold text-[var(--text-secondary)] transition-colors hover:border-[var(--border-hover)] hover:bg-[var(--surface-raised)] hover:text-[var(--text-primary)] cursor-pointer"
                           aria-expanded={openActionTransferId === transfer.id}
                           aria-label={`Aksi transfer TRF-${transfer.id}`}
                         >
@@ -252,7 +253,7 @@ export default function StockTransfersPage() {
                               <button
                                 type="button"
                                 onClick={() => handleStatusUpdate(transfer.id, "received")}
-                                className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-emerald-600 hover:bg-emerald-50"
+                                className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/20"
                               >
                                 <CheckCircle2 className="h-3.5 w-3.5" />
                                 Terima
@@ -272,6 +273,83 @@ export default function StockTransfersPage() {
               })}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile View */}
+        <div className="block md:hidden divide-y divide-[var(--border)] p-4 space-y-4">
+          {transfers.length === 0 ? (
+            <div className="py-8 text-center text-sm text-[var(--text-secondary)]">Belum ada riwayat transfer stok.</div>
+          ) : (
+            transfers.map((transfer) => {
+              const item = transfer.items?.[0];
+              const productName = item?.product?.name || `Produk ID #${item?.product_id}`;
+              const qty = item?.quantity || 0;
+              return (
+                <div key={transfer.id} className="py-4 first:pt-0 last:pb-0 flex flex-col gap-3">
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-xs text-[var(--text-secondary)] font-bold">TRF-{transfer.id}</span>
+                    <Badge variant={transfer.status === "received" ? "success" : transfer.status === "in-transit" ? "warning" : "default"}>
+                      {transfer.status}
+                    </Badge>
+                  </div>
+                  <div className="text-sm">
+                    <div className="font-semibold text-[var(--text-primary)]">{productName}</div>
+                    <div className="mt-1 flex items-center gap-1.5 text-xs text-[var(--text-secondary)] bg-[var(--surface-raised)] p-2 rounded-lg border border-[var(--border)]">
+                      <span className="font-medium text-[var(--text-primary)]">{transfer.from_branch?.name}</span>
+                      <span className="text-[var(--text-tertiary)]">→</span>
+                      <span className="font-medium text-[var(--text-primary)]">{transfer.to_branch?.name}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between mt-1">
+                    <Badge variant="info">{qty} Pcs</Badge>
+                    
+                    {/* Aksi Dropdown for Mobile */}
+                    <div className="relative inline-flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => setOpenActionTransferId((current) => current === transfer.id ? null : transfer.id)}
+                        className="inline-flex h-8 items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--surface)] px-2.5 text-xs font-semibold text-[var(--text-secondary)] transition-colors hover:border-[var(--border-hover)] hover:bg-[var(--surface-raised)] hover:text-[var(--text-primary)] cursor-pointer"
+                        aria-expanded={openActionTransferId === transfer.id}
+                        aria-label={`Aksi transfer TRF-${transfer.id}`}
+                      >
+                        Aksi
+                        <ChevronDown className="h-3 w-3" />
+                      </button>
+                      {openActionTransferId === transfer.id && (
+                        <div className="absolute right-0 bottom-full z-20 mb-2 w-36 overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface)] text-left shadow-[var(--shadow-lg)]">
+                          {transfer.status === "draft" && (
+                            <button
+                              type="button"
+                              onClick={() => handleStatusUpdate(transfer.id, "in-transit")}
+                              className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--surface-raised)] hover:text-[var(--text-primary)]"
+                            >
+                              <Send className="h-3.5 w-3.5" />
+                              Kirim
+                            </button>
+                          )}
+                          {transfer.status === "in-transit" && (
+                            <button
+                              type="button"
+                              onClick={() => handleStatusUpdate(transfer.id, "received")}
+                              className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/20"
+                            >
+                              <CheckCircle2 className="h-3.5 w-3.5" />
+                              Terima
+                            </button>
+                          )}
+                          {transfer.status === "received" && (
+                            <div className="px-3 py-2 text-xs text-[var(--text-tertiary)]">
+                              Tidak ada aksi
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
         </div>
       </Card>
 

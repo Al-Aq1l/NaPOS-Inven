@@ -394,7 +394,7 @@ export default function StockOpnamePage() {
 
           {/* Stats panel */}
           {selectedBranchId && (
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 animate-fade-in-up">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 animate-fade-in-up">
               <StatCard label="Produk Diinput" value={`${stats.counted} / ${itemsArray.length}`} changeType="neutral" icon={<ClipboardList className="w-5 h-5" />} />
               <StatCard label="Total Selisih (Pcs)" value={`${stats.totalVar > 0 ? "+" : ""}${stats.totalVar}`} changeType={stats.totalVar === 0 ? "neutral" : stats.totalVar > 0 ? "positive" : "negative"} icon={<Scan className="w-5 h-5" />} />
               <StatCard label="Nilai Dampak Finansial" value={formatIDR(stats.totalValueImpact)} changeType={stats.totalValueImpact === 0 ? "neutral" : stats.totalValueImpact > 0 ? "positive" : "negative"} icon={<DollarSign className="w-5 h-5" />} />
@@ -444,16 +444,17 @@ export default function StockOpnamePage() {
                 </div>
               </div>
 
-              <div className="overflow-x-auto">
+              {/* Desktop Table View */}
+              <div className="hidden md:block overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="border-b border-[var(--border)] bg-[var(--surface-raised)] text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider">
                       <th className="p-4">Produk</th>
-                      <th className="p-4">SKU / Barcode</th>
+                      <th className="p-4 hidden sm:table-cell">SKU / Barcode</th>
                       <th className="p-4 text-center">Stok Sistem</th>
                       <th className="p-4 text-center">Stok Fisik (Input)</th>
-                      <th className="p-4 text-center">Selisih</th>
-                      <th className="p-4 text-center">Dampak Nilai</th>
+                      <th className="p-4 text-center hidden md:table-cell">Selisih</th>
+                      <th className="p-4 text-center hidden sm:table-cell">Dampak Nilai</th>
                       <th className="p-4 text-right">Reset</th>
                     </tr>
                   </thead>
@@ -474,7 +475,7 @@ export default function StockOpnamePage() {
                             <p className="font-semibold text-[var(--text-primary)]">{item.productName}</p>
                             <p className="text-xxs text-[var(--text-tertiary)] mt-0.5">Biaya: {formatIDR(item.costPrice)}</p>
                           </td>
-                          <td className="p-4 font-mono text-xs text-[var(--text-secondary)]">
+                          <td className="p-4 font-mono text-xs text-[var(--text-secondary)] hidden sm:table-cell">
                             <div>SKU: {item.sku}</div>
                             {item.barcode && <div className="text-[10px] text-[var(--text-tertiary)]">BC: {item.barcode}</div>}
                           </td>
@@ -505,7 +506,7 @@ export default function StockOpnamePage() {
                               </button>
                             </div>
                           </td>
-                          <td className="p-4 text-center font-semibold">
+                          <td className="p-4 text-center font-semibold hidden md:table-cell">
                             {variance === null ? (
                               <span className="text-[var(--text-tertiary)]">-</span>
                             ) : variance === 0 ? (
@@ -516,7 +517,7 @@ export default function StockOpnamePage() {
                               <span className="text-[var(--danger-500)]">{variance} Pcs</span>
                             )}
                           </td>
-                          <td className="p-4 text-center font-mono text-xs">
+                          <td className="p-4 text-center font-mono text-xs hidden sm:table-cell">
                             {valueImpact === null ? (
                               <span className="text-[var(--text-tertiary)]">-</span>
                             ) : valueImpact === 0 ? (
@@ -543,6 +544,99 @@ export default function StockOpnamePage() {
                     })}
                   </tbody>
                 </table>
+              </div>
+
+              {/* Mobile Card List View */}
+              <div className="block md:hidden divide-y divide-[var(--border)] p-4 space-y-4">
+                {filteredItems.length === 0 ? (
+                  <div className="py-8 text-center text-sm text-[var(--text-secondary)]">Tidak ada produk yang ditemukan.</div>
+                ) : (
+                  filteredItems.map((item) => {
+                    const physNum = item.physicalQty === "" ? null : parseInt(item.physicalQty) || 0;
+                    const variance = physNum !== null ? physNum - item.systemQty : null;
+                    const valueImpact = variance !== null ? variance * item.costPrice : null;
+
+                    return (
+                      <div key={item.productId} className="py-4 first:pt-0 last:pb-0 flex flex-col gap-3">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <p className="font-semibold text-[var(--text-primary)] text-sm">{item.productName}</p>
+                            <p className="text-xs text-[var(--text-tertiary)] mt-0.5">Biaya: {formatIDR(item.costPrice)}</p>
+                          </div>
+                          {item.physicalQty !== "" && (
+                            <button
+                              type="button"
+                              className="p-1.5 rounded text-[var(--text-tertiary)] hover:text-[var(--danger-500)] hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors cursor-pointer"
+                              onClick={() => handleClearPhysicalQty(item.productId)}
+                              title="Reset input"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+
+                        <div className="text-xs text-[var(--text-secondary)] space-y-1">
+                          <p><span className="text-[var(--text-tertiary)]">SKU:</span> <span className="font-mono">{item.sku}</span></p>
+                          {item.barcode && <p><span className="text-[var(--text-tertiary)]">Barcode:</span> <span className="font-mono">{item.barcode}</span></p>}
+                          <p><span className="text-[var(--text-tertiary)]">Stok Sistem:</span> <span className="font-semibold text-[var(--text-primary)]">{item.systemQty} Pcs</span></p>
+                        </div>
+
+                        <div className="flex items-center justify-between mt-1 pt-2 border-t border-dashed border-[var(--border)]">
+                          <span className="text-xs text-[var(--text-tertiary)]">Stok Fisik:</span>
+                          <div className="flex items-center gap-1.5">
+                            <button 
+                              type="button"
+                              className="w-8 h-8 flex items-center justify-center border border-[var(--border)] rounded-md hover:bg-[var(--slate-100)] dark:hover:bg-[var(--slate-800)] text-sm cursor-pointer select-none active:scale-95 transition-transform"
+                              onClick={() => adjustPhysicalQty(item.productId, -1)}
+                            >
+                              -
+                            </button>
+                            <input
+                              type="number"
+                              min="0"
+                              placeholder={String(item.systemQty)}
+                              value={item.physicalQty}
+                              onChange={(e) => updatePhysicalQty(item.productId, e.target.value)}
+                              className="w-16 h-8 text-center border border-[var(--border)] rounded-md text-xs bg-[var(--surface)] text-[var(--text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--ring)]"
+                            />
+                            <button 
+                              type="button"
+                              className="w-8 h-8 flex items-center justify-center border border-[var(--border)] rounded-md hover:bg-[var(--slate-100)] dark:hover:bg-[var(--slate-800)] text-sm cursor-pointer select-none active:scale-95 transition-transform"
+                              onClick={() => adjustPhysicalQty(item.productId, 1)}
+                            >
+                              +
+                            </button>
+                          </div>
+                        </div>
+
+                        {variance !== null && (
+                          <div className="flex items-center justify-between text-xs bg-[var(--surface-raised)] p-2 rounded-lg border border-[var(--border)]">
+                            <div>
+                              <span className="text-[var(--text-tertiary)]">Selisih:</span>{" "}
+                              {variance === 0 ? (
+                                <span className="text-gray-400 font-semibold">Pas</span>
+                              ) : variance > 0 ? (
+                                <span className="text-[var(--success-500)] font-semibold">+{variance} Pcs</span>
+                              ) : (
+                                <span className="text-[var(--danger-500)] font-semibold">{variance} Pcs</span>
+                              )}
+                            </div>
+                            <div>
+                              <span className="text-[var(--text-tertiary)]">Dampak:</span>{" "}
+                              {valueImpact === 0 ? (
+                                <span className="text-gray-400 font-semibold">Rp 0</span>
+                              ) : valueImpact !== null && valueImpact > 0 ? (
+                                <span className="text-[var(--success-500)] font-semibold">+{formatIDR(valueImpact)}</span>
+                              ) : (
+                                valueImpact !== null && <span className="text-[var(--danger-500)] font-semibold">{formatIDR(valueImpact)}</span>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
               </div>
             </Card>
           ) : (

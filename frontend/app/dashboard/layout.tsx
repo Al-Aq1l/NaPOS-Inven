@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, Suspense } from "react";
+import React, { useEffect, useState, Suspense, useMemo } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -57,13 +57,15 @@ function SidebarContent({
   currentHref,
   setSidebarOpen,
   onClose,
+  isCollapsed = false,
 }: {
-  user: { tenant: { name: string; plan: string }; role: UserRole };
+  user: { name: string; tenant: { name: string; plan: string }; role: UserRole };
   navItems: Array<{ href: string; label: string; icon: string }>;
   pathname: string;
   currentHref: string;
   setSidebarOpen: React.Dispatch<React.SetStateAction<boolean>>;
   onClose?: () => void;
+  isCollapsed?: boolean;
 }) {
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     operations: true,
@@ -80,49 +82,64 @@ function SidebarContent({
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#1f2a37] text-slate-300">
-      <div className="relative flex items-center justify-center px-4 h-28 bg-[radial-gradient(circle_at_1px_1px,rgba(255,255,255,0.08)_1px,transparent_0)] [background-size:12px_12px]">
-        <Image
-          src="/logo2.png"
-          alt="NAPS"
-          width={190}
-          height={76}
-          priority
-          className="h-16 w-auto object-contain"
-        />
-        {onClose && (
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Tutup menu"
-            title="Tutup menu"
-            className="absolute right-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-white/[0.08] hover:text-white"
+    <div className="relative flex flex-col h-full bg-[#0a1321] text-slate-200 overflow-hidden select-none">
+      <div className={cn(
+        "relative flex items-center justify-center transition-all duration-300 z-10 bg-[radial-gradient(circle_at_1px_1px,rgba(255,255,255,0.08)_1px,transparent_0)] [background-size:12px_12px]",
+        isCollapsed ? "h-20 px-0" : "px-4 h-28"
+      )}>
+        {isCollapsed ? (
+          <div
+            className="hover:scale-105 transition-transform duration-200 cursor-pointer overflow-hidden relative h-10 w-10 flex items-center justify-center rounded-lg"
+            title={user.tenant.name}
           >
-            <PanelLeftClose className="h-4 w-4" />
-          </button>
+            <Image
+              src="/NaPOS LOGO.png"
+              alt="NaPOS"
+              width={40}
+              height={44}
+              priority
+              className="max-w-none h-11 w-10 object-contain -translate-y-0.5"
+            />
+          </div>
+        ) : (
+          <Image
+            src="/logo2.png"
+            alt="NAPS"
+            width={190}
+            height={76}
+            priority
+            className="h-16 w-auto object-contain"
+          />
         )}
       </div>
-      <div className="mx-3 mt-5 px-4 py-3 rounded-xl bg-white/[0.06] shadow-[0_10px_24px_-18px_rgba(0,0,0,0.85),inset_0_1px_0_rgba(255,255,255,0.06)] space-y-2">
-        <p className="text-sm font-semibold text-white leading-snug break-words">{user.tenant.name}</p>
-        {(() => {
-          const plan = user.tenant.plan?.toLowerCase() || 'starter';
-          const cfg: Record<string, { label: string; dot: string; text: string; border: string; bg: string }> = {
-            starter:  { label: "Starter",  dot: "bg-slate-400",              text: "text-slate-400",              border: "border-slate-500/50",              bg: "bg-slate-400/10" },
-            basic:    { label: "Basic",    dot: "bg-[var(--brand-400)]",     text: "text-[var(--brand-200)]",     border: "border-[var(--brand-500)]/30",     bg: "bg-[var(--brand-500)]/15" },
-            growth:   { label: "Growth",   dot: "bg-[var(--brand-300)]",     text: "text-[var(--brand-100)]",     border: "border-[var(--brand-400)]/40",     bg: "bg-[var(--brand-500)]/20" },
-            business: { label: "Business", dot: "bg-[var(--brand-200)]",     text: "text-[var(--brand-50)]",      border: "border-[var(--brand-300)]/60",     bg: "bg-[var(--brand-600)]/25" },
-          };
-          const c = cfg[plan] || cfg.starter;
-          return (
-            <div className={cn("inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5", c.border, c.bg)}>
-              <span className={cn("h-1.5 w-1.5 rounded-full", c.dot)} />
-              <span className={cn("text-[11px] font-semibold uppercase tracking-wide", c.text)}>{c.label}</span>
-            </div>
-          );
-        })()}
-      </div>
-      <nav className="flex-1 px-3 py-4 space-y-3 overflow-y-auto scrollbar-hide">
-        {SIDEBAR_SECTIONS.map((section) => {
+
+      {!isCollapsed && (
+        <div className="mx-3 mt-5 px-4 py-3 rounded-xl bg-white/[0.06] shadow-[0_10px_24px_-18px_rgba(0,0,0,0.85),inset_0_1px_0_rgba(255,255,255,0.06)] space-y-2 z-10">
+          <p className="text-sm font-semibold text-white leading-snug break-words">{user.tenant.name}</p>
+          {(() => {
+            const plan = user.tenant.plan?.toLowerCase() || 'starter';
+            const cfg: Record<string, { label: string; dot: string; text: string; border: string; bg: string }> = {
+              starter: { label: "Starter", dot: "bg-slate-400", text: "text-slate-400", border: "border-slate-500/50", bg: "bg-slate-400/10" },
+              basic: { label: "Basic", dot: "bg-[var(--brand-400)]", text: "text-[var(--brand-200)]", border: "border-[var(--brand-500)]/30", bg: "bg-[var(--brand-500)]/15" },
+              growth: { label: "Growth", dot: "bg-[var(--brand-300)]", text: "text-[var(--brand-100)]", border: "border-[var(--brand-400)]/40", bg: "bg-[var(--brand-500)]/20" },
+              business: { label: "Business", dot: "bg-[var(--brand-200)]", text: "text-[var(--brand-50)]", border: "border-[var(--brand-300)]/60", bg: "bg-[var(--brand-600)]/25" },
+            };
+            const c = cfg[plan] || cfg.starter;
+            return (
+              <div className={cn("inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5", c.border, c.bg)}>
+                <span className={cn("h-1.5 w-1.5 rounded-full", c.dot)} />
+                <span className={cn("text-[11px] font-semibold uppercase tracking-wide", c.text)}>{c.label}</span>
+              </div>
+            );
+          })()}
+        </div>
+      )}
+
+      <nav className={cn(
+        "flex-1 overflow-y-auto scrollbar-hide transition-all duration-300 z-10",
+        isCollapsed ? "px-2 py-4 space-y-4" : "px-3 py-4 space-y-3"
+      )}>
+        {SIDEBAR_SECTIONS.map((section, sectionIdx) => {
           const sectionItems = section.items
             .map((href) => navItems.find((item) => item.href === href))
             .filter((item): item is NonNullable<typeof item> => Boolean(item));
@@ -133,17 +150,21 @@ function SidebarContent({
 
           return (
             <div key={section.id} className="space-y-1">
-              <button
-                type="button"
-                onClick={() => toggleSection(section.id)}
-                className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-[11px] font-bold uppercase tracking-[0.08em] text-slate-500 transition-colors hover:bg-white/[0.04] hover:text-slate-300 cursor-pointer"
-              >
-                <span>{section.label}</span>
-                <ChevronDown className={cn("h-3.5 w-3.5 transition-transform duration-200", sectionOpen ? "rotate-0" : "-rotate-90")} />
-              </button>
+              {isCollapsed ? (
+                sectionIdx > 0 && <div className="border-t my-3 mx-2" style={{ borderColor: 'rgba(255,255,255,0.03)' }} />
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => toggleSection(section.id)}
+                  className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-[11px] font-bold uppercase tracking-[0.08em] text-slate-400 transition-colors hover:bg-white/[0.04] hover:text-slate-200 cursor-pointer"
+                >
+                  <span>{section.label}</span>
+                  <ChevronDown className={cn("h-3.5 w-3.5 transition-transform duration-200", sectionOpen ? "rotate-0" : "-rotate-90")} />
+                </button>
+              )}
 
-              {sectionOpen && (
-                <div className="space-y-1">
+              {(sectionOpen || isCollapsed) && (
+                <div className={cn("space-y-1", isCollapsed && "flex flex-col items-center")}>
                   {sectionItems.map((item) => {
                     const Icon = ICONS[item.icon] || LayoutDashboard;
                     const itemPath = item.href.split("?")[0];
@@ -163,15 +184,32 @@ function SidebarContent({
                         key={item.href}
                         href={item.href}
                         onClick={() => setSidebarOpen(false)}
+                        title={isCollapsed ? item.label : undefined}
                         className={cn(
-                          "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors duration-150",
-                          active
-                            ? "bg-white/10 text-white"
-                            : "text-slate-400 hover:bg-white/[0.06] hover:text-slate-100"
+                          "flex items-center transition-all duration-150 relative group",
+                          isCollapsed
+                            ? cn(
+                              "justify-center h-11 w-11 rounded-xl my-1 mx-auto",
+                              active
+                                ? "bg-white/10 text-white"
+                                : "text-slate-400 hover:bg-white/[0.08] hover:text-white"
+                            )
+                            : cn(
+                              "gap-3 rounded-lg px-3 py-2.5 text-sm font-medium",
+                              active
+                                ? "bg-white/10 text-white"
+                                : "text-slate-400 hover:bg-white/[0.06] hover:text-slate-100"
+                            )
                         )}
                       >
                         <Icon className="h-5 w-5 flex-shrink-0" />
-                        <span className="min-w-0 flex-1 truncate">{item.label}</span>
+                        {!isCollapsed && <span className="min-w-0 flex-1 truncate">{item.label}</span>}
+
+                        {isCollapsed && (
+                          <div className="absolute left-full ml-3 px-2 py-1 bg-slate-900 text-white text-xs font-medium rounded opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none whitespace-nowrap shadow-md z-[70] border border-white/5">
+                            {item.label}
+                          </div>
+                        )}
                       </Link>
                     );
                   })}
@@ -181,11 +219,7 @@ function SidebarContent({
           );
         })}
       </nav>
-      <div className="px-3 py-3">
-        <div className="w-full px-3 py-2 text-xs font-medium text-slate-400 bg-white/[0.04] rounded-lg">
-          Role login: {user.role}
-        </div>
-      </div>
+
     </div>
   );
 }
@@ -338,17 +372,19 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
     <div className="flex h-screen bg-[var(--background)]">
       <aside
         className={cn(
-          "hidden lg:flex flex-col overflow-hidden bg-[#1f2a37] transition-[width] duration-300 ease-in-out",
-          desktopSidebarOpen ? "lg:w-64" : "lg:w-0",
+          "hidden lg:flex flex-col overflow-hidden transition-[width] duration-300 ease-in-out border-r",
+          desktopSidebarOpen ? "lg:w-64" : "lg:w-20",
         )}
+        style={{ borderColor: 'rgba(255,255,255,0.03)' }}
       >
-        <div className={cn("h-full w-64 transition-opacity duration-200", desktopSidebarOpen ? "opacity-100" : "opacity-0")}>
+        <div className="h-full w-full">
           <SidebarContent
             user={user}
             navItems={navItems}
             pathname={pathname}
             currentHref={currentHref}
             setSidebarOpen={setSidebarOpen}
+            isCollapsed={!desktopSidebarOpen}
             onClose={() => setDesktopSidebarOpen(false)}
           />
         </div>
@@ -361,7 +397,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
           />
           <aside
             className={cn(
-              "absolute inset-y-0 left-0 w-64 bg-[#1f2a37] shadow-[var(--shadow-xl)] transition-transform duration-200 ease-out",
+              "absolute inset-y-0 left-0 w-64 shadow-[var(--shadow-xl)] transition-transform duration-200 ease-out",
               sidebarClosing ? "-translate-x-full" : "translate-x-0 animate-slide-in-left",
             )}
           >
@@ -372,6 +408,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
               currentHref={currentHref}
               setSidebarOpen={setSidebarOpen}
               onClose={closeMobileSidebar}
+              isCollapsed={false}
             />
           </aside>
         </div>
@@ -379,16 +416,23 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
       <div className="flex-1 flex flex-col min-w-0">
         <header className="h-16 flex items-center justify-between px-4 lg:px-6 border-b border-[var(--border)] bg-[var(--surface)]">
           <div className="flex items-center gap-3">
+            {/* Mobile Hamburger menu */}
             <button
               onClick={openSidebar}
               aria-label="Buka menu"
               title="Buka menu"
-              className={cn(
-                "p-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer",
-                desktopSidebarOpen && "lg:hidden",
-              )}
+              className="lg:hidden p-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
             >
               <Menu className="w-5 h-5" />
+            </button>
+            {/* Desktop Collapse/Expand sidebar */}
+            <button
+              onClick={() => setDesktopSidebarOpen(!desktopSidebarOpen)}
+              aria-label={desktopSidebarOpen ? "Sembunyikan menu" : "Tampilkan menu"}
+              title={desktopSidebarOpen ? "Sembunyikan menu" : "Tampilkan menu"}
+              className="hidden lg:inline-flex p-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-raised)] rounded-lg transition-colors cursor-pointer mr-1"
+            >
+              <PanelLeftClose className={cn("w-5 h-5 transition-transform duration-200", !desktopSidebarOpen && "rotate-180")} />
             </button>
             <h1 className="text-lg font-semibold text-[var(--text-primary)] hidden sm:block">
               {currentNavLabel || "Dasbor"}

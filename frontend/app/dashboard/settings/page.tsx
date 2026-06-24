@@ -46,6 +46,52 @@ export default function PengaturanPage() {
   const [profileSuccess, setProfileSuccess] = useState<string | null>(null);
   const [profileError, setProfileError] = useState<string | null>(null);
 
+  // Logo States & Handlers
+  const [logoBase64, setLogoBase64] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (user?.tenant?.id) {
+      const stored = localStorage.getItem(`naps_logo_${user.tenant.id}`);
+      setLogoBase64(stored);
+    }
+  }, [user]);
+
+  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!user?.tenant?.id) {
+      setProfileError("Sesi usaha tidak ditemukan.");
+      return;
+    }
+
+    if (file.size > 2 * 1024 * 1024) {
+      setProfileError("Ukuran logo maksimal 2MB.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64 = reader.result as string;
+      localStorage.setItem(`naps_logo_${user.tenant.id}`, base64);
+      setLogoBase64(base64);
+      window.dispatchEvent(new Event("naps_logo_updated"));
+      setProfileSuccess("Logo usaha berhasil diperbarui.");
+      setTimeout(() => setProfileSuccess(null), 3000);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveLogo = () => {
+    if (user?.tenant?.id && confirm("Apakah Anda yakin ingin menghapus logo usaha?")) {
+      localStorage.removeItem(`naps_logo_${user.tenant.id}`);
+      setLogoBase64(null);
+      window.dispatchEvent(new Event("naps_logo_updated"));
+      setProfileSuccess("Logo usaha berhasil dihapus.");
+      setTimeout(() => setProfileSuccess(null), 3000);
+    }
+  };
+
   useEffect(() => {
     if (user?.tenant) {
       setBusinessName(user.tenant.name);
@@ -342,436 +388,499 @@ export default function PengaturanPage() {
   if (!user) return null;
 
   return (
-    <div className="max-w-4xl space-y-6 animate-fade-in">
+    <div className="max-w-6xl space-y-6 animate-fade-in">
       <div>
         <h1 className="text-2xl font-bold text-[var(--text-primary)]">Pengaturan</h1>
         <p className="text-sm text-[var(--text-secondary)] mt-1">Kelola profil usaha dan preferensi aplikasi</p>
       </div>
 
-      <Card>
-        <div className="flex items-center gap-2 mb-6">
-          <Building2 className="w-5 h-5 text-[var(--brand-600)]" />
-          <h2 className="font-semibold text-[var(--text-primary)]">Profil Usaha</h2>
-        </div>
-        <div className="flex items-center gap-4 mb-6">
-          <div className="w-16 h-16 bg-[var(--brand-100)] rounded-xl flex items-center justify-center text-2xl font-bold text-[var(--brand-700)] dark:bg-[var(--brand-900)] dark:text-[var(--brand-300)]">
-            {initials}
-          </div>
-          <div>
-            <p className="font-semibold text-[var(--text-primary)]">{user.tenant.name}</p>
-            <Button variant="ghost" size="sm" className="mt-1"><Upload className="w-3.5 h-3.5" /> Ubah Logo</Button>
-          </div>
-        </div>
-
-        {profileSuccess && (
-          <div className="mb-4 rounded-lg border border-[var(--success-200)] bg-[var(--success-50)] p-3 text-sm text-[var(--success-600)]">
-            {profileSuccess}
-          </div>
-        )}
-        {profileError && (
-          <div className="mb-4 rounded-lg border border-[var(--danger-200)] bg-[var(--danger-50)] p-3 text-sm text-[var(--danger-600)]">
-            {profileError}
-          </div>
-        )}
-
-        <div className="grid sm:grid-cols-2 gap-4">
-          <Input
-            label="Nama Usaha"
-            value={businessName}
-            onChange={(e) => setBusinessName(e.target.value)}
-            leftIcon={<Building2 className="w-4 h-4" />}
-          />
-          <Input
-            label="Tarif PPN (%)"
-            type="number"
-            value={taxRate}
-            onChange={(e) => setTaxRate(e.target.value)}
-            leftIcon={<Percent className="w-4 h-4" />}
-            placeholder="Contoh: 11"
-            min={0}
-            max={100}
-          />
-          <Input label="Email Akun" disabled defaultValue={user.email} leftIcon={<Mail className="w-4 h-4" />} />
-          <Input label="Telepon" disabled defaultValue={user.phone || "-"} leftIcon={<Phone className="w-4 h-4" />} />
-        </div>
-        <div className="mt-5 flex justify-end">
-          <Button size="sm" onClick={handleSaveProfile} loading={profileSaving}>
-            Simpan Perubahan
-          </Button>
-        </div>
-      </Card>
-
-      {canAccess("settings.users") ? (
-        <Card>
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-2">
-              <Users className="w-5 h-5 text-[var(--brand-600)]" />
-              <h2 className="font-semibold text-[var(--text-primary)]">Tim</h2>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left Column — Main Settings */}
+        <div className="lg:col-span-2 space-y-6">
+          <Card>
+            <div className="flex items-center gap-2 mb-6">
+              <Building2 className="w-5 h-5 text-[var(--brand-600)]" />
+              <h2 className="font-semibold text-[var(--text-primary)]">Profil Usaha</h2>
             </div>
-            <Button size="sm" icon={<Users className="w-4 h-4" />} onClick={openInviteModal}>Undang Anggota</Button>
-          </div>
-          {teamError && (
-            <div className="mb-4 rounded-lg border border-[var(--danger-200)] bg-[var(--danger-50)] p-3 text-sm text-[var(--danger-600)]">
-              {teamError}
-            </div>
-          )}
-          <div className="space-y-3">
-            {members.map((member) => (
-              <div key={member.id} className="flex flex-col gap-3 p-3 rounded-lg hover:bg-[var(--surface-raised)] transition-colors sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-center gap-3">
-                  <Avatar name={member.name} size="sm" />
-                  <div>
-                    <p className="text-sm font-medium text-[var(--text-primary)]">{member.name}</p>
-                    <p className="text-xs text-[var(--text-tertiary)]">{member.email}</p>
-                    <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                      <Badge variant="brand" size="sm">{ROLES[member.role].label}</Badge>
-                      {member.role === "cashier" && (
-                        <Badge variant={member.branchName ? "success" : "warning"} size="sm">
-                          {member.branchName ?? "Cabang belum diatur"}
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                </div>
-                <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-                  {member.status === "invited" && <Badge variant="warning" size="sm">Diundang</Badge>}
-                  {savingMemberId === member.id && <Badge variant="brand" size="sm">Menyimpan</Badge>}
-                  <div className="relative">
-                    <button
-                      type="button"
-                      onClick={() => setOpenActionMemberId((current) => current === member.id ? null : member.id)}
-                      disabled={savingMemberId === member.id}
-                      className="inline-flex h-9 items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 text-xs font-semibold text-[var(--text-secondary)] transition-colors hover:border-[var(--border-hover)] hover:bg-[var(--surface-raised)] hover:text-[var(--text-primary)] disabled:opacity-60"
-                      aria-expanded={openActionMemberId === member.id}
-                      aria-label={`Aksi ${member.name}`}
-                    >
-                      Aksi
-                      <ChevronDown className="h-3.5 w-3.5" />
-                    </button>
-                    {openActionMemberId === member.id && (
-                      <div className="absolute right-0 top-full z-20 mt-2 w-36 overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-lg)]">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setDetailMember(member);
-                            setOpenActionMemberId(null);
-                          }}
-                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--surface-raised)] hover:text-[var(--text-primary)]"
-                        >
-                          <Eye className="h-3.5 w-3.5" />
-                          Detail
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            openEditMember(member);
-                            setOpenActionMemberId(null);
-                          }}
-                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--surface-raised)] hover:text-[var(--text-primary)]"
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                          Edit
-                        </button>
-                        {member.role !== "owner" && (
-                          <button
-                            type="button"
-                            onClick={() => setOpenActionMemberId(null)}
-                            className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-[var(--danger-500)] hover:bg-[var(--danger-50)]"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                            Delete
-                          </button>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-          <Modal open={inviteOpen} onClose={() => setInviteOpen(false)} title="Undang Anggota" size="md">
-            <form onSubmit={submitInvite} className="space-y-4">
-              <Input
-                label="Nama"
-                value={inviteForm.name}
-                onChange={(event) => setInviteForm((current) => ({ ...current, name: event.target.value }))}
-                placeholder="Nama anggota"
-                required
-              />
-              <Input
-                label="Email"
-                type="email"
-                value={inviteForm.email}
-                onChange={(event) => setInviteForm((current) => ({ ...current, email: event.target.value }))}
-                placeholder="staff@bisnis.com"
-                required
-              />
-              <Input
-                label="Password awal"
-                type="password"
-                value={inviteForm.password}
-                onChange={(event) => setInviteForm((current) => ({ ...current, password: event.target.value }))}
-                placeholder="Minimal 8 karakter"
-                required
-                minLength={8}
-              />
-              <div>
-                <label className="mb-1.5 block text-sm font-medium text-[var(--text-secondary)]">Role</label>
-                <select
-                  value={inviteForm.role}
-                  onChange={(event) => setInviteForm((current) => ({
-                    ...current,
-                    role: event.target.value as UserRole,
-                    branchId: event.target.value === "cashier" ? current.branchId || String(branches[0]?.id ?? "") : "",
-                  }))}
-                  className="h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--text-primary)]"
-                >
-                  {(Object.keys(ROLES) as UserRole[]).map((role) => (
-                    <option key={role} value={role}>{ROLES[role].label}</option>
-                  ))}
-                </select>
-              </div>
-              {inviteForm.role === "cashier" && (
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-[var(--text-secondary)]">Cabang kerja</label>
-                  <select
-                    value={inviteForm.branchId}
-                    onChange={(event) => setInviteForm((current) => ({ ...current, branchId: event.target.value }))}
-                    className="h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--text-primary)]"
-                    required
+            
+            <div className="flex items-center gap-4 mb-6">
+              {logoBase64 ? (
+                <div className="relative w-16 h-16 rounded-xl overflow-hidden border border-[var(--border)] group shrink-0">
+                  <img src={logoBase64} alt="Business Logo" className="w-full h-full object-cover" />
+                  <button 
+                    type="button"
+                    onClick={handleRemoveLogo}
+                    className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white text-xs transition-opacity duration-150 cursor-pointer font-semibold"
                   >
-                    <option value="" disabled>Pilih cabang</option>
-                    {branches.map((branch) => (
-                      <option key={branch.id} value={branch.id}>{branch.name}</option>
-                    ))}
-                  </select>
+                    Hapus
+                  </button>
+                </div>
+              ) : (
+                <div className="w-16 h-16 bg-[var(--brand-100)] rounded-xl flex items-center justify-center text-2xl font-bold text-[var(--brand-700)] dark:bg-[var(--brand-900)] dark:text-[var(--brand-300)] shrink-0">
+                  {initials}
                 </div>
               )}
-              <div className="rounded-lg bg-[var(--surface-raised)] p-3 text-xs leading-relaxed text-[var(--text-secondary)]">
-                Untuk demo, akun dibuat langsung dengan password awal. Berikan email dan password ini ke anggota tim.
+              <div>
+                <p className="font-semibold text-[var(--text-primary)]">{user.tenant.name}</p>
+                <div className="flex items-center gap-2 mt-1.5">
+                  <label className="inline-flex items-center gap-1.5 h-8 px-3 text-xs font-semibold text-[var(--text-secondary)] border border-[var(--border)] hover:bg-[var(--slate-50)] dark:hover:bg-[var(--slate-800)] rounded-lg transition-colors cursor-pointer select-none">
+                    <Upload className="w-3.5 h-3.5" /> 
+                    Ubah Logo
+                    <input type="file" accept="image/*" className="hidden" onChange={handleLogoChange} />
+                  </label>
+                  {logoBase64 && (
+                    <Button variant="ghost" size="sm" className="text-[var(--danger-600)] hover:bg-[var(--danger-50)] h-8" onClick={handleRemoveLogo}>
+                      Hapus
+                    </Button>
+                  )}
+                </div>
               </div>
-              <div className="flex justify-end gap-2 pt-2">
-                <Button type="button" variant="outline" onClick={() => setInviteOpen(false)}>Batal</Button>
-                <Button type="submit" loading={inviteSaving}>Tambah Anggota</Button>
+            </div>
+
+            {profileSuccess && (
+              <div className="mb-4 rounded-lg border border-[var(--success-200)] bg-[var(--success-50)] p-3 text-sm text-[var(--success-600)] animate-fade-in">
+                {profileSuccess}
               </div>
-            </form>
-          </Modal>
-          <Modal open={!!detailMember} onClose={() => setDetailMember(null)} title="Detail Anggota" size="md">
-            {detailMember && (
+            )}
+            {profileError && (
+              <div className="mb-4 rounded-lg border border-[var(--danger-200)] bg-[var(--danger-50)] p-3 text-sm text-[var(--danger-600)] animate-fade-in">
+                {profileError}
+              </div>
+            )}
+
+            <div className="grid sm:grid-cols-2 gap-4">
+              <Input
+                label="Nama Usaha"
+                value={businessName}
+                onChange={(e) => setBusinessName(e.target.value)}
+                leftIcon={<Building2 className="w-4 h-4" />}
+              />
+              <Input
+                label="Tarif PPN (%)"
+                type="number"
+                value={taxRate}
+                onChange={(e) => setTaxRate(e.target.value)}
+                leftIcon={<Percent className="w-4 h-4" />}
+                placeholder="Contoh: 11"
+                min={0}
+                max={100}
+              />
+              <Input label="Email Akun" disabled defaultValue={user.email} leftIcon={<Mail className="w-4 h-4" />} />
+              <Input label="Telepon" disabled defaultValue={user.phone || "-"} leftIcon={<Phone className="w-4 h-4" />} />
+            </div>
+            <div className="mt-5 flex justify-end">
+              <Button size="sm" onClick={handleSaveProfile} loading={profileSaving}>
+                Simpan Perubahan
+              </Button>
+            </div>
+          </Card>
+
+          {/* WhatsApp Integration Card */}
+          <Card>
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-2">
+                <MessageSquare className="w-5 h-5 text-[var(--brand-600)]" />
+                <h2 className="font-semibold text-[var(--text-primary)]">Integrasi WhatsApp Struk</h2>
+              </div>
+              <Badge variant={waConnected ? "success" : "warning"}>
+                {waConnected ? "Terhubung" : "Belum Terhubung"}
+              </Badge>
+            </div>
+
+            {waError && (
+              <div className="mb-4 rounded-lg border border-[var(--danger-200)] bg-[var(--danger-50)] p-3 text-sm text-[var(--danger-600)]">
+                {waError}
+              </div>
+            )}
+
+            {waLoading ? (
+              <div className="text-center py-6 text-sm text-[var(--text-secondary)]">
+                Memuat status integrasi...
+              </div>
+            ) : waConnected ? (
               <div className="space-y-4">
-                <div className="flex items-center gap-3 rounded-lg bg-[var(--surface-raised)] p-3">
-                  <Avatar name={detailMember.name} size="md" />
-                  <div>
-                    <p className="text-sm font-bold text-[var(--text-primary)]">{detailMember.name}</p>
-                    <p className="text-xs text-[var(--text-tertiary)]">{detailMember.email}</p>
+                <div className="rounded-lg bg-[var(--surface-raised)] p-4 border border-[var(--border)]">
+                  <p className="text-sm font-medium text-[var(--text-primary)]">WhatsApp Terkoneksi</p>
+                  <p className="text-xs text-[var(--text-secondary)] mt-1">
+                    Akun WhatsApp Anda telah aktif sebagai pengirim struk belanja otomatis.
+                  </p>
+                  <div className="mt-3 flex items-center gap-2 text-sm text-[var(--text-primary)] font-bold">
+                    <Phone className="w-4 h-4 text-[var(--brand-600)]" />
+                    +{waPhone}
                   </div>
                 </div>
-                <div className="grid gap-3 text-sm">
-                  <div className="flex items-center justify-between rounded-lg border border-[var(--border)] p-3">
-                    <span className="text-[var(--text-secondary)]">Role</span>
-                    <Badge variant="brand" size="sm">{ROLES[detailMember.role].label}</Badge>
-                  </div>
-                  <div className="flex items-center justify-between rounded-lg border border-[var(--border)] p-3">
-                    <span className="text-[var(--text-secondary)]">Cabang kerja</span>
-                    <span className="font-medium text-[var(--text-primary)]">
-                      {detailMember.role === "cashier" ? detailMember.branchName ?? "Belum diatur" : "Semua cabang"}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between rounded-lg border border-[var(--border)] p-3">
-                    <span className="text-[var(--text-secondary)]">Status</span>
-                    <Badge variant={detailMember.status === "active" ? "success" : "warning"} size="sm">
-                      {detailMember.status === "active" ? "Aktif" : "Diundang"}
-                    </Badge>
-                  </div>
-                </div>
-                <div className="flex justify-end gap-2 pt-2">
-                  <Button variant="outline" onClick={() => setDetailMember(null)}>Tutup</Button>
-                  <Button onClick={() => {
-                    openEditMember(detailMember);
-                    setDetailMember(null);
-                  }}>
-                    Edit
+                <div className="flex justify-end">
+                  <Button
+                    variant="outline"
+                    className="text-[var(--danger-600)] border-[var(--danger-200)] hover:bg-[var(--danger-50)]"
+                    loading={waActionLoading}
+                    onClick={handleWhatsAppLogout}
+                  >
+                    Putuskan Sesi WhatsApp
                   </Button>
                 </div>
               </div>
-            )}
-          </Modal>
-          <Modal open={!!editingMember} onClose={() => setEditingMember(null)} title="Edit Anggota" size="md">
-            {editingMember && (
-              <form onSubmit={submitEditMember} className="space-y-4">
-                <div className="rounded-lg bg-[var(--surface-raised)] p-3">
-                  <p className="text-sm font-semibold text-[var(--text-primary)]">{editingMember.name}</p>
-                  <p className="text-xs text-[var(--text-tertiary)]">{editingMember.email}</p>
+            ) : (
+              <div className="space-y-6">
+                <div className="text-sm text-[var(--text-secondary)] leading-relaxed">
+                  Pindai QR Code di bawah menggunakan WhatsApp Anda untuk mengaktifkan fitur kirim struk belanja otomatis ke pelanggan:
+                  <ol className="list-decimal list-inside mt-2 space-y-1 text-xs">
+                    <li>Buka aplikasi <b>WhatsApp</b> di HP Anda.</li>
+                    <li>Pilih <b>Pengaturan / Setelan</b> &gt; <b>Perangkat Tertaut (Linked Devices)</b>.</li>
+                    <li>Pilih <b>Tautkan Perangkat</b>, lalu arahkan kamera QR Code.</li>
+                  </ol>
                 </div>
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-[var(--text-secondary)]">Role</label>
-                  <select
-                    value={editForm.role}
-                    onChange={(event) => setEditForm((current) => ({
-                      ...current,
-                      role: event.target.value as UserRole,
-                      branchId: event.target.value === "cashier" ? current.branchId || String(branches[0]?.id ?? "") : "",
-                    }))}
-                    className="h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--text-primary)]"
-                  >
-                    {(Object.keys(ROLES) as UserRole[]).map((role) => (
-                      <option key={role} value={role}>{ROLES[role].label}</option>
-                    ))}
-                  </select>
-                </div>
-                {editForm.role === "cashier" && (
-                  <div>
-                    <label className="mb-1.5 block text-sm font-medium text-[var(--text-secondary)]">Cabang kerja</label>
-                    <select
-                      value={editForm.branchId}
-                      onChange={(event) => setEditForm((current) => ({ ...current, branchId: event.target.value }))}
-                      className="h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--text-primary)]"
-                      required
-                    >
-                      <option value="" disabled>Pilih cabang</option>
-                      {branches.map((branch) => (
-                        <option key={branch.id} value={branch.id}>{branch.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-                <div className="flex justify-end gap-2 pt-2">
-                  <Button type="button" variant="outline" onClick={() => setEditingMember(null)}>Batal</Button>
-                  <Button type="submit" loading={savingMemberId === editingMember.id}>Simpan</Button>
-                </div>
-              </form>
-            )}
-          </Modal>
-        </Card>
-      ) : (
-        <Card>
-          <div className="flex items-center gap-2 mb-2">
-            <Users className="w-5 h-5 text-[var(--brand-600)]" />
-            <h2 className="font-semibold text-[var(--text-primary)]">Tim</h2>
-          </div>
-          <p className="text-sm text-[var(--text-secondary)]">Hanya Owner yang dapat mengelola anggota tim.</p>
-        </Card>
-      )}
 
-      <Card>
-        <div className="flex items-center gap-2 mb-6">
-          <Bell className="w-5 h-5 text-[var(--brand-600)]" />
-          <h2 className="font-semibold text-[var(--text-primary)]">Notifikasi</h2>
-        </div>
-        <div className="space-y-4">
-          {NOTIF_ITEMS.map((item) => (
-            <label key={item.label} className="flex items-center justify-between p-3 rounded-lg hover:bg-[var(--surface-raised)] transition-colors cursor-pointer">
-              <div>
-                <p className="text-sm font-medium text-[var(--text-primary)]">{item.label}</p>
-                <p className="text-xs text-[var(--text-tertiary)]">{item.desc}</p>
+                <div className="flex flex-col items-center justify-center p-6 bg-[var(--surface-raised)] rounded-xl border border-[var(--border)]">
+                  {waQr ? (
+                    <div className="relative p-3 bg-white rounded-lg border shadow-sm">
+                      <img src={waQr} className="w-48 h-48" alt="WhatsApp QR Code" />
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/5 rounded-lg pointer-events-none"></div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center w-48 h-48 bg-white border rounded-lg">
+                      <QrCode className="w-10 h-10 text-[var(--text-tertiary)] animate-pulse" />
+                      <span className="text-[10px] text-[var(--text-tertiary)] mt-2">Menghasilkan QR...</span>
+                    </div>
+                  )}
+                  <p className="text-[10px] text-[var(--text-tertiary)] mt-4 flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
+                    Status QR otomatis di-refresh berkala
+                  </p>
+                </div>
               </div>
-              <input type="checkbox" defaultChecked={item.checked} className="w-4 h-4 accent-[var(--brand-600)] cursor-pointer" />
-            </label>
-          ))}
+            )}
+          </Card>
+
+          {/* Team Card */}
+          {canAccess("settings.users") ? (
+            <Card>
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-2">
+                  <Users className="w-5 h-5 text-[var(--brand-600)]" />
+                  <h2 className="font-semibold text-[var(--text-primary)]">Tim</h2>
+                </div>
+                <Button size="sm" icon={<Users className="w-4 h-4" />} onClick={openInviteModal}>Undang Anggota</Button>
+              </div>
+              {teamError && (
+                <div className="mb-4 rounded-lg border border-[var(--danger-200)] bg-[var(--danger-50)] p-3 text-sm text-[var(--danger-600)]">
+                  {teamError}
+                </div>
+              )}
+              <div className="space-y-3">
+                {members.map((member) => (
+                  <div key={member.id} className="flex items-center justify-between gap-3 p-3 rounded-lg hover:bg-[var(--surface-raised)] transition-colors">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <Avatar name={member.name} size="sm" className="flex-shrink-0" />
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-[var(--text-primary)] truncate">{member.name}</p>
+                        <p className="text-xs text-[var(--text-tertiary)] truncate">{member.email}</p>
+                        <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                          <Badge variant="brand" size="sm">{ROLES[member.role].label}</Badge>
+                          {member.role === "cashier" && (
+                            <Badge variant={member.branchName ? "success" : "warning"} size="sm" className="truncate max-w-[150px]">
+                              {member.branchName ?? "Cabang belum diatur"}
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      {member.status === "invited" && <Badge variant="warning" size="sm" className="hidden sm:inline-flex">Diundang</Badge>}
+                      {savingMemberId === member.id && <Badge variant="brand" size="sm">Menyimpan</Badge>}
+                      <div className="relative">
+                        <button
+                          type="button"
+                          onClick={() => setOpenActionMemberId((current) => current === member.id ? null : member.id)}
+                          disabled={savingMemberId === member.id}
+                          className="inline-flex h-9 items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 text-xs font-semibold text-[var(--text-secondary)] transition-colors hover:border-[var(--border-hover)] hover:bg-[var(--surface-raised)] hover:text-[var(--text-primary)] disabled:opacity-60 cursor-pointer"
+                          aria-expanded={openActionMemberId === member.id}
+                          aria-label={`Aksi ${member.name}`}
+                        >
+                          Aksi
+                          <ChevronDown className="h-3.5 w-3.5" />
+                        </button>
+                        {openActionMemberId === member.id && (
+                          <div className="absolute right-0 top-full z-20 mt-2 w-36 overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-lg)]">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setDetailMember(member);
+                                setOpenActionMemberId(null);
+                              }}
+                              className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--surface-raised)] hover:text-[var(--text-primary)]"
+                            >
+                              <Eye className="h-3.5 w-3.5" />
+                              Detail
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                openEditMember(member);
+                                setOpenActionMemberId(null);
+                              }}
+                              className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--surface-raised)] hover:text-[var(--text-primary)]"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                              Edit
+                            </button>
+                            {member.role !== "owner" && (
+                              <button
+                                type="button"
+                                onClick={() => setOpenActionMemberId(null)}
+                                className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-[var(--danger-500)] hover:bg-[var(--danger-50)]"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                                Hapus
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          ) : (
+            <Card>
+              <div className="flex items-center gap-2 mb-2">
+                <Users className="w-5 h-5 text-[var(--brand-600)]" />
+                <h2 className="font-semibold text-[var(--text-primary)]">Tim</h2>
+              </div>
+              <p className="text-sm text-[var(--text-secondary)]">Hanya Owner yang dapat mengelola anggota tim.</p>
+            </Card>
+          )}
+
+          {/* Notifications Card */}
+          <Card>
+            <div className="flex items-center gap-2 mb-6">
+              <Bell className="w-5 h-5 text-[var(--brand-600)]" />
+              <h2 className="font-semibold text-[var(--text-primary)]">Notifikasi</h2>
+            </div>
+            <div className="space-y-4">
+              {NOTIF_ITEMS.map((item) => (
+                <label key={item.label} className="flex items-center justify-between p-3 rounded-lg hover:bg-[var(--surface-raised)] transition-colors cursor-pointer">
+                  <div>
+                    <p className="text-sm font-medium text-[var(--text-primary)]">{item.label}</p>
+                    <p className="text-xs text-[var(--text-tertiary)]">{item.desc}</p>
+                  </div>
+                  <input type="checkbox" defaultChecked={item.checked} className="w-4 h-4 accent-[var(--brand-600)] cursor-pointer" />
+                </label>
+              ))}
+            </div>
+          </Card>
         </div>
-      </Card>
 
-      {/* WhatsApp Integration Card */}
-      <Card>
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-2">
-            <MessageSquare className="w-5 h-5 text-[var(--brand-600)]" />
-            <h2 className="font-semibold text-[var(--text-primary)]">Integrasi WhatsApp Struk</h2>
-          </div>
-          <Badge variant={waConnected ? "success" : "warning"}>
-            {waConnected ? "Terhubung" : "Belum Terhubung"}
-          </Badge>
-        </div>
+        {/* Right Column — Secondary Navigation & Status */}
+        <div className="space-y-6">
+          <Link href="/dashboard/settings/billing" className="block">
+            <Card hover className="cursor-pointer">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-blue-50 text-blue-600 rounded-lg dark:bg-blue-900/30 dark:text-blue-400"><Shield className="w-5 h-5" /></div>
+                <div>
+                  <p className="font-semibold text-[var(--text-primary)] text-sm">Tagihan & Langganan</p>
+                  <p className="text-xs text-[var(--text-secondary)] mt-0.5">Kelola paket dan metode pembayaran</p>
+                </div>
+              </div>
+            </Card>
+          </Link>
+          
+          <Link href="/dashboard/branches" className="block">
+            <Card hover className="cursor-pointer">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-purple-50 text-purple-600 rounded-lg dark:bg-purple-900/30 dark:text-purple-400"><Building2 className="w-5 h-5" /></div>
+                <div>
+                  <p className="font-semibold text-[var(--text-primary)] text-sm">Manajemen Cabang</p>
+                  <p className="text-xs text-[var(--text-secondary)] mt-0.5">Tambah atau kelola lokasi toko</p>
+                </div>
+              </div>
+            </Card>
+          </Link>
 
-        {waError && (
-          <div className="mb-4 rounded-lg border border-[var(--danger-200)] bg-[var(--danger-50)] p-3 text-sm text-[var(--danger-600)]">
-            {waError}
-          </div>
-        )}
-
-        {waLoading ? (
-          <div className="text-center py-6 text-sm text-[var(--text-secondary)]">
-            Memuat status integrasi...
-          </div>
-        ) : waConnected ? (
-          <div className="space-y-4">
-            <div className="rounded-lg bg-[var(--surface-raised)] p-4 border border-[var(--border)]">
-              <p className="text-sm font-medium text-[var(--text-primary)]">WhatsApp Terkoneksi</p>
-              <p className="text-xs text-[var(--text-secondary)] mt-1">
-                Akun WhatsApp Anda telah aktif sebagai pengirim struk belanja otomatis.
-              </p>
-              <div className="mt-3 flex items-center gap-2 text-sm text-[var(--text-primary)] font-bold">
-                <Phone className="w-4 h-4 text-[var(--brand-600)]" />
-                +{waPhone}
+          <Card>
+            <div className="flex items-center gap-2 mb-4">
+              <Shield className="w-5 h-5 text-[var(--brand-600)]" />
+              <h2 className="font-semibold text-[var(--text-primary)] text-sm">Informasi Sistem</h2>
+            </div>
+            <div className="space-y-3 text-xs">
+              <div className="flex justify-between py-2 border-b border-[var(--border)]">
+                <span className="text-[var(--text-secondary)]">Akun Anda</span>
+                <span className="font-medium text-[var(--text-primary)]">{user.name}</span>
+              </div>
+              <div className="flex justify-between py-2 border-b border-[var(--border)]">
+                <span className="text-[var(--text-secondary)]">Peran (Role)</span>
+                <span className="font-medium text-[var(--text-primary)] capitalize">{user.role}</span>
+              </div>
+              <div className="flex justify-between py-2 border-b border-[var(--border)]">
+                <span className="text-[var(--text-secondary)]">Paket Tenant</span>
+                <span className="font-medium text-[var(--text-primary)] uppercase">{user.tenant.plan || "starter"}</span>
+              </div>
+              <div className="flex justify-between py-2">
+                <span className="text-[var(--text-secondary)]">Status Layanan</span>
+                <Badge variant="success" size="sm">Online</Badge>
               </div>
             </div>
-            <div className="flex justify-end">
-              <Button
-                variant="outline"
-                className="text-[var(--danger-600)] border-[var(--danger-200)] hover:bg-[var(--danger-50)]"
-                loading={waActionLoading}
-                onClick={handleWhatsAppLogout}
+          </Card>
+        </div>
+      </div>
+
+      {/* Modals section */}
+      <Modal open={inviteOpen} onClose={() => setInviteOpen(false)} title="Undang Anggota" size="md">
+        <form onSubmit={submitInvite} className="space-y-4">
+          <Input
+            label="Nama"
+            value={inviteForm.name}
+            onChange={(event) => setInviteForm((current) => ({ ...current, name: event.target.value }))}
+            placeholder="Nama anggota"
+            required
+          />
+          <Input
+            label="Email"
+            type="email"
+            value={inviteForm.email}
+            onChange={(event) => setInviteForm((current) => ({ ...current, email: event.target.value }))}
+            placeholder="staff@bisnis.com"
+            required
+          />
+          <Input
+            label="Password awal"
+            type="password"
+            value={inviteForm.password}
+            onChange={(event) => setInviteForm((current) => ({ ...current, password: event.target.value }))}
+            placeholder="Minimal 8 karakter"
+            required
+            minLength={8}
+          />
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-[var(--text-secondary)]">Role</label>
+            <select
+              value={inviteForm.role}
+              onChange={(event) => setInviteForm((current) => ({
+                ...current,
+                role: event.target.value as UserRole,
+                branchId: event.target.value === "cashier" ? current.branchId || String(branches[0]?.id ?? "") : "",
+              }))}
+              className="h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--text-primary)]"
+            >
+              {(Object.keys(ROLES) as UserRole[]).map((role) => (
+                <option key={role} value={role}>{ROLES[role].label}</option>
+              ))}
+            </select>
+          </div>
+          {inviteForm.role === "cashier" && (
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-[var(--text-secondary)]">Cabang kerja</label>
+              <select
+                value={inviteForm.branchId}
+                onChange={(event) => setInviteForm((current) => ({ ...current, branchId: event.target.value }))}
+                className="h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--text-primary)]"
+                required
               >
-                Putuskan Sesi WhatsApp
+                <option value="" disabled>Pilih cabang</option>
+                {branches.map((branch) => (
+                  <option key={branch.id} value={branch.id}>{branch.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
+          <div className="rounded-lg bg-[var(--surface-raised)] p-3 text-xs leading-relaxed text-[var(--text-secondary)]">
+            Untuk demo, akun dibuat langsung dengan password awal. Berikan email dan password ini ke anggota tim.
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button type="button" variant="outline" onClick={() => setInviteOpen(false)}>Batal</Button>
+            <Button type="submit" loading={inviteSaving}>Tambah Anggota</Button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal open={!!detailMember} onClose={() => setDetailMember(null)} title="Detail Anggota" size="md">
+        {detailMember && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-3 rounded-lg bg-[var(--surface-raised)] p-3">
+              <Avatar name={detailMember.name} size="md" />
+              <div>
+                <p className="text-sm font-bold text-[var(--text-primary)]">{detailMember.name}</p>
+                <p className="text-xs text-[var(--text-tertiary)]">{detailMember.email}</p>
+              </div>
+            </div>
+            <div className="grid gap-3 text-sm">
+              <div className="flex items-center justify-between rounded-lg border border-[var(--border)] p-3">
+                <span className="text-[var(--text-secondary)]">Role</span>
+                <Badge variant="brand" size="sm">{ROLES[detailMember.role].label}</Badge>
+              </div>
+              <div className="flex items-center justify-between rounded-lg border border-[var(--border)] p-3">
+                <span className="text-[var(--text-secondary)]">Cabang kerja</span>
+                <span className="font-medium text-[var(--text-primary)]">
+                  {detailMember.role === "cashier" ? detailMember.branchName ?? "Belum diatur" : "Semua cabang"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between rounded-lg border border-[var(--border)] p-3">
+                <span className="text-[var(--text-secondary)]">Status</span>
+                <Badge variant={detailMember.status === "active" ? "success" : "warning"} size="sm">
+                  {detailMember.status === "active" ? "Aktif" : "Diundang"}
+                </Badge>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="outline" onClick={() => setDetailMember(null)}>Tutup</Button>
+              <Button onClick={() => {
+                openEditMember(detailMember);
+                setDetailMember(null);
+              }}>
+                Edit
               </Button>
             </div>
           </div>
-        ) : (
-          <div className="space-y-6">
-            <div className="text-sm text-[var(--text-secondary)] leading-relaxed">
-              Pindai QR Code di bawah menggunakan WhatsApp Anda untuk mengaktifkan fitur kirim struk belanja otomatis ke pelanggan:
-              <ol className="list-decimal list-inside mt-2 space-y-1 text-xs">
-                <li>Buka aplikasi <b>WhatsApp</b> di HP Anda.</li>
-                <li>Pilih <b>Pengaturan / Setelan</b> &gt; <b>Perangkat Tertaut (Linked Devices)</b>.</li>
-                <li>Pilih <b>Tautkan Perangkat</b>, lalu arahkan kamera ke QR Code di bawah.</li>
-              </ol>
-            </div>
-
-            <div className="flex flex-col items-center justify-center p-6 bg-[var(--surface-raised)] rounded-xl border border-[var(--border)]">
-              {waQr ? (
-                <div className="relative p-3 bg-white rounded-lg border shadow-sm">
-                  <img src={waQr} className="w-48 h-48" alt="WhatsApp QR Code" />
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/5 rounded-lg pointer-events-none"></div>
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center w-48 h-48 bg-white border rounded-lg">
-                  <QrCode className="w-10 h-10 text-[var(--text-tertiary)] animate-pulse" />
-                  <span className="text-[10px] text-[var(--text-tertiary)] mt-2">Menghasilkan QR...</span>
-                </div>
-              )}
-              <p className="text-[10px] text-[var(--text-tertiary)] mt-4 flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
-                Status QR otomatis di-refresh berkala
-              </p>
-            </div>
-          </div>
         )}
-      </Card>
+      </Modal>
 
-      <div className="grid sm:grid-cols-2 gap-4">
-        <Link href="/dashboard/settings/billing">
-          <Card hover className="cursor-pointer">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-50 text-blue-600 rounded-lg dark:bg-blue-900/30 dark:text-blue-400"><Shield className="w-5 h-5" /></div>
-              <div>
-                <p className="font-semibold text-[var(--text-primary)]">Tagihan & Langganan</p>
-                <p className="text-xs text-[var(--text-secondary)]">Kelola paket dan metode pembayaran</p>
-              </div>
+      <Modal open={!!editingMember} onClose={() => setEditingMember(null)} title="Edit Anggota" size="md">
+        {editingMember && (
+          <form onSubmit={submitEditMember} className="space-y-4">
+            <div className="rounded-lg bg-[var(--surface-raised)] p-3">
+              <p className="text-sm font-semibold text-[var(--text-primary)]">{editingMember.name}</p>
+              <p className="text-xs text-[var(--text-tertiary)]">{editingMember.email}</p>
             </div>
-          </Card>
-        </Link>
-        <Link href="/dashboard/branches">
-          <Card hover className="cursor-pointer">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-purple-50 text-purple-600 rounded-lg dark:bg-purple-900/30 dark:text-purple-400"><Building2 className="w-5 h-5" /></div>
-              <div>
-                <p className="font-semibold text-[var(--text-primary)]">Manajemen Cabang</p>
-                <p className="text-xs text-[var(--text-secondary)]">Tambah atau kelola lokasi toko</p>
-              </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-[var(--text-secondary)]">Role</label>
+              <select
+                value={editForm.role}
+                onChange={(event) => setEditForm((current) => ({
+                  ...current,
+                  role: event.target.value as UserRole,
+                  branchId: event.target.value === "cashier" ? current.branchId || String(branches[0]?.id ?? "") : "",
+                }))}
+                className="h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--text-primary)]"
+              >
+                {(Object.keys(ROLES) as UserRole[]).map((role) => (
+                  <option key={role} value={role}>{ROLES[role].label}</option>
+                ))}
+              </select>
             </div>
-          </Card>
-        </Link>
-      </div>
+            {editForm.role === "cashier" && (
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-[var(--text-secondary)]">Cabang kerja</label>
+                <select
+                  value={editForm.branchId}
+                  onChange={(event) => setEditForm((current) => ({ ...current, branchId: event.target.value }))}
+                  className="h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--text-primary)]"
+                  required
+                >
+                  <option value="" disabled>Pilih cabang</option>
+                  {branches.map((branch) => (
+                    <option key={branch.id} value={branch.id}>{branch.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+            <div className="flex justify-end gap-2 pt-2">
+              <Button type="button" variant="outline" onClick={() => setEditingMember(null)}>Batal</Button>
+              <Button type="submit" loading={savingMemberId === editingMember.id}>Simpan</Button>
+            </div>
+          </form>
+        )}
+      </Modal>
     </div>
   );
 }

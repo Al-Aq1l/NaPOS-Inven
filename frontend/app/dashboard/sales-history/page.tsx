@@ -34,26 +34,26 @@ function PaginationControls({
 
   return (
     <div className="flex flex-col gap-3 border-t border-[var(--border)] px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
-      <p className="text-xs font-medium text-[var(--text-tertiary)]">
+      <p className="text-xs font-medium text-[var(--text-tertiary)] text-center sm:text-left">
         Menampilkan {Math.min(PAGE_SIZE, totalItems - (page - 1) * PAGE_SIZE)} dari {totalItems} transaksi
       </p>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto">
         <button
           type="button"
           onClick={() => onPageChange(page - 1)}
           disabled={page <= 1}
-          className="h-8 rounded-lg border border-[var(--border)] px-3 text-xs font-semibold text-[var(--text-secondary)] disabled:cursor-not-allowed disabled:opacity-50 hover:bg-[var(--surface-raised)]"
+          className="flex-1 sm:flex-none h-8 rounded-lg border border-[var(--border)] px-3 text-xs font-semibold text-[var(--text-secondary)] disabled:cursor-not-allowed disabled:opacity-50 hover:bg-[var(--surface-raised)] cursor-pointer"
         >
           Sebelumnya
         </button>
-        <span className="text-xs font-semibold text-[var(--text-secondary)]">
+        <span className="text-xs font-semibold text-[var(--text-secondary)] px-2 shrink-0">
           {page} / {totalPages}
         </span>
         <button
           type="button"
           onClick={() => onPageChange(page + 1)}
           disabled={page >= totalPages}
-          className="h-8 rounded-lg border border-[var(--border)] px-3 text-xs font-semibold text-[var(--text-secondary)] disabled:cursor-not-allowed disabled:opacity-50 hover:bg-[var(--surface-raised)]"
+          className="flex-1 sm:flex-none h-8 rounded-lg border border-[var(--border)] px-3 text-xs font-semibold text-[var(--text-secondary)] disabled:cursor-not-allowed disabled:opacity-50 hover:bg-[var(--surface-raised)] cursor-pointer"
         >
           Berikutnya
         </button>
@@ -298,18 +298,19 @@ export default function SalesHistoryPage() {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        {/* Desktop View */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-[var(--border)] text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
                 <th className="py-3 pr-4">ID Transaksi</th>
-                <th className="py-3 pr-4">Tanggal</th>
-                <th className="py-3 pr-4">Cabang</th>
+                <th className="py-3 pr-4 hidden sm:table-cell">Tanggal</th>
+                <th className="py-3 pr-4 hidden sm:table-cell">Cabang</th>
                 <th className="py-3 pr-4">Pelanggan</th>
                 <th className="py-3 pr-4">Status</th>
                 <th className="py-3 pr-4 text-right">Pendapatan</th>
-                <th className="py-3 pr-4 text-right">HPP</th>
-                <th className="py-3 pr-4 text-right">Margin Laba</th>
+                <th className="py-3 pr-4 text-right hidden sm:table-cell">HPP</th>
+                <th className="py-3 pr-4 text-right hidden md:table-cell">Margin Laba</th>
                 <th className="py-3 text-center">Aksi</th>
               </tr>
             </thead>
@@ -328,14 +329,16 @@ export default function SalesHistoryPage() {
                 const { revenue, hpp, margin, marginPercent } = calculateOrderMetrics(order);
                 return (
                   <tr key={order.id} className="hover:bg-[var(--surface-raised)] group transition-colors">
-                    <td className="py-3 pr-4 font-mono text-xs font-semibold text-[var(--text-primary)]">ORD-{order.id.toString().padStart(5, '0')}</td>
-                    <td className="py-3 pr-4 text-xs text-[var(--text-secondary)] whitespace-nowrap">{formatDateTime(order.created_at)}</td>
-                    <td className="py-3 pr-4 text-[var(--text-secondary)]">{order.branch?.name || `Cabang #${order.branch_id}`}</td>
-                    <td className="py-3 pr-4 font-medium text-[var(--text-primary)]">{order.customer_name || "-"}</td>
+                    <td className="py-3 pr-4 font-mono text-xs font-semibold text-[var(--text-primary)] font-bold">ORD-{order.id.toString().padStart(5, '0')}</td>
+                    <td className="py-3 pr-4 text-xs text-[var(--text-secondary)] whitespace-nowrap hidden sm:table-cell">{formatDateTime(order.created_at)}</td>
+                    <td className="py-3 pr-4 text-[var(--text-secondary)] hidden sm:table-cell">{order.branch?.name || `Cabang #${order.branch_id}`}</td>
+                    <td className="py-3 pr-4 font-medium text-[var(--text-primary)]">
+                      {order.customer_name || "Umum"}
+                    </td>
                     <td className="py-3 pr-4">{getOrderStatusBadge(order.status)}</td>
                     <td className="py-3 pr-4 text-right font-semibold text-[var(--text-primary)]">{formatIDR(revenue)}</td>
-                    <td className="py-3 pr-4 text-right text-[var(--text-secondary)]">{formatIDR(hpp)}</td>
-                    <td className="py-3 pr-4 text-right font-semibold text-[var(--text-primary)]">
+                    <td className="py-3 pr-4 text-right text-[var(--text-secondary)] hidden sm:table-cell">{formatIDR(hpp)}</td>
+                    <td className="py-3 pr-4 text-right font-semibold text-[var(--text-primary)] hidden md:table-cell">
                       <div className="flex flex-col items-end">
                         <span>{formatIDR(margin)}</span>
                         <span className="text-[10px] bg-purple-50 px-1.5 py-0.5 rounded text-purple-700">{marginPercent.toFixed(1)}%</span>
@@ -345,7 +348,7 @@ export default function SalesHistoryPage() {
                       <button
                         type="button"
                         onClick={() => setSelectedOrder(order)}
-                        className="p-2 text-[var(--text-tertiary)] hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-lg transition-colors inline-flex items-center justify-center"
+                        className="p-2 text-[var(--text-tertiary)] hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-lg transition-colors inline-flex items-center justify-center cursor-pointer"
                         title="Detail"
                       >
                         <Eye className="w-4 h-4" />
@@ -356,6 +359,69 @@ export default function SalesHistoryPage() {
               })}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile View */}
+        <div className="block md:hidden divide-y divide-[var(--border)]">
+          {loading && (
+            <div className="py-8 text-center text-sm text-[var(--text-secondary)]">Memuat riwayat penjualan...</div>
+          )}
+          {!loading && filteredOrders.length === 0 && (
+            <div className="py-8 text-center text-sm text-[var(--text-secondary)]">Tidak ada transaksi ditemukan.</div>
+          )}
+          {!loading && paginatedOrders.map((order) => {
+            const { revenue, hpp, margin, marginPercent } = calculateOrderMetrics(order);
+            return (
+              <div 
+                key={order.id} 
+                onClick={() => setSelectedOrder(order)}
+                className="py-4 flex flex-col gap-2 cursor-pointer active:bg-[var(--surface-raised)] transition-colors"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-sm font-black text-[var(--brand-600)]">
+                    ORD-{order.id.toString().padStart(5, '0')}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    {getOrderStatusBadge(order.status)}
+                    <span className="text-xs text-[var(--text-tertiary)]">{formatDateTime(order.created_at)}</span>
+                  </div>
+                </div>
+                
+                <div className="text-xs text-[var(--text-secondary)] space-y-1">
+                  <p><span className="text-[var(--text-tertiary)]">Cabang:</span> {order.branch?.name || `Cabang #${order.branch_id}`}</p>
+                  <p><span className="text-[var(--text-tertiary)]">Pelanggan:</span> {order.customer_name || "Umum"}</p>
+                  <div className="grid grid-cols-2 gap-2 bg-[var(--surface-raised)] p-2 rounded-lg border border-[var(--border)] mt-2">
+                    <div>
+                      <p className="text-[10px] text-[var(--text-tertiary)] uppercase font-semibold">Pendapatan</p>
+                      <p className="text-xs font-bold text-[var(--text-primary)]">{formatIDR(revenue)}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-[var(--text-tertiary)] uppercase font-semibold">HPP</p>
+                      <p className="text-xs font-bold text-[var(--text-secondary)]">{formatIDR(hpp)}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between border-t border-dashed border-[var(--border)] pt-2 mt-1">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs text-[var(--text-tertiary)]">Margin Laba:</span>
+                    <span className="text-xs font-bold text-purple-600">{formatIDR(margin)}</span>
+                    <span className="text-[10px] bg-purple-50 dark:bg-purple-950/40 px-1.5 py-0.5 rounded text-purple-700 dark:text-purple-400 font-semibold">{marginPercent.toFixed(1)}%</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedOrder(order);
+                    }}
+                    className="p-1 text-[var(--brand-600)] hover:bg-[var(--brand-50)] rounded transition-colors cursor-pointer"
+                  >
+                    <Eye className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            );
+          })}
         </div>
         <PaginationControls
           page={effectiveHistoryPage}

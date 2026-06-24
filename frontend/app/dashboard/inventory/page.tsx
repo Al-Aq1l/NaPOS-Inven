@@ -77,26 +77,26 @@ function PaginationControls({
 
   return (
     <div className="flex flex-col gap-3 rounded-b-lg border border-t-0 border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
-      <p className="text-xs font-medium text-[var(--text-tertiary)]">
+      <p className="text-xs font-medium text-[var(--text-tertiary)] text-center sm:text-left">
         Menampilkan 10 dari {totalItems} data
       </p>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto">
         <button
           type="button"
           onClick={() => onPageChange(page - 1)}
           disabled={page <= 1}
-          className="h-8 rounded-lg border border-[var(--border)] px-3 text-xs font-semibold text-[var(--text-secondary)] disabled:cursor-not-allowed disabled:opacity-50 hover:bg-[var(--surface-raised)]"
+          className="flex-1 sm:flex-none h-8 rounded-lg border border-[var(--border)] px-3 text-xs font-semibold text-[var(--text-secondary)] disabled:cursor-not-allowed disabled:opacity-50 hover:bg-[var(--surface-raised)] cursor-pointer"
         >
           Sebelumnya
         </button>
-        <span className="text-xs font-semibold text-[var(--text-secondary)]">
+        <span className="text-xs font-semibold text-[var(--text-secondary)] px-2 shrink-0">
           {page} / {totalPages}
         </span>
         <button
           type="button"
           onClick={() => onPageChange(page + 1)}
           disabled={page >= totalPages}
-          className="h-8 rounded-lg border border-[var(--border)] px-3 text-xs font-semibold text-[var(--text-secondary)] disabled:cursor-not-allowed disabled:opacity-50 hover:bg-[var(--surface-raised)]"
+          className="flex-1 sm:flex-none h-8 rounded-lg border border-[var(--border)] px-3 text-xs font-semibold text-[var(--text-secondary)] disabled:cursor-not-allowed disabled:opacity-50 hover:bg-[var(--surface-raised)] cursor-pointer"
         >
           Berikutnya
         </button>
@@ -679,20 +679,20 @@ export default function StokBarangPage() {
                 {produk.length} produk - {menipisStockCount} peringatan stok menipis
               </p>
             </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <Button variant="outline" size="sm" icon={<Upload className="w-4 h-4" />} onClick={handleDownloadTemplate}>
+            <div className="grid grid-cols-1 sm:flex sm:flex-wrap items-center gap-2 w-full sm:w-auto">
+              <Button variant="outline" size="sm" icon={<Upload className="w-4 h-4" />} onClick={handleDownloadTemplate} className="w-full sm:w-auto">
                 Template CSV
               </Button>
-              <Button variant="outline" size="sm" icon={<Download className="w-4 h-4" />} onClick={handleExportProducts}>
+              <Button variant="outline" size="sm" icon={<Download className="w-4 h-4" />} onClick={handleExportProducts} className="w-full sm:w-auto">
                 Ekspor CSV
               </Button>
-              <Button size="sm" icon={<Plus className="w-4 h-4" />} onClick={() => setView("create")}>
+              <Button size="sm" icon={<Plus className="w-4 h-4" />} onClick={() => setView("create")} className="w-full sm:w-auto">
                 Tambah Produk
               </Button>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <Card hover padding="sm">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-blue-50 text-blue-600 rounded-lg dark:bg-blue-900/30 dark:text-blue-400">
@@ -795,97 +795,231 @@ export default function StokBarangPage() {
 
           {!loading && !error && (
             <>
-              <DataTable
-                columns={[
-                  {
-                    key: "sku",
-                    label: "SKU",
-                    render: (p: Produk) => <span className="font-mono text-xs text-[var(--text-tertiary)]">{p.sku}</span>,
-                  },
-                  {
-                    key: "name",
-                    label: "Produk",
-                    render: (p: Produk) => (
-                      <div className="flex items-center gap-3">
-                        {p.imageUrl ? (
-                          <img src={p.imageUrl} alt={p.name} className="h-10 w-10 rounded-lg object-cover ring-1 ring-[var(--border)]" />
-                        ) : (
-                          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--surface-raised)] text-xs font-bold text-[var(--text-secondary)] ring-1 ring-[var(--border)]">
-                            {p.name.slice(0, 2).toUpperCase()}
+              {/* Desktop Table View */}
+              <div className="hidden md:block">
+                <DataTable
+                  columns={[
+                    {
+                      key: "sku",
+                      label: "SKU",
+                      render: (p: Produk) => <span className="font-mono text-xs text-[var(--text-tertiary)]">{p.sku}</span>,
+                      className: "hidden sm:table-cell",
+                    },
+                    {
+                      key: "name",
+                      label: "Produk",
+                      render: (p: Produk) => (
+                        <div className="flex items-center gap-3">
+                          {p.imageUrl ? (
+                            <img src={p.imageUrl} alt={p.name} className="h-10 w-10 rounded-lg object-cover ring-1 ring-[var(--border)]" />
+                          ) : (
+                            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--surface-raised)] text-xs font-bold text-[var(--text-secondary)] ring-1 ring-[var(--border)]">
+                              {p.name.slice(0, 2).toUpperCase()}
+                            </div>
+                          )}
+                          <div className="min-w-0">
+                            <p className="font-medium text-[var(--text-primary)]">{p.name}</p>
+                            <p className="text-xs text-[var(--text-tertiary)]">
+                              {p.category} - {p.barcode}
+                            </p>
                           </div>
-                        )}
-                        <div className="min-w-0">
-                          <p className="font-medium text-[var(--text-primary)]">{p.name}</p>
-                          <p className="text-xs text-[var(--text-tertiary)]">
-                            {p.category} - {p.barcode}
-                          </p>
                         </div>
-                      </div>
-                    ),
-                  },
-                  {
-                    key: "barcode",
-                    label: "Barcode / QR",
-                    render: (p: Produk) => {
-                      const hasBarcode = p.barcode && p.barcode !== "-";
+                      ),
+                    },
+                    {
+                      key: "barcode",
+                      label: "Barcode / QR",
+                      render: (p: Produk) => {
+                        const hasBarcode = p.barcode && p.barcode !== "-";
 
-                      return (
-                        <div className="flex items-center gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-8 text-xs px-2.5"
-                            icon={<QrCode className="w-3.5 h-3.5" />}
-                            onClick={() => setLabelProduct(p)}
-                          >
-                            Label
-                          </Button>
-                          {!hasBarcode && (
+                        return (
+                          <div className="flex items-center gap-2">
                             <Button
                               size="sm"
-                              variant="ghost"
+                              variant="outline"
                               className="h-8 text-xs px-2.5"
-                              loading={generatingBarcode === p.id}
-                              icon={<BarcodeIcon className="w-3.5 h-3.5" />}
-                              onClick={() => handleGenerateBarcode(p)}
+                              icon={<QrCode className="w-3.5 h-3.5" />}
+                              onClick={() => setLabelProduct(p)}
                             >
-                              Generate
+                              Label
                             </Button>
-                          )}
-                        </div>
-                      );
+                            {!hasBarcode && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-8 text-xs px-2.5"
+                                loading={generatingBarcode === p.id}
+                                icon={<BarcodeIcon className="w-3.5 h-3.5" />}
+                                onClick={() => handleGenerateBarcode(p)}
+                              >
+                                Generate
+                              </Button>
+                            )}
+                          </div>
+                        );
+                      },
+                      className: "hidden md:table-cell",
                     },
-                  },
-                  { key: "costPrice", label: "HPP", render: (p: Produk) => <span className="text-sm">{formatIDR(p.costPrice)}</span> },
-                  {
-                    key: "sellPrice",
-                    label: "Harga Jual",
-                    render: (p: Produk) => <span className="text-sm font-medium">{formatIDR(p.sellPrice)}</span>,
-                  },
-                  {
-                    key: "stock_health",
-                    label: `Status Stok (${selectedBranch || "Cabang"})`,
-                    render: (p: Produk) => {
-                      const stock = (selectedBranch === "Semua Cabang" || selectedBranch === "") ? Object.values(p.stock).reduce((a, b) => a + b, 0) : (p.stock[selectedBranch] || 0);
-                      const isHabis = stock === 0;
-                      const isMenipis = stock <= p.rop && stock > 0;
-                      
-                      const maxHealthCapacity = Math.max(p.rop * 2, 10);
-                      const healthPercent = Math.min(100, Math.max(0, (stock / maxHealthCapacity) * 100));
+                    { key: "costPrice", label: "HPP", render: (p: Produk) => <span className="text-sm">{formatIDR(p.costPrice)}</span>, className: "hidden sm:table-cell" },
+                    {
+                      key: "sellPrice",
+                      label: "Harga Jual",
+                      render: (p: Produk) => <span className="text-sm font-medium">{formatIDR(p.sellPrice)}</span>,
+                    },
+                    {
+                      key: "stock_health",
+                      label: `Status Stok (${selectedBranch || "Cabang"})`,
+                      render: (p: Produk) => {
+                        const stock = (selectedBranch === "Semua Cabang" || selectedBranch === "") ? Object.values(p.stock).reduce((a, b) => a + b, 0) : (p.stock[selectedBranch] || 0);
+                        const isHabis = stock === 0;
+                        const isMenipis = stock <= p.rop && stock > 0;
+                        
+                        const maxHealthCapacity = Math.max(p.rop * 2, 10);
+                        const healthPercent = Math.min(100, Math.max(0, (stock / maxHealthCapacity) * 100));
 
-                      return (
-                        <div className="flex flex-col gap-1.5 min-w-[120px]">
-                          <div className="flex items-center justify-between">
+                        return (
+                          <div className="flex flex-col gap-1.5 min-w-[120px]">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-baseline gap-1">
+                                <span className={cn(
+                                  "text-sm font-bold", 
+                                  isHabis ? "text-[var(--danger-500)]" : isMenipis ? "text-[var(--warning-500)]" : "text-[var(--text-primary)]"
+                                )}>
+                                  {stock}
+                                </span>
+                                <span className="text-[10px] text-[var(--text-tertiary)] font-medium" title="Batas Minimum Stok">
+                                  / Min. {p.rop}
+                                </span>
+                              </div>
+                              {isHabis && <Badge variant="danger" size="sm">Habis</Badge>}
+                              {isMenipis && <Badge variant="warning" size="sm">Hampir Habis</Badge>}
+                              {!isHabis && !isMenipis && <Badge variant="success" size="sm" className="bg-[var(--success-50)] text-[var(--success-600)] border-[var(--success-200)]">Aman</Badge>}
+                            </div>
+                            
+                            <div className="w-full h-1.5 bg-[var(--surface-raised)] border border-[var(--border)] rounded-full overflow-hidden flex">
+                              <div 
+                                className={cn(
+                                  "h-full transition-all duration-500 ease-out rounded-full",
+                                  isHabis ? "bg-transparent" : 
+                                  isMenipis ? "bg-[var(--warning-500)]" : 
+                                  "bg-[var(--success-500)]"
+                                )}
+                                style={{ width: `${healthPercent}%` }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      },
+                    },
+                    {
+                      key: "margin",
+                      label: "Margin",
+                      render: (p: Produk) => {
+                        const margin = p.sellPrice > 0 ? Math.round(((p.sellPrice - p.costPrice) / p.sellPrice) * 100) : 0;
+                        return <Badge variant={margin > 30 ? "success" : margin > 15 ? "warning" : "danger"} size="sm">{margin}%</Badge>;
+                      },
+                      className: "hidden lg:table-cell",
+                    },
+                    {
+                      key: "actions",
+                      label: "Aksi",
+                      render: (p: Produk) => (
+                        <div className="flex justify-start gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleProductAction(p, "detail")}
+                            className="p-2 text-[var(--text-tertiary)] hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-lg transition-colors"
+                            title="Detail"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleProductAction(p, "edit")}
+                            className="p-2 text-[var(--text-tertiary)] hover:text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 rounded-lg transition-colors"
+                            title="Edit"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleProductAction(p, "delete")}
+                            className="p-2 text-[var(--text-tertiary)] hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-lg transition-colors"
+                            title="Hapus"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ),
+                    },
+                  ]}
+                  data={paginatedProducts}
+                  keyExtractor={(p) => p.id}
+                  emptyMessage="Produk tidak ditemukan"
+                />
+              </div>
+
+              {/* Mobile Card List View */}
+              <div className="block md:hidden space-y-4">
+                {paginatedProducts.length === 0 ? (
+                  <Card className="text-center p-6 text-[var(--text-tertiary)]">
+                    Produk tidak ditemukan
+                  </Card>
+                ) : (
+                  paginatedProducts.map((p) => {
+                    const stock = (selectedBranch === "Semua Cabang" || selectedBranch === "") ? Object.values(p.stock).reduce((a, b) => a + b, 0) : (p.stock[selectedBranch] || 0);
+                    const isHabis = stock === 0;
+                    const isMenipis = stock <= p.rop && stock > 0;
+                    const maxHealthCapacity = Math.max(p.rop * 2, 10);
+                    const healthPercent = Math.min(100, Math.max(0, (stock / maxHealthCapacity) * 100));
+                    const margin = p.sellPrice > 0 ? Math.round(((p.sellPrice - p.costPrice) / p.sellPrice) * 100) : 0;
+
+                    return (
+                      <Card key={p.id} className="p-4 flex flex-col gap-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-center gap-3 min-w-0">
+                            {p.imageUrl ? (
+                              <img src={p.imageUrl} alt={p.name} className="h-12 w-12 rounded-lg object-cover ring-1 ring-[var(--border)] shrink-0" />
+                            ) : (
+                              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-[var(--surface-raised)] text-sm font-bold text-[var(--text-secondary)] ring-1 ring-[var(--border)]">
+                                {p.name.slice(0, 2).toUpperCase()}
+                              </div>
+                            )}
+                            <div className="min-w-0">
+                              <p className="font-bold text-[var(--text-primary)] text-sm truncate">{p.name}</p>
+                              <p className="text-xs text-[var(--text-tertiary)] mt-0.5 font-mono">
+                                {p.category} · {p.sku !== "-" ? p.sku : "Tanpa SKU"}
+                              </p>
+                              {p.barcode && p.barcode !== "-" && (
+                                <p className="text-[10px] text-[var(--text-tertiary)] font-mono">BC: {p.barcode}</p>
+                              )}
+                            </div>
+                          </div>
+                          <Badge variant={margin > 30 ? "success" : margin > 15 ? "warning" : "danger"} size="sm">{margin}% Margin</Badge>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2 text-xs border-t border-b border-[var(--border)] py-2 my-1">
+                          <div>
+                            <span className="text-[var(--text-tertiary)] block">Harga Jual:</span>
+                            <span className="font-bold text-[var(--text-primary)] text-sm">{formatIDR(p.sellPrice)}</span>
+                          </div>
+                          <div>
+                            <span className="text-[var(--text-tertiary)] block">HPP:</span>
+                            <span className="font-medium text-[var(--text-secondary)]">{formatIDR(p.costPrice)}</span>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-col gap-1.5">
+                          <div className="flex items-center justify-between text-xs">
                             <div className="flex items-baseline gap-1">
+                              <span className="text-[var(--text-tertiary)]">Stok:</span>
                               <span className={cn(
-                                "text-sm font-bold", 
+                                "font-bold", 
                                 isHabis ? "text-[var(--danger-500)]" : isMenipis ? "text-[var(--warning-500)]" : "text-[var(--text-primary)]"
                               )}>
                                 {stock}
                               </span>
-                              <span className="text-[10px] text-[var(--text-tertiary)] font-medium" title="Batas Minimum Stok">
-                                / Min. {p.rop}
-                              </span>
+                              <span className="text-[10px] text-[var(--text-tertiary)]">/ Min. {p.rop}</span>
                             </div>
                             {isHabis && <Badge variant="danger" size="sm">Habis</Badge>}
                             {isMenipis && <Badge variant="warning" size="sm">Hampir Habis</Badge>}
@@ -904,54 +1038,36 @@ export default function StokBarangPage() {
                             />
                           </div>
                         </div>
-                      );
-                    },
-                  },
-                  {
-                    key: "margin",
-                    label: "Margin",
-                    render: (p: Produk) => {
-                      const margin = p.sellPrice > 0 ? Math.round(((p.sellPrice - p.costPrice) / p.sellPrice) * 100) : 0;
-                      return <Badge variant={margin > 30 ? "success" : margin > 15 ? "warning" : "danger"} size="sm">{margin}%</Badge>;
-                    },
-                  },
-                  {
-                    key: "actions",
-                    label: "Aksi",
-                    render: (p: Produk) => (
-                      <div className="flex justify-start gap-1">
-                        <button
-                          type="button"
-                          onClick={() => handleProductAction(p, "detail")}
-                          className="p-2 text-[var(--text-tertiary)] hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-lg transition-colors"
-                          title="Detail"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleProductAction(p, "edit")}
-                          className="p-2 text-[var(--text-tertiary)] hover:text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 rounded-lg transition-colors"
-                          title="Edit"
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleProductAction(p, "delete")}
-                          className="p-2 text-[var(--text-tertiary)] hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-lg transition-colors"
-                          title="Hapus"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ),
-                  },
-                ]}
-                data={paginatedProducts}
-                keyExtractor={(p) => p.id}
-                emptyMessage="Produk tidak ditemukan"
-              />
+
+                        <div className="flex justify-end gap-1.5 border-t border-[var(--border)] pt-2.5 mt-1">
+                          <button
+                            type="button"
+                            onClick={() => handleProductAction(p, "detail")}
+                            className="px-3 py-1.5 text-xs text-[var(--text-secondary)] hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-colors flex items-center gap-1 font-semibold cursor-pointer"
+                          >
+                            <Eye className="w-3.5 h-3.5" /> Detail
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleProductAction(p, "edit")}
+                            className="px-3 py-1.5 text-xs text-[var(--text-secondary)] hover:text-emerald-500 hover:bg-emerald-50 rounded-lg transition-colors flex items-center gap-1 font-semibold cursor-pointer"
+                          >
+                            <Pencil className="w-3.5 h-3.5" /> Edit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleProductAction(p, "delete")}
+                            className="px-3 py-1.5 text-xs text-[var(--text-secondary)] hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors flex items-center gap-1 font-semibold cursor-pointer"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" /> Hapus
+                          </button>
+                        </div>
+                      </Card>
+                    );
+                  })
+                )}
+              </div>
+
               <PaginationControls
                 page={effectiveProductPage}
                 totalPages={productTotalPages}

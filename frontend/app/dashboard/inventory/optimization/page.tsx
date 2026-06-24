@@ -250,7 +250,7 @@ export default function OptimizationPage() {
       {refreshing && !loading && <p className="text-xs text-[var(--text-tertiary)]">Menyegarkan data terbaru...</p>}
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard label="Potensi Hemat" value={formatIDR(potentialSavings)} change="Jika ikuti saran order" changeType="positive" icon={<Calculator className="w-5 h-5" />} />
         <StatCard label="Hampir Habis" value={needsRePesanan.length.toString()} change="Di bawah batas aman" changeType="negative" icon={<AlertTriangle className="w-5 h-5" />} />
         <StatCard label="Waktu Kirim" value={`${avgLeadTime.toFixed(1)} hari`} change="Estimasi tiba" changeType="neutral" icon={<TrendingDown className="w-5 h-5" />} />

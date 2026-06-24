@@ -331,7 +331,7 @@ export default function AnalitikPage() {
       {activeTab === "sales" && (
         <div className="space-y-6 animate-fade-in">
           {/* Metrik Utama */}
-          <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
             <AnalyticsMetric label="Pendapatan" value={formatIDR(totalRevenue)} helper="Total" icon={<Wallet className="w-5 h-5" />} tone="blue" />
             <AnalyticsMetric label="Transaksi" value={String(totalTransactions)} helper="Selesai" icon={<ReceiptText className="w-5 h-5" />} tone="emerald" />
             <AnalyticsMetric label="Rata Belanja" value={formatIDR(avgBasket)} helper="Per pesanan" icon={<ReceiptText className="w-5 h-5" />} tone="emerald" />
@@ -460,53 +460,96 @@ export default function AnalitikPage() {
               </Badge>
             </div>
             
-            <DataTable<TopProductRow>
-              columns={[
-                {
-                  key: "rank",
-                  label: "#",
-                  render: (item) => <span className="font-semibold text-[var(--text-secondary)]">{item.rank}</span>,
-                  className: "w-12",
-                },
-                {
-                  key: "name",
-                  label: "Nama Produk",
-                  render: (item) => <span className="font-bold text-[var(--text-primary)]">{item.name}</span>,
-                },
-                {
-                  key: "qty",
-                  label: "Terjual",
-                  render: (item) => <Badge variant="info">{item.qty} unit</Badge>,
-                  className: "w-28",
-                },
-                {
-                  key: "omset",
-                  label: "Total Omset",
-                  render: (item) => <span className="font-semibold text-[var(--text-primary)]">{formatIDR(item.qty * item.price)}</span>,
-                  className: "w-40",
-                },
-                {
-                  key: "contribution",
-                  label: "Kontribusi",
-                  render: (item) => {
-                    const omset = item.qty * item.price;
-                    const pct = totalRevenue > 0 ? (omset / totalRevenue) * 100 : 0;
-                    return (
-                      <div className="flex items-center gap-2 min-w-[5rem]">
+            {/* Desktop View */}
+            <div className="hidden md:block">
+              <DataTable<TopProductRow>
+                columns={[
+                  {
+                    key: "rank",
+                    label: "#",
+                    render: (item) => <span className="font-semibold text-[var(--text-secondary)]">{item.rank}</span>,
+                    className: "w-12",
+                  },
+                  {
+                    key: "name",
+                    label: "Nama Produk",
+                    render: (item) => <span className="font-bold text-[var(--text-primary)]">{item.name}</span>,
+                  },
+                  {
+                    key: "qty",
+                    label: "Terjual",
+                    render: (item) => <Badge variant="info">{item.qty} unit</Badge>,
+                    className: "w-28",
+                  },
+                  {
+                    key: "omset",
+                    label: "Total Omset",
+                    render: (item) => <span className="font-semibold text-[var(--text-primary)]">{formatIDR(item.qty * item.price)}</span>,
+                    className: "w-40",
+                  },
+                  {
+                    key: "contribution",
+                    label: "Kontribusi",
+                    render: (item) => {
+                      const omset = item.qty * item.price;
+                      const pct = totalRevenue > 0 ? (omset / totalRevenue) * 100 : 0;
+                      return (
+                        <div className="flex items-center gap-2 min-w-[5rem]">
+                          <div className="flex-1 bg-[var(--slate-100)] dark:bg-[var(--slate-800)] h-1.5 rounded-full overflow-hidden">
+                            <div className="bg-[var(--brand-600)] h-full rounded-full" style={{ width: `${Math.min(100, pct)}%` }} />
+                          </div>
+                          <span className="font-mono text-xs font-semibold text-[var(--text-secondary)]">{pct.toFixed(1)}%</span>
+                        </div>
+                      );
+                    },
+                    className: "w-48",
+                  },
+                ]}
+                data={topProductsWithRank.slice(0, plan === "starter" ? 5 : 10)}
+                keyExtractor={(item) => String(item.rank)}
+                emptyMessage="Belum ada transaksi untuk periode ini."
+              />
+            </div>
+
+            {/* Mobile View */}
+            <div className="block md:hidden divide-y divide-[var(--border)]">
+              {topProductsWithRank.length === 0 ? (
+                <div className="py-8 text-center text-sm text-[var(--text-secondary)]">
+                  Belum ada transaksi untuk periode ini.
+                </div>
+              ) : (
+                topProductsWithRank.slice(0, plan === "starter" ? 5 : 10).map((item) => {
+                  const omset = item.qty * item.price;
+                  const pct = totalRevenue > 0 ? (omset / totalRevenue) * 100 : 0;
+                  return (
+                    <div key={item.rank} className="py-4 first:pt-0 last:pb-0 flex flex-col gap-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-[var(--brand-50)] dark:bg-[var(--brand-950)] text-xs font-black text-[var(--brand-600)] dark:text-[var(--brand-400)]">
+                            #{item.rank}
+                          </span>
+                          <span className="font-bold text-[var(--text-primary)] text-sm">{item.name}</span>
+                        </div>
+                        <Badge variant="info">{item.qty} unit</Badge>
+                      </div>
+                      
+                      <div className="flex items-center justify-between text-xs text-[var(--text-secondary)]">
+                        <span>Total Omset:</span>
+                        <span className="font-semibold text-[var(--text-primary)]">{formatIDR(omset)}</span>
+                      </div>
+
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-xs text-[var(--text-tertiary)] w-16">Kontribusi:</span>
                         <div className="flex-1 bg-[var(--slate-100)] dark:bg-[var(--slate-800)] h-1.5 rounded-full overflow-hidden">
                           <div className="bg-[var(--brand-600)] h-full rounded-full" style={{ width: `${Math.min(100, pct)}%` }} />
                         </div>
-                        <span className="font-mono text-xs font-semibold text-[var(--text-secondary)]">{pct.toFixed(1)}%</span>
+                        <span className="font-mono text-xs font-semibold text-[var(--text-secondary)] w-10 text-right">{pct.toFixed(1)}%</span>
                       </div>
-                    );
-                  },
-                  className: "w-48",
-                },
-              ]}
-              data={topProductsWithRank.slice(0, plan === "starter" ? 5 : 10)}
-              keyExtractor={(item) => String(item.rank)}
-              emptyMessage="Belum ada transaksi untuk periode ini."
-            />
+                    </div>
+                  );
+                })
+              )}
+            </div>
           </Card>
         </div>
       )}
@@ -514,7 +557,7 @@ export default function AnalitikPage() {
       {activeTab === "inventory" && (
         <div className="space-y-6 animate-fade-in">
           {/* Metrik Stok */}
-          <div className="grid gap-3 grid-cols-2">
+          <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
             <AnalyticsMetric label="Modal Stok" value={formatIDR(stockValuation)} helper="Nilai HPP" icon={<Package className="w-5 h-5" />} tone="blue" />
             <AnalyticsMetric label="Stok Kritis" value={String(lowStockProducts.length)} helper="Perlu restock" icon={<AlertTriangle className="w-5 h-5" />} tone="rose" />
           </div>
@@ -602,7 +645,7 @@ export default function AnalitikPage() {
       {activeTab === "margin" && (
         <div className="space-y-6 animate-fade-in">
           {/* Metrik Pelanggan */}
-          <div className="grid gap-3 grid-cols-2">
+          <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
             <AnalyticsMetric label="Pelanggan" value={String(uniqueCustomers)} helper="Unik" icon={<Users className="w-5 h-5" />} tone="blue" />
           </div>
 
