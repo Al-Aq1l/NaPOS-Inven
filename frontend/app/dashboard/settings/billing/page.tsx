@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
 import { Card, Badge, Button, Toast } from "@/components/ui";
 import { PRICING_TIERS, formatIDR } from "@/lib/constants";
-import { CreditCard, Download, Clock, Shield, Zap } from "lucide-react";
+import { ArrowLeft, CreditCard, Download, Clock, Shield, Zap, CalendarClock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { fetchBillingInfo, fetchOrders, requestPlanChange, type ApiOrder, type BillingInfo } from "@/lib/dashboard-api";
 
@@ -95,10 +96,85 @@ export default function BillingPage() {
     <div className="max-w-4xl space-y-6 animate-fade-in">
       <Toast message={toastMsg} type={toastType} visible={toastVisible} />
 
-      <div>
-        <h1 className="text-2xl font-bold text-[var(--text-primary)]">Tagihan & Langganan</h1>
-        <p className="text-sm text-[var(--text-secondary)] mt-1">Kelola paket, penggunaan, dan metode pembayaran</p>
+      <div className="flex flex-col gap-2">
+        <Link 
+          href="/dashboard/settings"
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors w-fit group"
+        >
+          <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-1" />
+          Kembali ke Pengaturan
+        </Link>
+        <div className="mt-1">
+          <h1 className="text-2xl font-bold text-[var(--text-primary)]">Tagihan & Langganan</h1>
+          <p className="text-sm text-[var(--text-secondary)] mt-1">Kelola paket, penggunaan, dan metode pembayaran</p>
+        </div>
       </div>
+
+      {/* Subscription Expiry Card */}
+      {billing && currentPlan !== "starter" && (() => {
+        const expiresAt = billing.expires_at ? new Date(billing.expires_at) : null;
+        const now = new Date();
+        const daysLeft = expiresAt ? Math.ceil((expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : null;
+        const totalDays = billing.billing_cycle === "annual" ? 365 : 30;
+        const progressPct = daysLeft !== null ? Math.max(0, Math.min(100, (daysLeft / totalDays) * 100)) : 100;
+        const isExpired = daysLeft !== null && daysLeft <= 0;
+        const isUrgent = daysLeft !== null && daysLeft <= 3;
+        const isWarning = daysLeft !== null && daysLeft <= 7;
+
+        const statusColor = isExpired
+          ? "text-[var(--danger-600)] bg-[var(--danger-50)] border-[var(--danger-200)]"
+          : isUrgent
+            ? "text-[var(--danger-600)] bg-[var(--danger-50)] border-[var(--danger-200)]"
+            : isWarning
+              ? "text-amber-700 bg-amber-50 border-amber-200 dark:text-amber-400 dark:bg-amber-950 dark:border-amber-800"
+              : "text-[var(--brand-700)] bg-[var(--brand-50)] border-[var(--brand-200)] dark:text-[var(--brand-300)] dark:bg-[var(--brand-950)] dark:border-[var(--brand-800)]";
+
+        const barColor = isExpired || isUrgent
+          ? "bg-[var(--danger-500)]"
+          : isWarning
+            ? "bg-amber-500"
+            : "bg-[var(--brand-500)]";
+
+        return (
+          <div className={cn("rounded-xl border p-5", statusColor)}>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-start gap-3">
+                <div className={cn("p-2.5 rounded-lg", isExpired || isUrgent ? "bg-[var(--danger-100)] dark:bg-[var(--danger-900)]" : isWarning ? "bg-amber-100 dark:bg-amber-900" : "bg-[var(--brand-100)] dark:bg-[var(--brand-900)]")}>
+                  <CalendarClock className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="font-bold text-base">
+                    {isExpired
+                      ? "Langganan Telah Berakhir"
+                      : `Sisa Langganan: ${daysLeft} Hari`}
+                  </p>
+                  <p className="text-sm mt-0.5 opacity-80">
+                    {expiresAt
+                      ? `Kedaluwarsa: ${expiresAt.toLocaleDateString("id-ID", { day: "2-digit", month: "long", year: "numeric" })}${billing.billing_cycle === "annual" ? " (Tahunan)" : " (Bulanan)"}`
+                      : "Tanggal kedaluwarsa belum tersedia"}
+                  </p>
+                </div>
+              </div>
+              {(isExpired || isUrgent || isWarning) && (
+                <Button size="sm" variant={isExpired || isUrgent ? "danger" : "primary"} className="shrink-0">
+                  Perpanjang Sekarang
+                </Button>
+              )}
+            </div>
+            {daysLeft !== null && (
+              <div className="mt-4">
+                <div className="h-2 rounded-full bg-black/10 dark:bg-white/10 overflow-hidden">
+                  <div className={cn("h-full rounded-full transition-all duration-500", barColor)} style={{ width: `${progressPct}%` }} />
+                </div>
+                <div className="flex justify-between mt-1.5 text-[11px] font-medium opacity-70">
+                  <span>Hari ini</span>
+                  <span>{expiresAt?.toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" })}</span>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       <Card>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">

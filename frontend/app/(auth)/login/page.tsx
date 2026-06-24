@@ -21,7 +21,13 @@ export default function LoginPage() {
     setError(null);
     try {
       const user = await login(email, password);
-      router.push(user.role === "cashier" ? "/dashboard/pos" : "/dashboard");
+      router.push(
+        user.role === "superadmin"
+          ? "/admin/dashboard"
+          : user.role === "cashier"
+          ? "/dashboard/pos"
+          : "/dashboard"
+      );
     } catch (err: unknown) {
       if (axios.isAxiosError(err)) {
         setError(err.response?.data?.message || err.response?.data?.errors?.email?.[0] || "Invalid credentials");

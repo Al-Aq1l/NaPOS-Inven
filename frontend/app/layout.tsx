@@ -6,6 +6,10 @@ export const metadata: Metadata = {
   title: "NAPS — Smart Inventory & POS",
   description: "The all-in-one POS & inventory platform built for Indonesian MSMEs. Capital efficiency, omnichannel scalability.",
   keywords: ["POS", "inventory", "MSME", "Indonesia", "retail", "F&B", "point of sale"],
+  icons: {
+    icon: "/NaPOS LOGO.png",
+    apple: "/NaPOS LOGO.png",
+  },
 };
 
 export default function RootLayout({

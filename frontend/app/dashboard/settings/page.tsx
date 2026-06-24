@@ -42,6 +42,7 @@ export default function PengaturanPage() {
   // Profile Settings States
   const [businessName, setBusinessName] = useState("");
   const [taxRate, setTaxRate] = useState("11");
+  const [businessPhone, setBusinessPhone] = useState("");
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileSuccess, setProfileSuccess] = useState<string | null>(null);
   const [profileError, setProfileError] = useState<string | null>(null);
@@ -96,6 +97,7 @@ export default function PengaturanPage() {
     if (user?.tenant) {
       setBusinessName(user.tenant.name);
       setTaxRate(user.tenant.tax_rate !== undefined ? String(user.tenant.tax_rate) : "11");
+      setBusinessPhone(user.tenant.phone || "");
     }
   }, [user]);
 
@@ -118,6 +120,7 @@ export default function PengaturanPage() {
       await api.put("/settings", {
         name: businessName,
         tax_rate: taxNum,
+        phone: businessPhone.trim() || null,
       });
       await refreshUser();
       setProfileSuccess("Profil usaha berhasil diperbarui.");
@@ -466,7 +469,7 @@ export default function PengaturanPage() {
                 max={100}
               />
               <Input label="Email Akun" disabled defaultValue={user.email} leftIcon={<Mail className="w-4 h-4" />} />
-              <Input label="Telepon" disabled defaultValue={user.phone || "-"} leftIcon={<Phone className="w-4 h-4" />} />
+              <Input label="Telepon Usaha (WhatsApp)" value={businessPhone} onChange={(e) => setBusinessPhone(e.target.value)} leftIcon={<Phone className="w-4 h-4" />} placeholder="Contoh: 6281234567890" />
             </div>
             <div className="mt-5 flex justify-end">
               <Button size="sm" onClick={handleSaveProfile} loading={profileSaving}>

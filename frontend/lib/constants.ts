@@ -110,12 +110,13 @@ export const PRICING_TIERS: PricingTier[] = [
 ];
 
 // ===== Roles =====
-export type UserRole = "owner" | "manager" | "cashier";
+export type UserRole = "owner" | "manager" | "cashier" | "superadmin";
 
 export const ROLES: Record<UserRole, { label: string; description: string; color: string }> = {
   owner: { label: "Pemilik", description: "Akses penuh ke semua fitur", color: "brand" },
   manager: { label: "Manajer", description: "Akses operasional toko, stok, transfer, adjustment, dan laporan cabang", color: "indigo" },
   cashier: { label: "Kasir", description: "Akses kasir dan penjualan dasar", color: "emerald" },
+  superadmin: { label: "Super Admin", description: "Akses kelola sistem & tenant", color: "brand" },
 };
 
 // ===== Navigation =====
@@ -126,6 +127,11 @@ export interface NavItem {
   roles: UserRole[];
   badge?: string;
 }
+
+export const ADMIN_NAV: NavItem[] = [
+  { label: "Dashboard", href: "/admin/dashboard", icon: "LayoutDashboard", roles: ["superadmin"] },
+  { label: "Daftar Tenant", href: "/admin/tenants", icon: "Building2", roles: ["superadmin"] },
+];
 
 export const DASHBOARD_NAV: NavItem[] = [
   { label: "Dashboard", href: "/dashboard", icon: "LayoutDashboard", roles: ["owner", "manager"] },

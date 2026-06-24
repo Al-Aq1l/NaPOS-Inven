@@ -9,6 +9,7 @@ export interface Tenant {
   id: string;
   name: string;
   slug: string;
+  phone: string | null;
   plan: "starter" | "basic" | "growth" | "business";
   trialEndsAt: string | null;
   isActive: boolean;
@@ -128,13 +129,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const canAccess = useCallback((feature: string) => {
     if (!state.user) return false;
+    if (state.user.role === "superadmin") return true;
+    
     const allowed = FEATURE_ACCESS[feature];
     const roleAllowed = allowed ? allowed.includes(state.user.role) : true;
     if (!roleAllowed) return false;
 
     if (feature.startsWith("settings")) return true;
 
-    const planFeatures = PLAN_FEATURES[state.user.tenant.plan] ?? PLAN_FEATURES.starter;
+    const plan = state.user.tenant?.plan ?? "starter";
+    const planFeatures = PLAN_FEATURES[plan] ?? PLAN_FEATURES.starter;
     return planFeatures.includes(feature) || planFeatures.some((item) => feature.startsWith(`${item}.`));
   }, [state.user]);
 

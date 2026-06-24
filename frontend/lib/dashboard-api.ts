@@ -168,6 +168,8 @@ export interface BillingInfo {
   plan: "starter" | "basic" | "growth" | "business";
   is_active: boolean;
   trial_ends_at: string | null;
+  expires_at: string | null;
+  billing_cycle: "monthly" | "annual";
   limits: {
     max_sku: number | null;
     max_branches: number;
@@ -296,5 +298,76 @@ export async function postWhatsAppLogout() {
 
 export async function postWhatsAppSendReceipt(orderId: number, phone: string) {
   const res = await api.post<{ success: boolean; message: string }>(`/whatsapp/send-receipt/${orderId}`, { phone });
+  return res.data;
+}
+
+// ===== Super Admin Interfaces =====
+export interface AdminSummary {
+  total_tenants: number;
+  active_subscribers: number;
+  trial_accounts: number;
+  suspended_tenants: number;
+  total_revenue: number;
+  upcoming_expirations: Array<{
+    tenant_id: number;
+    tenant_name: string;
+    plan: string;
+    phone: string | null;
+    expires_at: string;
+    days_left: number;
+  }>;
+}
+
+export interface AdminTenant {
+  id: number;
+  name: string;
+  slug: string;
+  phone: string | null;
+  plan: "starter" | "basic" | "growth" | "business";
+  trial_ends_at: string | null;
+  is_active: boolean;
+  created_at: string;
+  expires_at: string | null;
+  billing_cycle: "monthly" | "annual";
+  users_count: number;
+  branches_count: number;
+}
+
+export interface PaginatedAdminTenants {
+  current_page: number;
+  data: AdminTenant[];
+  first_page_url: string;
+  from: number;
+  last_page: number;
+  last_page_url: string;
+  next_page_url: string | null;
+  path: string;
+  per_page: number;
+  prev_page_url: string | null;
+  to: number;
+  total: number;
+}
+
+// ===== Super Admin APIs =====
+export async function fetchAdminSummary() {
+  const res = await api.get<AdminSummary>("/admin/summary");
+  return res.data;
+}
+
+export async function fetchAdminTenants(params?: { search?: string; plan?: string; status?: string; page?: number }) {
+  const res = await api.get<PaginatedAdminTenants>("/admin/tenants", { params });
+  return res.data;
+}
+
+export async function updateTenantSubscription(
+  tenantId: number | string,
+  data: { plan: string; billing_cycle: string; expires_at: string | null }
+) {
+  const res = await api.put<{ success: boolean; message: string }>(`/admin/tenants/${tenantId}/subscription`, data);
+  return res.data;
+}
+
+export async function toggleTenantStatus(tenantId: number | string) {
+  const res = await api.post<{ success: boolean; is_active: boolean; message: string }>(`/admin/tenants/${tenantId}/toggle-active`);
   return res.data;
 }

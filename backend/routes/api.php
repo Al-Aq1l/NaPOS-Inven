@@ -24,6 +24,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::post('/payment/verify', [PaymentWebhookController::class, 'verify']);
 
+    // Super Admin Routes (do not require tenant scoping)
+    Route::middleware('role:superadmin')->prefix('admin')->group(function () {
+        Route::get('/summary', [\App\Http\Controllers\Api\AdminController::class, 'summary']);
+        Route::get('/tenants', [\App\Http\Controllers\Api\AdminController::class, 'tenants']);
+        Route::put('/tenants/{tenant}/subscription', [\App\Http\Controllers\Api\AdminController::class, 'updateSubscription']);
+        Route::post('/tenants/{tenant}/toggle-active', [\App\Http\Controllers\Api\AdminController::class, 'toggleActive']);
+    });
+
     // Protected routes requiring a tenant
     Route::middleware('tenant')->group(function () {
         // Example routes that require a specific role

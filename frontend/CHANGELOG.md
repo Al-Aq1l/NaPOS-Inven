@@ -1,5 +1,65 @@
 # Changelog Frontend
 
+## 2026-06-24
+
+### Pemantauan Masa Aktif Langganan & Notifikasi WhatsApp Otomatis
+
+Fitur baru untuk membantu owner memantau sisa masa aktif paket langganan mereka secara visual, serta menerima pengingat otomatis via WhatsApp sebelum langganan berakhir.
+
+#### Perubahan File
+
+| File | Tipe | Deskripsi |
+|---|---|---|
+| `lib/auth-context.tsx` | Modifikasi | Menambahkan field `phone: string \| null` pada interface `Tenant` |
+| `lib/dashboard-api.ts` | Modifikasi | Menambahkan `expires_at` dan `billing_cycle` pada interface `BillingInfo` |
+| `app/dashboard/settings/page.tsx` | Modifikasi | Input telepon usaha sekarang bisa diedit dan tersimpan ke backend |
+| `app/dashboard/settings/billing/page.tsx` | Modifikasi | Menambahkan kartu **Sisa Langganan** dengan countdown dan progress bar |
+
+#### Detail Fitur
+
+**1. Input Nomor WhatsApp Usaha (Settings)**
+- Input **Telepon Usaha (WhatsApp)** pada halaman Pengaturan diubah dari field yang di-*disabled* menjadi input yang bisa diedit.
+- Nomor ini disimpan di kolom `phone` pada tabel `tenants` melalui API `PUT /api/settings`.
+- Format yang diharapkan: kode negara tanpa `+`, contoh: `6281234567890`.
+- Nomor ini akan digunakan sebagai tujuan pengiriman notifikasi WhatsApp otomatis saat langganan mendekati masa habis.
+
+**2. Kartu Sisa Langganan (Billing Page)**
+- Menampilkan kartu informasi di bagian atas halaman **Tagihan & Langganan** untuk paket berbayar (non-starter).
+- Informasi yang ditampilkan:
+  - **Sisa hari** langganan (dihitung secara real-time dari `expires_at`).
+  - **Tanggal kedaluwarsa** diformat dalam Bahasa Indonesia (contoh: *24 Juli 2026*).
+  - **Siklus pembayaran** ditampilkan sebagai label *(Bulanan)* atau *(Tahunan)*.
+  - **Progress bar** visual menunjukkan berapa banyak waktu yang sudah terpakai dari total periode langganan.
+- Indikator urgensi berdasarkan warna:
+  - 🟢 **Hijau (brand)** — Sisa waktu masih lebih dari 7 hari.
+  - 🟡 **Kuning (amber)** — Sisa waktu ≤ 7 hari.
+  - 🔴 **Merah (danger)** — Sisa waktu ≤ 3 hari atau sudah kedaluwarsa.
+- Tombol **Perpanjang Sekarang** muncul secara otomatis saat sisa waktu ≤ 7 hari.
+
+**3. Perubahan Interface/Tipe Data**
+- `Tenant` interface (`lib/auth-context.tsx`):
+  ```diff
+  + phone: string | null;
+  ```
+- `BillingInfo` interface (`lib/dashboard-api.ts`):
+  ```diff
+  + expires_at: string | null;
+  + billing_cycle: "monthly" | "annual";
+  ```
+
+#### Integrasi Backend (Referensi)
+
+Fitur ini bergantung pada perubahan backend berikut yang diterapkan bersamaan:
+- **Migration**: Kolom `phone` ditambahkan ke tabel `tenants`.
+- **`BillingController@index`**: API `GET /api/billing` sekarang mengembalikan `expires_at` dan `billing_cycle` dari subscription aktif terakhir.
+- **`SettingsController@update`**: API `PUT /api/settings` sekarang menerima parameter `phone`.
+- **Artisan Command `subscriptions:check-expiry`**: Memeriksa langganan yang akan kedaluwarsa dalam 7, 3, atau 1 hari dan mengirim pesan WhatsApp otomatis ke nomor telepon tenant. Dijadwalkan berjalan setiap hari pukul 08:00 WIB.
+
+#### Verifikasi
+- `npx tsc --noEmit` — 0 error TypeScript.
+- `npm run build` — Kompilasi produksi Next.js berhasil tanpa masalah.
+
+
 ## 2026-05-20
 
 ### POS Offline-First

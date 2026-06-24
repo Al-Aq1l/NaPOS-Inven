@@ -19,11 +19,20 @@ class BillingController extends Controller
 
         $planLimits = PlanLimits::forPlan($tenant->plan);
 
+        // Get the latest active (paid) subscription for this tenant
+        $activeSubscription = \App\Models\Subscription::where('tenant_id', $tenant->id)
+            ->where('status', 'settlement')
+            ->whereNotNull('expires_at')
+            ->orderByDesc('expires_at')
+            ->first();
+
         return response()->json([
             'tenant_id'   => $tenant->id,
             'plan'        => $tenant->plan,
             'is_active'   => $tenant->is_active,
             'trial_ends_at' => $tenant->trial_ends_at,
+            'expires_at'  => $activeSubscription?->expires_at,
+            'billing_cycle' => $activeSubscription?->billing_cycle ?? 'monthly',
             'limits'      => $planLimits,
             'usage'       => [
                 'sku' => Product::count(),

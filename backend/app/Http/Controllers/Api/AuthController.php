@@ -38,14 +38,16 @@ class AuthController extends Controller
             'name'          => 'required|string|max:255',
             'email'         => 'required|string|email|max:255|unique:users',
             'password'      => 'required|string|min:8',
+            'phone'         => 'required|string|max:30',
             'plan'          => 'required|string|in:starter,basic,growth,business',
             'billing_cycle' => 'nullable|string|in:monthly,annual',
         ]);
 
         $tenant = Tenant::create([
-            'name' => $request->business_name,
-            'slug' => Str::slug($request->business_name) . '-' . Str::random(6),
-            'plan' => 'starter',
+            'name'  => $request->business_name,
+            'slug'  => Str::slug($request->business_name) . '-' . Str::random(6),
+            'phone' => $request->phone,
+            'plan'  => 'starter',
         ]);
 
         $user = User::create([
@@ -154,11 +156,24 @@ class AuthController extends Controller
         }
 
         $token = $user->createToken('auth_token')->plainTextToken;
+        $user->load(['tenant', 'branch']);
+
+        if ($user->role === 'superadmin') {
+            $mockTenant = new \App\Models\Tenant([
+                'id' => 0,
+                'name' => 'Sistem Admin NaPOS',
+                'slug' => 'superadmin-system',
+                'phone' => null,
+                'plan' => 'business',
+                'is_active' => true,
+            ]);
+            $user->setRelation('tenant', $mockTenant);
+        }
 
         return response()->json([
             'access_token' => $token,
             'token_type'   => 'Bearer',
-            'user'         => $user->load(['tenant', 'branch']),
+            'user'         => $user,
         ]);
     }
 
@@ -166,41 +181,55 @@ class AuthController extends Controller
     {
         $user = $request->user()->load(['tenant', 'branch']);
 
+        if ($user->role === 'superadmin') {
+            $mockTenant = new \App\Models\Tenant([
+                'id' => 0,
+                'name' => 'Sistem Admin NaPOS',
+                'slug' => 'superadmin-system',
+                'phone' => null,
+                'plan' => 'business',
+                'is_active' => true,
+            ]);
+            $user->setRelation('tenant', $mockTenant);
+        }
+
         // Auto-verify any pending subscriptions with Midtrans to handle delayed webhooks
         // especially useful on localhost where webhooks cannot reach the app
-        $pendingSub = \App\Models\Subscription::where('tenant_id', $user->tenant_id)
-            ->where('status', 'pending')
-            ->first();
+        if ($user->tenant_id) {
+            $pendingSub = \App\Models\Subscription::where('tenant_id', $user->tenant_id)
+                ->where('status', 'pending')
+                ->first();
 
-        if ($pendingSub) {
-            try {
-                \Midtrans\Config::$serverKey = config('services.midtrans.server_key');
-                \Midtrans\Config::$isProduction = !config('services.midtrans.is_sandbox');
-                
-                $status = \Midtrans\Transaction::status($pendingSub->order_id);
-                $transactionStatus = $status->transaction_status ?? null;
-                $fraudStatus = $status->fraud_status ?? 'accept';
+            if ($pendingSub) {
+                try {
+                    \Midtrans\Config::$serverKey = config('services.midtrans.server_key');
+                    \Midtrans\Config::$isProduction = !config('services.midtrans.is_sandbox');
+                    
+                    $status = \Midtrans\Transaction::status($pendingSub->order_id);
+                    $transactionStatus = $status->transaction_status ?? null;
+                    $fraudStatus = $status->fraud_status ?? 'accept';
 
-                if (in_array($transactionStatus, ['capture', 'settlement']) && $fraudStatus === 'accept') {
-                    $expiresAt = $pendingSub->billing_cycle === 'annual' 
-                        ? now()->addYear() 
-                        : now()->addMonth();
+                    if (in_array($transactionStatus, ['capture', 'settlement']) && $fraudStatus === 'accept') {
+                        $expiresAt = $pendingSub->billing_cycle === 'annual' 
+                            ? now()->addYear() 
+                            : now()->addMonth();
 
-                    $pendingSub->update([
-                        'status'       => 'settlement',
-                        'payment_type' => $status->payment_type ?? null,
-                        'paid_at'      => now(),
-                        'expires_at'   => $expiresAt,
-                    ]);
+                        $pendingSub->update([
+                            'status'       => 'settlement',
+                            'payment_type' => $status->payment_type ?? null,
+                            'paid_at'      => now(),
+                            'expires_at'   => $expiresAt,
+                        ]);
 
-                    if ($user->tenant) {
-                        $user->tenant->update(['plan' => $pendingSub->plan]);
-                        $user->refresh();
-                        $user->load(['tenant', 'branch']); // Reload tenant with new plan
+                        if ($user->tenant) {
+                            $user->tenant->update(['plan' => $pendingSub->plan]);
+                            $user->refresh();
+                            $user->load(['tenant', 'branch']); // Reload tenant with new plan
+                        }
                     }
+                } catch (\Exception $e) {
+                    // Ignore errors (e.g., Midtrans Sandbox offline)
                 }
-            } catch (\Exception $e) {
-                // Ignore errors (e.g., Midtrans Sandbox offline)
             }
         }
 

@@ -18,11 +18,13 @@ class SettingsController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'tax_rate' => 'required|integer|min:0|max:100',
+            'phone' => 'nullable|string|max:20',
         ]);
 
         $tenant->update([
             'name' => $validated['name'],
             'tax_rate' => $validated['tax_rate'],
+            'phone' => $validated['phone'] ?? $tenant->phone,
         ]);
 
         return response()->json([

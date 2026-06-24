@@ -210,6 +210,7 @@ export default function RegisterPage() {
         name:          formData.fullName,
         email:         formData.email,
         password:      formData.password,
+        phone:         formData.phone,
         plan:          formData.plan.toLowerCase(),
         billing_cycle: formData.billingCycle,
       });
