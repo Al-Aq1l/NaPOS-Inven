@@ -1,14 +1,10 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import {
-  Search, Filter, Edit3, Ban, Loader2, CalendarDays, Check
-} from "lucide-react";
-import { Card, Badge, Button, DataTable, Drawer, Toast } from "@/components/ui";
-import {
-  fetchAdminTenants, updateTenantSubscription, toggleTenantStatus,
-  type AdminTenant, type PaginatedAdminTenants
-} from "@/lib/dashboard-api";
+import { Search, Filter, Edit3 } from "lucide-react";
+import { Card, Badge, Button, DataTable, Toast } from "@/components/ui";
+import { fetchAdminTenants, type AdminTenant, type PaginatedAdminTenants } from "@/lib/dashboard-api";
+import Link from "next/link";
 
 export default function AdminTenantsPage() {
   const [tenantsData, setTenantsData] = useState<PaginatedAdminTenants | null>(null);
@@ -17,17 +13,6 @@ export default function AdminTenantsPage() {
   const [search, setSearch] = useState("");
   const [plan, setPlan] = useState("");
   const [status, setStatus] = useState("");
-
-  // Drawer & Action states
-  const [selectedTenant, setSelectedTenant] = useState<AdminTenant | null>(null);
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [submittingSub, setSubmittingSub] = useState(false);
-  const [submittingStatus, setSubmittingStatus] = useState(false);
-
-  // Form states in Drawer
-  const [selectedPlan, setSelectedPlan] = useState<string>("starter");
-  const [selectedCycle, setSelectedCycle] = useState<string>("monthly");
-  const [expiryDate, setExpiryDate] = useState<string>("");
 
   // Toast states
   const [toastMsg, setToastMsg] = useState("");
@@ -71,74 +56,6 @@ export default function AdminTenantsPage() {
     loadTenants(1);
   };
 
-  // Open Drawer and populate form
-  const handleOpenDrawer = (tenant: AdminTenant) => {
-    setSelectedTenant(tenant);
-    setSelectedPlan(tenant.plan);
-    setSelectedCycle(tenant.billing_cycle || "monthly");
-
-    if (tenant.expires_at) {
-      setExpiryDate(new Date(tenant.expires_at).toISOString().split("T")[0]);
-    } else {
-      setExpiryDate("");
-    }
-
-    setDrawerOpen(true);
-  };
-
-  // Save manual subscription overrides
-  const handleSaveSubscription = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedTenant) return;
-
-    setSubmittingSub(true);
-    try {
-      const res = await updateTenantSubscription(selectedTenant.id, {
-        plan: selectedPlan,
-        billing_cycle: selectedCycle,
-        expires_at: selectedPlan === "starter" ? null : expiryDate || null
-      });
-
-      showToast(res.message, "success");
-      setDrawerOpen(false);
-      loadTenants(page); // Refresh main table
-    } catch (err: any) {
-      console.error(err);
-      const errMsg = err.response?.data?.message || "Gagal memperbarui langganan.";
-      showToast(errMsg, "error");
-    } finally {
-      setSubmittingSub(false);
-    }
-  };
-
-  // Toggle tenant suspension status
-  const handleToggleStatus = async () => {
-    if (!selectedTenant) return;
-
-    setSubmittingStatus(true);
-    try {
-      const res = await toggleTenantStatus(selectedTenant.id);
-      showToast(res.message, "success");
-
-      // Update local tenant details in drawer immediately
-      setSelectedTenant(prev => prev ? { ...prev, is_active: res.is_active } : null);
-      loadTenants(page); // Refresh main table
-    } catch (err: any) {
-      console.error(err);
-      const errMsg = err.response?.data?.message || "Gagal mengubah status aktif tenant.";
-      showToast(errMsg, "error");
-    } finally {
-      setSubmittingStatus(false);
-    }
-  };
-
-  // Shortcuts to easily extend subscriptions
-  const handleExtendDays = (days: number) => {
-    const baseDate = expiryDate ? new Date(expiryDate) : new Date();
-    baseDate.setDate(baseDate.getDate() + days);
-    setExpiryDate(baseDate.toISOString().split("T")[0]);
-  };
-
   // Date formatting helper for columns
   const formatExpirations = (dateString: string | null, planName: string) => {
     if (planName === "starter" || !dateString) {
@@ -176,9 +93,16 @@ export default function AdminTenantsPage() {
       <Toast message={toastMsg} type={toastType} visible={toastVisible} />
 
       {/* Header */}
-      <div>
-        <h2 className="text-2xl font-bold text-[var(--text-primary)] tracking-tight">Database Tenant</h2>
-        <p className="text-sm text-[var(--text-secondary)] mt-1">Cari, pantau penggunaan, dan kelola paket lisensi tenant NAPS.</p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-bold text-[var(--text-primary)] tracking-tight">Manajemen Akun Tenant</h2>
+          <p className="text-sm text-[var(--text-secondary)] mt-1">Cari, pantau penggunaan, dan kelola paket lisensi tenant NAPS.</p>
+        </div>
+        <Link href="/admin/tenants/new">
+          <Button variant="primary" className="h-10 text-xs font-bold px-4 shrink-0">
+            Tambah Tenant Baru
+          </Button>
+        </Link>
       </div>
 
       {/* Toolbar Search & Filters */}
@@ -298,15 +222,16 @@ export default function AdminTenantsPage() {
               key: "actions",
               label: "Aksi",
               render: (item) => (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  icon={<Edit3 className="w-3.5 h-3.5" />}
-                  className="h-8 text-[11px]"
-                  onClick={() => handleOpenDrawer(item)}
-                >
-                  Kelola
-                </Button>
+                <Link href={`/admin/tenants/${item.id}`}>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    icon={<Edit3 className="w-3.5 h-3.5" />}
+                    className="h-8 text-[11px]"
+                  >
+                    Kelola
+                  </Button>
+                </Link>
               ),
             },
           ]}
@@ -340,162 +265,6 @@ export default function AdminTenantsPage() {
             </Button>
           </div>
         </div>
-      )}
-
-      {/* Drawer Panel */}
-      {drawerOpen && selectedTenant && (
-        <Drawer
-          open={drawerOpen}
-          onClose={() => setDrawerOpen(false)}
-          title={`Kelola Tenant: ${selectedTenant.name}`}
-        >
-          <div className="p-5 space-y-6 text-[var(--text-primary)]">
-            {/* Quick Profile Summary */}
-            <div className="space-y-2 border-b border-[var(--border)] pb-4">
-              <p className="text-xs font-semibold text-[var(--text-tertiary)] uppercase tracking-widest">Detail Tenant</p>
-              <div className="flex justify-between text-xs">
-                <span className="text-[var(--text-secondary)]">Bisnis ID / Slug:</span>
-                <span className="font-bold text-[var(--text-primary)] font-mono">{selectedTenant.id} / {selectedTenant.slug}</span>
-              </div>
-              <div className="flex justify-between text-xs">
-                <span className="text-[var(--text-secondary)]">WhatsApp:</span>
-                <span className="font-bold text-[var(--text-primary)]">{selectedTenant.phone || "Belum diatur"}</span>
-              </div>
-              <div className="flex justify-between text-xs">
-                <span className="text-[var(--text-secondary)]">Tgl Bergabung:</span>
-                <span className="font-bold text-[var(--text-primary)]">
-                  {new Date(selectedTenant.created_at).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" })}
-                </span>
-              </div>
-            </div>
-
-            {/* Manual Subscription Config Form */}
-            <form onSubmit={handleSaveSubscription} className="space-y-4">
-              <p className="text-xs font-semibold text-[var(--brand-600)] uppercase tracking-wider">Konfigurasi Langganan Manual</p>
-
-              {/* Plan Selection */}
-              <div>
-                <label className="block text-xs font-bold text-[var(--text-secondary)] mb-1.5 uppercase">Paket Layanan</label>
-                <select
-                  value={selectedPlan}
-                  onChange={(e) => setSelectedPlan(e.target.value)}
-                  className="w-full h-10 px-3 bg-[var(--surface-raised)] border border-[var(--border)] rounded-lg text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--brand-500)] font-semibold cursor-pointer"
-                >
-                  <option value="starter">Starter (Gratis)</option>
-                  <option value="basic">Basic</option>
-                  <option value="growth">Growth</option>
-                  <option value="business">Business</option>
-                </select>
-              </div>
-
-              {selectedPlan !== "starter" && (
-                <>
-                  {/* Cycle Selection */}
-                  <div>
-                    <label className="block text-xs font-bold text-[var(--text-secondary)] mb-1.5 uppercase">Siklus Tagihan</label>
-                    <div className="grid grid-cols-2 gap-2 p-1 bg-[var(--surface-raised)] border border-[var(--border)] rounded-lg">
-                      <button
-                        type="button"
-                        onClick={() => setSelectedCycle("monthly")}
-                        className={`py-1.5 text-xs font-bold rounded-md transition-all cursor-pointer ${selectedCycle === "monthly"
-                            ? "bg-[var(--brand-600)] text-white shadow-sm"
-                            : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-                          }`}
-                      >
-                        Bulanan
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setSelectedCycle("annual")}
-                        className={`py-1.5 text-xs font-bold rounded-md transition-all cursor-pointer ${selectedCycle === "annual"
-                            ? "bg-[var(--brand-600)] text-white shadow-sm"
-                            : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-                          }`}
-                      >
-                        Tahunan
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Expiry Date Selection */}
-                  <div>
-                    <label className="block text-xs font-bold text-[var(--text-secondary)] mb-1.5 uppercase">Tanggal Kedaluwarsa</label>
-                    <div className="relative">
-                      <input
-                        type="date"
-                        value={expiryDate}
-                        onChange={(e) => setExpiryDate(e.target.value)}
-                        required={selectedPlan !== "starter"}
-                        className="w-full h-10 px-3 bg-[var(--surface-raised)] border border-[var(--border)] rounded-lg text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--brand-500)] font-medium"
-                      />
-                    </div>
-
-                    {/* Expiry extension shortcuts */}
-                    <div className="grid grid-cols-3 gap-1.5 mt-2">
-                      <button
-                        type="button"
-                        onClick={() => handleExtendDays(30)}
-                        className="py-1 px-1 text-[10px] font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)] bg-[var(--surface)] border border-[var(--border)] hover:border-[var(--brand-500)] rounded transition-all cursor-pointer"
-                      >
-                        +30 Hari
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleExtendDays(90)}
-                        className="py-1 px-1 text-[10px] font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)] bg-[var(--surface)] border border-[var(--border)] hover:border-[var(--brand-500)] rounded transition-all cursor-pointer"
-                      >
-                        +90 Hari
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleExtendDays(365)}
-                        className="py-1 px-1 text-[10px] font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)] bg-[var(--surface)] border border-[var(--border)] hover:border-[var(--brand-500)] rounded transition-all cursor-pointer"
-                      >
-                        +1 Tahun
-                      </button>
-                    </div>
-                  </div>
-                </>
-              )}
-
-              <Button
-                type="submit"
-                loading={submittingSub}
-                className="w-full h-10 font-bold text-xs"
-              >
-                Simpan Perubahan Paket
-              </Button>
-            </form>
-
-            {/* Suspend / Activation Section */}
-            <div className="space-y-3 pt-6 border-t border-[var(--border)]">
-              <p className="text-xs font-semibold text-[var(--danger-500)] uppercase tracking-wider">Tindakan Administratif</p>
-
-              <div className="p-3 bg-[var(--danger-50)] border border-[var(--danger-100)] rounded-lg flex items-center justify-between gap-4">
-                <div className="space-y-0.5">
-                  <p className="text-xs font-bold text-[var(--text-primary)]">
-                    {selectedTenant.is_active ? "Tangguhkan Akun" : "Aktifkan Akun"}
-                  </p>
-                  <p className="text-[10px] text-[var(--text-secondary)]">
-                    {selectedTenant.is_active
-                      ? "Menolak login dan memblokir akses kasir/admin tenant"
-                      : "Mengembalikan akses penuh akun tenant ke aplikasi"}
-                  </p>
-                </div>
-                <Button
-                  onClick={handleToggleStatus}
-                  loading={submittingStatus}
-                  variant={selectedTenant.is_active ? "danger" : "primary"}
-                  size="sm"
-                  className="h-8 text-[10px] font-bold shrink-0"
-                  icon={selectedTenant.is_active ? <Ban className="w-3.5 h-3.5" /> : <Check className="w-3.5 h-3.5" />}
-                >
-                  {selectedTenant.is_active ? "Suspend" : "Aktifkan"}
-                </Button>
-              </div>
-            </div>
-          </div>
-        </Drawer>
       )}
     </div>
   );

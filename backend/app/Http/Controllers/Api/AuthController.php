@@ -43,10 +43,15 @@ class AuthController extends Controller
             'billing_cycle' => 'nullable|string|in:monthly,annual',
         ]);
 
+        $phone = preg_replace('/\D/', '', $request->phone);
+        if (str_starts_with($phone, '0')) {
+            $phone = '62' . substr($phone, 1);
+        }
+
         $tenant = Tenant::create([
             'name'  => $request->business_name,
             'slug'  => Str::slug($request->business_name) . '-' . Str::random(6),
-            'phone' => $request->phone,
+            'phone' => $phone,
             'plan'  => 'starter',
         ]);
 
@@ -73,7 +78,7 @@ class AuthController extends Controller
             MidtransConfig::$isSanitized  = true;
             MidtransConfig::$is3ds        = true;
 
-            $orderId = 'NAPOS-' . strtoupper($plan) . '-' . $user->id . '-' . time();
+            $orderId = 'NAPS-' . strtoupper($plan) . '-' . $user->id . '-' . time();
 
             $params = [
                 'transaction_details' => [
@@ -88,7 +93,7 @@ class AuthController extends Controller
                     'id'       => $plan . '_' . $billingCycle,
                     'price'    => $amount,
                     'quantity' => 1,
-                    'name'     => 'NaPOS Paket ' . ucfirst($plan) . ' (' . ($billingCycle === 'annual' ? '1 Tahun' : '1 Bulan') . ')',
+                    'name'     => 'NaPS Paket ' . ucfirst($plan) . ' (' . ($billingCycle === 'annual' ? '1 Tahun' : '1 Bulan') . ')',
                 ]],
                 'enabled_payments' => [
                     'gopay',
@@ -161,7 +166,7 @@ class AuthController extends Controller
         if ($user->role === 'superadmin') {
             $mockTenant = new \App\Models\Tenant([
                 'id' => 0,
-                'name' => 'Sistem Admin NaPOS',
+                'name' => 'Sistem Admin NaPS',
                 'slug' => 'superadmin-system',
                 'phone' => null,
                 'plan' => 'business',
@@ -184,7 +189,7 @@ class AuthController extends Controller
         if ($user->role === 'superadmin') {
             $mockTenant = new \App\Models\Tenant([
                 'id' => 0,
-                'name' => 'Sistem Admin NaPOS',
+                'name' => 'Sistem Admin NaPS',
                 'slug' => 'superadmin-system',
                 'phone' => null,
                 'plan' => 'business',

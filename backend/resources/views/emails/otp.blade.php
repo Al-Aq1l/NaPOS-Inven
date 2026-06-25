@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Kode Verifikasi NaPOS</title>
+  <title>Kode Verifikasi NaPS</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { background: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
@@ -29,12 +29,12 @@
 <body>
   <div class="wrapper">
     <div class="header">
-      <div class="header-logo">Na<span>POS</span></div>
+      <div class="header-logo">Na<span>PS</span></div>
     </div>
     <div class="body">
       <p class="greeting">Halo! 👋</p>
       <p class="message">
-        Terima kasih telah mendaftar di <strong>NaPOS</strong>. Gunakan kode OTP di bawah ini untuk memverifikasi alamat email Anda.
+        Terima kasih telah mendaftar di <strong>NaPS</strong>. Gunakan kode OTP di bawah ini untuk memverifikasi alamat email Anda.
       </p>
       <div class="otp-box">
         <p class="otp-label">Kode Verifikasi</p>
@@ -44,11 +44,11 @@
       <div class="divider"></div>
       <p class="warning">
         <strong>Jangan bagikan kode ini kepada siapapun.</strong><br />
-        Jika Anda tidak mendaftar di NaPOS, abaikan email ini. Tidak ada tindakan lebih lanjut yang diperlukan.
+        Jika Anda tidak mendaftar di NaPS, abaikan email ini. Tidak ada tindakan lebih lanjut yang diperlukan.
       </p>
     </div>
     <div class="footer">
-      <p>© {{ date('Y') }} NaPOS · <a href="#">Kebijakan Privasi</a></p>
+      <p>© {{ date('Y') }} NaPS · <a href="#">Kebijakan Privasi</a></p>
     </div>
   </div>
 </body>

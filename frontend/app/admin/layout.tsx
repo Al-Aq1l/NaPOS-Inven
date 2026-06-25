@@ -3,9 +3,7 @@
 import React, { useEffect, useState, Suspense } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import {
-  LayoutDashboard, Building2, Menu, LogOut, ChevronDown, PanelLeftClose
-} from "lucide-react";
+import { LayoutDashboard, Building2, Menu, LogOut, ChevronDown } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { Avatar, ConnectionStatus } from "@/components/ui";
 import { ADMIN_NAV } from "@/lib/constants";
@@ -20,45 +18,29 @@ function AdminSidebarContent({
   user,
   pathname,
   setSidebarOpen,
-  isCollapsed = false,
 }: {
   user: { name: string; role: string };
   pathname: string;
   setSidebarOpen: React.Dispatch<React.SetStateAction<boolean>>;
-  isCollapsed?: boolean;
 }) {
   return (
     <div className="relative flex flex-col h-full bg-[#0a1321] text-slate-200 overflow-hidden select-none">
       {/* Header Logo */}
-      <div className={cn(
-        "relative flex items-center justify-center transition-all duration-300 z-10 select-none bg-slate-950/30 bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:12px_12px]",
-        isCollapsed ? "h-20" : "px-4 h-20"
-      )}>
-        {isCollapsed ? (
-          <span className="text-sm font-black tracking-wider text-slate-100 bg-slate-800 h-9 w-9 flex items-center justify-center rounded-lg">
-            NA
-          </span>
-        ) : (
-          <span className="text-lg font-extrabold tracking-wider text-slate-100 text-center w-full">
-            Naps Admin
-          </span>
-        )}
+      <div className="relative flex items-center justify-center px-4 h-20 z-10 select-none bg-slate-950/20 border-b border-white/[0.05]">
+        <span className="text-lg font-extrabold tracking-wider text-slate-100 text-center w-full">
+          Naps Admin
+        </span>
       </div>
 
       {/* User Quick Info */}
-      {!isCollapsed && (
-        <div className="mx-3 mt-5 px-4 py-3 rounded-r-lg rounded-l-sm bg-slate-900 border-l-2 border-blue-500 space-y-1 z-10">
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Sistem Manajemen</p>
-          <p className="text-sm font-bold text-white truncate">{user.name}</p>
-        </div>
-      )}
+      <div className="mx-3 mt-5 px-4 py-3 rounded-lg bg-slate-900 border-l-2 border-blue-500 space-y-1 z-10">
+        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Sistem Manajemen</p>
+        <p className="text-sm font-bold text-white truncate">{user.name}</p>
+      </div>
 
       {/* Navigation */}
-      <nav className={cn(
-        "flex-1 overflow-y-auto scrollbar-hide transition-all duration-300 z-10",
-        isCollapsed ? "px-2 py-4 space-y-4" : "px-3 py-4 space-y-2"
-      )}>
-        <p className={cn("text-[10px] font-bold uppercase tracking-wider text-slate-500 px-3 mb-2", isCollapsed && "sr-only")}>
+      <nav className="flex-1 overflow-y-auto scrollbar-hide z-10 px-3 py-4 space-y-2">
+        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 px-3 mb-2">
           Navigasi Utama
         </p>
         {ADMIN_NAV.map((item) => {
@@ -69,32 +51,15 @@ function AdminSidebarContent({
               key={item.href}
               href={item.href}
               onClick={() => setSidebarOpen(false)}
-              title={isCollapsed ? item.label : undefined}
               className={cn(
-                "flex items-center transition-all duration-150 relative group",
-                isCollapsed
-                  ? cn(
-                    "justify-center h-11 w-11 rounded-xl my-1 mx-auto",
-                    active
-                      ? "bg-white/10 text-white"
-                      : "text-slate-400 hover:bg-white/[0.08] hover:text-white"
-                  )
-                  : cn(
-                    "gap-3 rounded-lg px-3 py-2.5 text-sm font-medium",
-                    active
-                      ? "bg-white/10 text-white"
-                      : "text-slate-400 hover:bg-white/[0.06] hover:text-slate-100"
-                  )
+                "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                active
+                  ? "bg-white/10 text-white"
+                  : "text-slate-400 hover:bg-white/[0.06] hover:text-slate-100"
               )}
             >
               <Icon className={cn("h-5 w-5 flex-shrink-0", active ? "text-white" : "text-slate-400 group-hover:text-white")} />
-              {!isCollapsed && <span className="min-w-0 flex-1 truncate">{item.label}</span>}
-
-              {isCollapsed && (
-                <div className="absolute left-full ml-3 px-2 py-1 bg-slate-900 text-white text-xs font-medium rounded opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none whitespace-nowrap shadow-md z-[70]">
-                  {item.label}
-                </div>
-              )}
+              <span className="min-w-0 flex-1 truncate">{item.label}</span>
             </Link>
           );
         })}
@@ -109,7 +74,6 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
   const { user, isAuthenticated, isLoading, logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarClosing, setSidebarClosing] = useState(false);
-  const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(true);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
 
   // Authenticated route protection
@@ -136,7 +100,6 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
   const openSidebar = () => {
     setSidebarClosing(false);
     setSidebarOpen(true);
-    setDesktopSidebarOpen(true);
   };
 
   const closeMobileSidebar = () => {
@@ -150,18 +113,12 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex h-screen bg-[var(--background)] text-[var(--text-primary)] overflow-hidden">
       {/* Desktop Sidebar */}
-      <aside
-        className={cn(
-          "hidden lg:flex flex-col overflow-hidden transition-[width] duration-300 ease-in-out border-r border-[#1e293b]/10 bg-[#0a1321]",
-          desktopSidebarOpen ? "lg:w-60" : "lg:w-20",
-        )}
-      >
+      <aside className="hidden lg:flex flex-col overflow-hidden border-r border-[#1e293b]/10 bg-[#0a1321] lg:w-60">
         <div className="h-full w-full">
           <AdminSidebarContent
             user={user}
             pathname={pathname}
             setSidebarOpen={setSidebarOpen}
-            isCollapsed={!desktopSidebarOpen}
           />
         </div>
       </aside>
@@ -183,7 +140,6 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
               user={user}
               pathname={pathname}
               setSidebarOpen={setSidebarOpen}
-              isCollapsed={false}
             />
           </aside>
         </div>
@@ -202,15 +158,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
             >
               <Menu className="w-5 h-5" />
             </button>
-            <button
-              onClick={() => setDesktopSidebarOpen(!desktopSidebarOpen)}
-              aria-label={desktopSidebarOpen ? "Sembunyikan menu" : "Tampilkan menu"}
-              title={desktopSidebarOpen ? "Sembunyikan menu" : "Tampilkan menu"}
-              className="hidden lg:inline-flex p-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-raised)] rounded-lg transition-colors cursor-pointer mr-1"
-            >
-              <PanelLeftClose className={cn("w-5 h-5 transition-transform duration-200", !desktopSidebarOpen && "rotate-180")} />
-            </button>
-            <h1 className="text-base font-bold text-[var(--text-primary)] hidden sm:block">
+            <h1 className="text-base font-bold text-[var(--text-primary)]">
               {currentNavLabel || "Dasbor Super Admin"}
             </h1>
           </div>

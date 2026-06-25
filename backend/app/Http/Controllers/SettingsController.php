@@ -21,10 +21,18 @@ class SettingsController extends Controller
             'phone' => 'nullable|string|max:20',
         ]);
 
+        $phone = $validated['phone'] ?? $tenant->phone;
+        if ($phone) {
+            $phone = preg_replace('/\D/', '', $phone);
+            if (str_starts_with($phone, '0')) {
+                $phone = '62' . substr($phone, 1);
+            }
+        }
+
         $tenant->update([
             'name' => $validated['name'],
             'tax_rate' => $validated['tax_rate'],
-            'phone' => $validated['phone'] ?? $tenant->phone,
+            'phone' => $phone,
         ]);
 
         return response()->json([

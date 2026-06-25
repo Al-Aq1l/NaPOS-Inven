@@ -766,7 +766,7 @@ export default function PengaturanPage() {
               }))}
               className="h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--text-primary)]"
             >
-              {(Object.keys(ROLES) as UserRole[]).map((role) => (
+              {(Object.keys(ROLES) as UserRole[]).filter((role) => role !== "superadmin").map((role) => (
                 <option key={role} value={role}>{ROLES[role].label}</option>
               ))}
             </select>
@@ -856,7 +856,7 @@ export default function PengaturanPage() {
                 }))}
                 className="h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--text-primary)]"
               >
-                {(Object.keys(ROLES) as UserRole[]).map((role) => (
+                {(Object.keys(ROLES) as UserRole[]).filter((role) => role !== "superadmin").map((role) => (
                   <option key={role} value={role}>{ROLES[role].label}</option>
                 ))}
               </select>

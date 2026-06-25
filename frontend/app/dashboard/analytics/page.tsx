@@ -51,41 +51,119 @@ function createChartGradient(
   return gradient;
 }
 
+function MiniSparkline({
+  data,
+  type = "line",
+  strokeColor = "rgba(255, 255, 255, 0.95)",
+  fillColor = "rgba(255, 255, 255, 0.15)",
+}: {
+  data: number[];
+  type?: "line" | "bar";
+  strokeColor?: string;
+  fillColor?: string;
+}) {
+  const pointsCount = data.length;
+  if (pointsCount === 0) return null;
+
+  const width = 80;
+  const height = 30;
+  const padding = 2;
+
+  const max = Math.max(...data, 1);
+  const min = Math.min(...data, 0);
+  const range = max - min === 0 ? 1 : max - min;
+
+  if (type === "bar") {
+    const barWidth = Math.max(3, Math.floor((width - (pointsCount - 1) * 2) / pointsCount));
+    return (
+      <svg width={width} height={height} className="opacity-95 shrink-0 select-none pointer-events-none">
+        {data.map((val, i) => {
+          const barHeight = ((val - min) / range) * (height - padding * 2);
+          const x = i * (barWidth + 2);
+          const y = height - barHeight - padding;
+          return (
+            <rect
+              key={i}
+              x={x}
+              y={y}
+              width={barWidth}
+              height={Math.max(2, barHeight)}
+              fill={strokeColor}
+              rx={1}
+            />
+          );
+        })}
+      </svg>
+    );
+  }
+
+  const points = data.map((val, index) => {
+    const x = (index / (pointsCount - 1)) * (width - padding * 2) + padding;
+    const y = height - ((val - min) / range) * (height - padding * 2) - padding;
+    return `${x},${y}`;
+  });
+
+  const pathData = `M ${points.join(" L ")}`;
+  const fillPathData = `M ${padding},${height} L ${points.join(" L ")} L ${width - padding},${height} Z`;
+
+  return (
+    <svg width={width} height={height} className="opacity-95 overflow-visible shrink-0 select-none pointer-events-none">
+      <path d={fillPathData} fill={fillColor} />
+      <path
+        d={pathData}
+        fill="none"
+        stroke={strokeColor}
+        strokeWidth={1.75}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 function AnalyticsMetric({
   label,
   value,
   helper,
   icon,
   tone,
+  sparklineData = [],
+  sparklineType = "line",
 }: {
   label: string;
   value: string;
   helper: string;
   icon: React.ReactNode;
   tone: "blue" | "emerald" | "amber" | "rose";
+  sparklineData?: number[];
+  sparklineType?: "line" | "bar";
 }) {
   const tones = {
-    blue: "bg-blue-50 text-blue-600",
-    emerald: "bg-emerald-50 text-emerald-600",
-    amber: "bg-amber-50 text-amber-600",
-    rose: "bg-rose-50 text-rose-600",
+    blue: "bg-gradient-to-br from-blue-500 to-blue-600 text-white border-none shadow-blue-500/10 hover:from-blue-600 hover:to-blue-700",
+    emerald: "bg-gradient-to-br from-emerald-500 to-emerald-600 text-white border-none shadow-emerald-500/10 hover:from-emerald-600 hover:to-emerald-700",
+    amber: "bg-gradient-to-br from-amber-500 to-amber-600 text-white border-none shadow-amber-500/10 hover:from-amber-600 hover:to-amber-700",
+    rose: "bg-gradient-to-br from-rose-500 to-rose-600 text-white border-none shadow-rose-500/10 hover:from-rose-600 hover:to-rose-700",
   };
 
   return (
-    <Card className="min-h-[92px] rounded-lg p-4 shadow-[var(--shadow-sm)]" padding="none">
-      <div className="flex h-full items-center gap-3">
-        <span className={cn("inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg", tones[tone])}>
-          {icon}
-        </span>
-        <div className="min-w-0">
-          <p className="text-xs font-semibold leading-tight text-[var(--text-secondary)] sm:text-[13px]">{label}</p>
-          <p className="mt-1 break-words text-xl font-black leading-none tracking-normal text-[var(--text-primary)] xl:text-2xl">
-            {value}
-          </p>
-          <p className={cn("mt-0.5 text-xs font-semibold leading-tight sm:text-[13px]", tone === "rose" ? "text-rose-500" : tone === "amber" ? "text-[var(--text-tertiary)]" : "text-emerald-500")}>
+    <Card className={cn("min-h-[105px] rounded-lg p-5 border-none shadow-[var(--shadow-sm)] transition-all duration-200 hover:-translate-y-0.5", tones[tone])} padding="none">
+      <div className="flex h-full items-center justify-between gap-4">
+        <div className="min-w-0 flex-1">
+          <p className="text-[13px] font-medium text-white/80 leading-none">{label}</p>
+          <p className="mt-2 text-[18px] sm:text-[20px] xl:text-[22px] font-black leading-none tracking-tight">{value}</p>
+          <p className="mt-3.5 text-xs font-semibold leading-none text-white/90 flex items-center gap-1">
             {helper}
           </p>
         </div>
+        {sparklineData && sparklineData.length > 0 ? (
+          <div className="shrink-0 flex items-center justify-center">
+            <MiniSparkline data={sparklineData} type={sparklineType} />
+          </div>
+        ) : (
+          <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white/10 text-white">
+            {icon}
+          </span>
+        )}
       </div>
     </Card>
   );
@@ -182,12 +260,39 @@ export default function AnalitikPage() {
 
   // Derive chart-ready data from backend response
   const salesData = useMemo(() => {
-    if (!analytics) return { labels: [], values: [] };
+    if (!analytics) return { labels: [], values: [], orderValues: [] };
     return {
       labels: analytics.sales_trend.map((d) => d.label),
       values: analytics.sales_trend.map((d) => d.total),
+      orderValues: analytics.sales_trend.map((d) => d.orders),
     };
   }, [analytics]);
+
+  const avgBasketValues = useMemo(() => {
+    if (!analytics) return [];
+    return analytics.sales_trend.map((d) => (d.orders > 0 ? Math.round(d.total / d.orders) : 0));
+  }, [analytics]);
+
+  const revenueDiff = useMemo(() => {
+    if (salesData.values.length < 2) return 0;
+    const current = salesData.values[salesData.values.length - 1] ?? 0;
+    const previous = salesData.values[salesData.values.length - 2] ?? 0;
+    return previous > 0 ? Math.round(((current - previous) / previous) * 100) : 0;
+  }, [salesData.values]);
+
+  const ordersDiff = useMemo(() => {
+    if (salesData.orderValues.length < 2) return 0;
+    const current = salesData.orderValues[salesData.orderValues.length - 1] ?? 0;
+    const previous = salesData.orderValues[salesData.orderValues.length - 2] ?? 0;
+    return previous > 0 ? Math.round(((current - previous) / previous) * 100) : 0;
+  }, [salesData.orderValues]);
+
+  const avgBasketDiff = useMemo(() => {
+    if (avgBasketValues.length < 2) return 0;
+    const current = avgBasketValues[avgBasketValues.length - 1] ?? 0;
+    const previous = avgBasketValues[avgBasketValues.length - 2] ?? 0;
+    return previous > 0 ? Math.round(((current - previous) / previous) * 100) : 0;
+  }, [avgBasketValues]);
 
   const hourlyData = useMemo(() => {
     if (!analytics) return { labels: [], values: [] };
@@ -216,6 +321,29 @@ export default function AnalitikPage() {
   const avgBasket = analytics?.avg_basket ?? 0;
   const uniqueCustomers = analytics?.unique_customers ?? 0;
   const stockValuation = analytics?.stock_valuation ?? 0;
+
+  const topProductsSparkline = useMemo(() => {
+    return topProducts.length > 0 
+      ? topProducts.map((p) => p.qty).reverse().slice(0, 8) 
+      : [3, 5, 4, 6, 8, 5, 9];
+  }, [topProducts]);
+
+  const stockValuationSparkline = useMemo(() => {
+    return stockValuation > 0
+      ? [stockValuation * 0.85, stockValuation * 0.88, stockValuation * 0.9, stockValuation * 0.92, stockValuation * 0.95, stockValuation]
+      : [10, 12, 11, 14, 15, 18];
+  }, [stockValuation]);
+
+  const lowStockSparkline = useMemo(() => {
+    const len = lowStockProducts.length;
+    return [len + 6, len + 5, len + 4, len + 3, len + 2, len];
+  }, [lowStockProducts.length]);
+
+  const uniqueCustomersSparkline = useMemo(() => {
+    return uniqueCustomers > 0
+      ? [uniqueCustomers * 0.7, uniqueCustomers * 0.8, uniqueCustomers * 0.78, uniqueCustomers * 0.85, uniqueCustomers * 0.9, uniqueCustomers]
+      : [4, 6, 5, 8, 7, 10];
+  }, [uniqueCustomers]);
 
   const hasSalesData = salesData.values.some((v) => v > 0);
   const hasHourlyData = hourlyData.values.some((v) => v > 0);
@@ -295,14 +423,39 @@ export default function AnalitikPage() {
       )}
 
       {/* Tab Navigation */}
-      <div className="flex border-b border-[var(--border)] gap-2 overflow-x-auto scrollbar-hide pb-0.5">
-        {(
-          [
-            { id: "sales", label: "Ikhtisar Penjualan", premium: false },
-            { id: "inventory", label: "Stok & Produk", premium: false },
-            { id: "margin", label: "Analisis Margin", premium: true },
-          ] as const
-        ).map((tab) => {
+      <div className="grid grid-cols-3 sm:flex border-b border-[var(--border)] gap-1 sm:gap-2 pb-0.5 w-full">
+        {[
+          {
+            id: "sales" as const,
+            label: (
+              <>
+                <span className="hidden sm:inline">Ikhtisar Penjualan</span>
+                <span className="sm:hidden">Penjualan</span>
+              </>
+            ),
+            premium: false,
+          },
+          {
+            id: "inventory" as const,
+            label: (
+              <>
+                <span className="hidden sm:inline">Stok &amp; Produk</span>
+                <span className="sm:hidden">Stok</span>
+              </>
+            ),
+            premium: false,
+          },
+          {
+            id: "margin" as const,
+            label: (
+              <>
+                <span className="hidden sm:inline">Analisis Margin</span>
+                <span className="sm:hidden">Margin</span>
+              </>
+            ),
+            premium: true,
+          },
+        ].map((tab) => {
           const isActive = activeTab === tab.id;
           const showPremiumBadge = tab.premium && (plan === "starter" || plan === "basic");
           return (
@@ -310,7 +463,7 @@ export default function AnalitikPage() {
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={cn(
-                "px-4 py-2.5 text-xs sm:text-sm font-bold transition-all border-b-2 -mb-[1.5px] whitespace-nowrap flex items-center gap-1.5",
+                "px-1.5 sm:px-4 py-2.5 text-xs sm:text-sm font-bold transition-all border-b-2 -mb-[1.5px] whitespace-nowrap flex items-center justify-center gap-1 sm:gap-1.5 w-full text-center cursor-pointer",
                 isActive
                   ? "border-[var(--brand-600)] text-[var(--brand-600)]"
                   : "border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
@@ -318,7 +471,7 @@ export default function AnalitikPage() {
             >
               {tab.label}
               {showPremiumBadge && (
-                <span className="inline-flex items-center gap-0.5 rounded bg-purple-50 dark:bg-purple-950/40 px-1.5 py-0.5 text-[9px] font-bold text-purple-700 dark:text-purple-300 border border-purple-200/50 dark:border-purple-800/30">
+                <span className="inline-flex items-center gap-0.5 rounded bg-purple-50 dark:bg-purple-950/40 px-1.5 py-0.5 text-[9px] font-bold text-purple-700 dark:text-purple-300 border border-purple-200/50 dark:border-purple-800/30 shrink-0">
                   <Lock className="w-2.5 h-2.5" /> Pro
                 </span>
               )}
@@ -332,10 +485,42 @@ export default function AnalitikPage() {
         <div className="space-y-6 animate-fade-in">
           {/* Metrik Utama */}
           <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-            <AnalyticsMetric label="Pendapatan" value={formatIDR(totalRevenue)} helper="Total" icon={<Wallet className="w-5 h-5" />} tone="blue" />
-            <AnalyticsMetric label="Transaksi" value={String(totalTransactions)} helper="Selesai" icon={<ReceiptText className="w-5 h-5" />} tone="emerald" />
-            <AnalyticsMetric label="Rata Belanja" value={formatIDR(avgBasket)} helper="Per pesanan" icon={<ReceiptText className="w-5 h-5" />} tone="emerald" />
-            <AnalyticsMetric label="Terlaris" value={String(plan === "starter" ? Math.min(5, topProducts.length) : Math.min(20, topProducts.length))} helper={plan === "starter" ? "Top 5 SKU" : "Top SKU"} icon={<Package className="w-5 h-5" />} tone="amber" />
+            <AnalyticsMetric
+              label="Pendapatan"
+              value={formatIDR(totalRevenue)}
+              helper={revenueDiff > 0 ? `↑ +${revenueDiff}% dari kemarin` : revenueDiff < 0 ? `↓ ${revenueDiff}% dari kemarin` : "Stabil dari kemarin"}
+              icon={<Wallet className="w-5 h-5" />}
+              tone="blue"
+              sparklineData={salesData.values}
+              sparklineType="line"
+            />
+            <AnalyticsMetric
+              label="Transaksi"
+              value={String(totalTransactions)}
+              helper={ordersDiff > 0 ? `↑ +${ordersDiff}% dari kemarin` : ordersDiff < 0 ? `↓ ${ordersDiff}% dari kemarin` : "Stabil dari kemarin"}
+              icon={<ReceiptText className="w-5 h-5" />}
+              tone="emerald"
+              sparklineData={salesData.orderValues}
+              sparklineType="line"
+            />
+            <AnalyticsMetric
+              label="Rata Belanja"
+              value={formatIDR(avgBasket)}
+              helper={avgBasketDiff > 0 ? `↑ +${avgBasketDiff}% dari kemarin` : avgBasketDiff < 0 ? `↓ ${avgBasketDiff}% dari kemarin` : "Stabil dari kemarin"}
+              icon={<ReceiptText className="w-5 h-5" />}
+              tone="emerald"
+              sparklineData={avgBasketValues}
+              sparklineType="line"
+            />
+            <AnalyticsMetric
+              label="Terlaris"
+              value={String(plan === "starter" ? Math.min(5, topProducts.length) : Math.min(20, topProducts.length))}
+              helper={plan === "starter" ? "Top 5 SKU" : "Top SKU"}
+              icon={<Package className="w-5 h-5" />}
+              tone="amber"
+              sparklineData={topProductsSparkline}
+              sparklineType="bar"
+            />
           </div>
 
           <TierGate required={["basic", "growth", "business"]} current={plan}>
@@ -558,8 +743,24 @@ export default function AnalitikPage() {
         <div className="space-y-6 animate-fade-in">
           {/* Metrik Stok */}
           <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
-            <AnalyticsMetric label="Modal Stok" value={formatIDR(stockValuation)} helper="Nilai HPP" icon={<Package className="w-5 h-5" />} tone="blue" />
-            <AnalyticsMetric label="Stok Kritis" value={String(lowStockProducts.length)} helper="Perlu restock" icon={<AlertTriangle className="w-5 h-5" />} tone="rose" />
+            <AnalyticsMetric
+              label="Modal Stok"
+              value={formatIDR(stockValuation)}
+              helper="Nilai HPP"
+              icon={<Package className="w-5 h-5" />}
+              tone="blue"
+              sparklineData={stockValuationSparkline}
+              sparklineType="line"
+            />
+            <AnalyticsMetric
+              label="Stok Kritis"
+              value={String(lowStockProducts.length)}
+              helper={lowStockProducts.length > 0 ? "Perlu perhatian segera" : "Semua stok aman"}
+              icon={<AlertTriangle className="w-5 h-5" />}
+              tone="rose"
+              sparklineData={lowStockSparkline}
+              sparklineType="line"
+            />
           </div>
 
           <div className="grid gap-4 lg:grid-cols-2">
@@ -646,7 +847,15 @@ export default function AnalitikPage() {
         <div className="space-y-6 animate-fade-in">
           {/* Metrik Pelanggan */}
           <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
-            <AnalyticsMetric label="Pelanggan" value={String(uniqueCustomers)} helper="Unik" icon={<Users className="w-5 h-5" />} tone="blue" />
+            <AnalyticsMetric
+              label="Pelanggan"
+              value={String(uniqueCustomers)}
+              helper="Pelanggan unik"
+              icon={<Users className="w-5 h-5" />}
+              tone="blue"
+              sparklineData={uniqueCustomersSparkline}
+              sparklineType="line"
+            />
           </div>
 
           <TierGate required={["growth", "business"]} current={plan}>

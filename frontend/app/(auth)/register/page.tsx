@@ -115,6 +115,7 @@ export default function RegisterPage() {
   const [loading, setLoading]     = useState(false);
   const [otpError, setOtpError]   = useState("");
   const [resendCooldown, setResendCooldown] = useState(0);
+  const [errors, setErrors]       = useState<Record<string, string>>({});
 
   // Form data persisted across all steps
   const [formData, setFormData] = useState({
@@ -131,6 +132,54 @@ export default function RegisterPage() {
 
   const updateField = (field: keyof typeof formData, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+    if (errors[field]) {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next[field];
+        return next;
+      });
+    }
+  };
+
+  // ── Step Validations ──
+  const validateStep1 = () => {
+    const errs: Record<string, string> = {};
+    if (!formData.businessName.trim() || formData.businessName.trim().length < 3) {
+      errs.businessName = "Nama bisnis minimal 3 karakter.";
+    }
+    if (!formData.businessType.trim()) {
+      errs.businessType = "Jenis bisnis wajib diisi.";
+    }
+    const cleanedPhone = formData.phone.replace(/\D/g, "");
+    if (!formData.phone.trim() || cleanedPhone.length < 9) {
+      errs.phone = "Nomor telepon tidak valid (minimal 9 digit).";
+    }
+    setErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
+
+  const validateStep2 = () => {
+    const errs: Record<string, string> = {};
+    if (!formData.fullName.trim() || formData.fullName.trim().length < 3) {
+      errs.fullName = "Nama lengkap minimal 3 karakter.";
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!formData.email.trim() || !emailRegex.test(formData.email)) {
+      errs.email = "Format email tidak valid.";
+    }
+    if (!formData.password) {
+      errs.password = "Password wajib diisi.";
+    } else {
+      if (formData.password.length < 8) {
+        errs.password = "Password minimal 8 karakter.";
+      } else if (!/[0-9]/.test(formData.password)) {
+        errs.password = "Password harus mengandung minimal 1 angka.";
+      } else if (!/[!@#$%^&*(),.?":{}|<>]/.test(formData.password)) {
+        errs.password = "Password harus mengandung minimal 1 karakter spesial.";
+      }
+    }
+    setErrors(errs);
+    return Object.keys(errs).length === 0;
   };
 
   // ── Navigation ──
@@ -142,6 +191,7 @@ export default function RegisterPage() {
   const goBack = useCallback(() => {
     setDirection("backward");
     setOtpError("");
+    setErrors({});
     setStep((s) => s - 1);
   }, []);
 
@@ -154,11 +204,15 @@ export default function RegisterPage() {
 
   // ── Send OTP via Laravel backend ──
   const sendOtp = async () => {
+    setErrors({});
     try {
-      await api.post("/otp/send", { email: formData.email });
+      await api.post("/otp/send", { email: formData.email, type: "register" });
       setResendCooldown(60);
-    } catch {
-      // Silently fail — user can retry with resend button
+      return true;
+    } catch (err: any) {
+      const errMsg = err.response?.data?.message || "Gagal mengirim OTP. Silakan coba lagi.";
+      setErrors({ email: errMsg });
+      return false;
     }
   };
 
@@ -166,8 +220,10 @@ export default function RegisterPage() {
   const handleStep2Continue = async () => {
     setLoading(true);
     try {
-      await sendOtp();
-      goForward();
+      const success = await sendOtp();
+      if (success) {
+        goForward();
+      }
     } finally {
       setLoading(false);
     }
@@ -286,8 +342,16 @@ export default function RegisterPage() {
   // ── Form submit dispatcher ──
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (step === 1) { goForward(); return; }
-    if (step === 2) { await handleStep2Continue(); return; }
+    if (step === 1) {
+      if (validateStep1()) goForward();
+      return;
+    }
+    if (step === 2) {
+      if (validateStep2()) {
+        await handleStep2Continue();
+      }
+      return;
+    }
     if (step === 3) { await handleOtpVerify(); return; }
     if (step === 4) { await handleFinalSubmit(); }
   };
@@ -350,6 +414,7 @@ export default function RegisterPage() {
                 required
                 value={formData.businessName}
                 onChange={(e) => updateField("businessName", e.target.value)}
+                error={errors.businessName}
               />
               <Input
                 label="Jenis Bisnis"
@@ -357,6 +422,7 @@ export default function RegisterPage() {
                 required
                 value={formData.businessType}
                 onChange={(e) => updateField("businessType", e.target.value)}
+                error={errors.businessType}
               />
               <Input
                 label="Nomor Telepon"
@@ -366,6 +432,7 @@ export default function RegisterPage() {
                 required
                 value={formData.phone}
                 onChange={(e) => updateField("phone", e.target.value)}
+                error={errors.phone}
               />
             </>
           )}
@@ -380,6 +447,7 @@ export default function RegisterPage() {
                 required
                 value={formData.fullName}
                 onChange={(e) => updateField("fullName", e.target.value)}
+                error={errors.fullName}
               />
               <Input
                 label="Email"
@@ -389,6 +457,7 @@ export default function RegisterPage() {
                 required
                 value={formData.email}
                 onChange={(e) => updateField("email", e.target.value)}
+                error={errors.email}
               />
               <Input
                 label="Password"
@@ -399,6 +468,7 @@ export default function RegisterPage() {
                 required
                 value={formData.password}
                 onChange={(e) => updateField("password", e.target.value)}
+                error={errors.password}
               />
             </>
           )}

@@ -200,4 +200,116 @@ class AdminController extends Controller
             'message'   => "Tenant {$tenant->name} berhasil {$statusStr}.",
         ]);
     }
+
+    /**
+     * Get details of a single tenant.
+     */
+    public function showTenant(Request $request, $id)
+    {
+        $tenant = Tenant::findOrFail($id);
+
+        $latestSub = Subscription::where('tenant_id', $tenant->id)
+            ->where('status', 'settlement')
+            ->orderBy('expires_at', 'desc')
+            ->first();
+
+        $usersCount = DB::table('users')->where('tenant_id', $tenant->id)->count();
+        $branchesCount = DB::table('branches')->where('tenant_id', $tenant->id)->count();
+
+        return response()->json([
+            'id'             => $tenant->id,
+            'name'           => $tenant->name,
+            'slug'           => $tenant->slug,
+            'phone'          => $tenant->phone,
+            'plan'           => $tenant->plan,
+            'trial_ends_at'  => $tenant->trial_ends_at ? $tenant->trial_ends_at->toIso8601String() : null,
+            'is_active'      => (bool) $tenant->is_active,
+            'created_at'     => $tenant->created_at->toIso8601String(),
+            'expires_at'     => $latestSub && $latestSub->expires_at ? $latestSub->expires_at->toIso8601String() : null,
+            'billing_cycle'  => $latestSub ? $latestSub->billing_cycle : 'monthly',
+            'users_count'    => $usersCount,
+            'branches_count' => $branchesCount,
+        ]);
+    }
+
+    /**
+     * Create a new tenant and its owner user.
+     */
+    public function storeTenant(Request $request)
+    {
+        $request->validate([
+            'business_name' => 'required|string|max:255',
+            'name'          => 'required|string|max:255',
+            'email'         => 'required|string|email|max:255|unique:users',
+            'password'      => 'required|string|min:8',
+            'phone'         => 'required|string|max:30',
+            'plan'          => 'required|string|in:starter,basic,growth,business',
+            'billing_cycle' => 'nullable|string|in:monthly,annual',
+        ]);
+
+        $phone = preg_replace('/\D/', '', $request->phone);
+        if (str_starts_with($phone, '0')) {
+            $phone = '62' . substr($phone, 1);
+        }
+
+        return DB::transaction(function () use ($request, $phone) {
+            $tenant = Tenant::create([
+                'name'  => $request->business_name,
+                'slug'  => \Illuminate\Support\Str::slug($request->business_name) . '-' . \Illuminate\Support\Str::random(6),
+                'phone' => $phone,
+                'plan'  => $request->plan,
+            ]);
+
+            $user = User::create([
+                'tenant_id' => $tenant->id,
+                'name'      => $request->name,
+                'email'     => $request->email,
+                'password'  => \Illuminate\Support\Facades\Hash::make($request->password),
+                'role'      => 'owner',
+            ]);
+
+            $billingCycle = strtolower($request->billing_cycle ?? 'monthly');
+            
+            // Create active subscription
+            $expiresAt = null;
+            if ($request->plan !== 'starter') {
+                $expiresAt = $billingCycle === 'annual' ? now()->addYear() : now()->addMonth();
+            }
+
+            Subscription::create([
+                'tenant_id'     => $tenant->id,
+                'user_id'       => $user->id,
+                'plan'          => $request->plan,
+                'billing_cycle' => $billingCycle,
+                'order_id'      => 'MANUAL-ADMIN-NEW-' . $user->id . '-' . time(),
+                'amount'        => 0,
+                'status'        => 'settlement',
+                'paid_at'       => now(),
+                'expires_at'    => $expiresAt,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => "Tenant {$tenant->name} dan akun owner berhasil dibuat.",
+                'tenant'  => [
+                    'id'   => $tenant->id,
+                    'name' => $tenant->name,
+                ],
+            ], 201);
+        });
+    }
+
+    /**
+     * Delete a tenant and all its associated data.
+     */
+    public function deleteTenant(Request $request, $id)
+    {
+        $tenant = Tenant::findOrFail($id);
+        $tenant->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => "Tenant {$tenant->name} berhasil dihapus dari sistem beserta seluruh datanya secara permanen.",
+        ]);
+    }
 }

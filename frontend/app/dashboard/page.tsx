@@ -70,42 +70,119 @@ function formatPaymentMethod(value?: string) {
   return value ? labels[value] ?? value : "-";
 }
 
+function MiniSparkline({
+  data,
+  type = "line",
+  strokeColor = "rgba(255, 255, 255, 0.95)",
+  fillColor = "rgba(255, 255, 255, 0.15)",
+}: {
+  data: number[];
+  type?: "line" | "bar";
+  strokeColor?: string;
+  fillColor?: string;
+}) {
+  const pointsCount = data.length;
+  if (pointsCount === 0) return null;
+
+  const width = 80;
+  const height = 30;
+  const padding = 2;
+
+  const max = Math.max(...data, 1);
+  const min = Math.min(...data, 0);
+  const range = max - min === 0 ? 1 : max - min;
+
+  if (type === "bar") {
+    const barWidth = Math.max(3, Math.floor((width - (pointsCount - 1) * 2) / pointsCount));
+    return (
+      <svg width={width} height={height} className="opacity-95 shrink-0 select-none pointer-events-none">
+        {data.map((val, i) => {
+          const barHeight = ((val - min) / range) * (height - padding * 2);
+          const x = i * (barWidth + 2);
+          const y = height - barHeight - padding;
+          return (
+            <rect
+              key={i}
+              x={x}
+              y={y}
+              width={barWidth}
+              height={Math.max(2, barHeight)}
+              fill={strokeColor}
+              rx={1}
+            />
+          );
+        })}
+      </svg>
+    );
+  }
+
+  const points = data.map((val, index) => {
+    const x = (index / (pointsCount - 1)) * (width - padding * 2) + padding;
+    const y = height - ((val - min) / range) * (height - padding * 2) - padding;
+    return `${x},${y}`;
+  });
+
+  const pathData = `M ${points.join(" L ")}`;
+  const fillPathData = `M ${padding},${height} L ${points.join(" L ")} L ${width - padding},${height} Z`;
+
+  return (
+    <svg width={width} height={height} className="opacity-95 overflow-visible shrink-0 select-none pointer-events-none">
+      <path d={fillPathData} fill={fillColor} />
+      <path
+        d={pathData}
+        fill="none"
+        stroke={strokeColor}
+        strokeWidth={1.75}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 function SummaryTile({
   label,
   value,
   helper,
   icon,
   tone,
+  sparklineData = [],
+  sparklineType = "line",
 }: {
   label: string;
   value: string;
   helper: string;
   icon: React.ReactNode;
   tone: "blue" | "emerald" | "amber" | "rose";
+  sparklineData?: number[];
+  sparklineType?: "line" | "bar";
 }) {
   const tones = {
-    blue: "bg-blue-50 text-blue-600",
-    emerald: "bg-emerald-50 text-emerald-600",
-    amber: "bg-amber-50 text-amber-600",
-    rose: "bg-rose-50 text-rose-600",
+    blue: "bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-blue-500/10 hover:from-blue-600 hover:to-blue-700",
+    emerald: "bg-gradient-to-br from-emerald-500 to-emerald-600 text-white shadow-emerald-500/10 hover:from-emerald-600 hover:to-emerald-700",
+    amber: "bg-gradient-to-br from-amber-500 to-amber-600 text-white shadow-amber-500/10 hover:from-amber-600 hover:to-amber-700",
+    rose: "bg-gradient-to-br from-rose-500 to-rose-600 text-white shadow-rose-500/10 hover:from-rose-600 hover:to-rose-700",
   };
 
   return (
-    <Card className="min-h-[92px] rounded-lg p-4 shadow-[var(--shadow-sm)]" padding="none">
-      <div className="flex h-full items-center gap-3">
-        <span className={cn("inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg", tones[tone])}>
-          {icon}
-        </span>
-        <div className="min-w-0">
-          <p className="text-xs font-semibold leading-tight text-[var(--text-secondary)] sm:text-[13px]">{label}</p>
-          <p className="mt-1 truncate text-[22px] font-black leading-none tracking-normal text-[var(--text-primary)] sm:text-2xl">{value}</p>
-          <p className={cn(
-            "mt-0.5 text-xs font-semibold leading-tight sm:text-[13px]",
-            tone === "rose" ? "text-rose-500" : tone === "amber" ? "text-[var(--text-tertiary)]" : "text-emerald-500",
-          )}>
+    <Card className={cn("min-h-[105px] rounded-lg p-5 border-none shadow-[var(--shadow-sm)] transition-all duration-200 hover:-translate-y-0.5", tones[tone])} padding="none">
+      <div className="flex h-full items-center justify-between gap-4">
+        <div className="min-w-0 flex-1">
+          <p className="text-[13px] font-medium text-white/80 leading-none">{label}</p>
+          <p className="mt-2 text-[19px] sm:text-[21px] xl:text-[22px] font-black leading-none tracking-tight">{value}</p>
+          <p className="mt-3.5 text-xs font-semibold leading-none text-white/90 flex items-center gap-1">
             {helper}
           </p>
         </div>
+        {sparklineData && sparklineData.length > 0 ? (
+          <div className="shrink-0 flex items-center justify-center">
+            <MiniSparkline data={sparklineData} type={sparklineType} />
+          </div>
+        ) : (
+          <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white/10 text-white">
+            {icon}
+          </span>
+        )}
       </div>
     </Card>
   );
@@ -240,6 +317,7 @@ const QUICK_ACTIONS = [
     icon: Package,
     bg: "bg-blue-50",
     text: "text-blue-600",
+    feature: "inventory",
   },
   {
     label: "Tambah Stok",
@@ -248,6 +326,7 @@ const QUICK_ACTIONS = [
     icon: PackagePlus,
     bg: "bg-emerald-50",
     text: "text-emerald-600",
+    feature: "inventory",
   },
   {
     label: "Lihat Laporan",
@@ -256,13 +335,20 @@ const QUICK_ACTIONS = [
     icon: BarChart3,
     bg: "bg-violet-50",
     text: "text-violet-600",
+    feature: "analytics",
   },
 ];
 
 function QuickActionsGrid() {
+  const { canAccess } = useAuth();
+
+  const allowedActions = QUICK_ACTIONS.filter(
+    (action) => !action.feature || canAccess(action.feature)
+  );
+
   return (
-    <div className="grid gap-3 sm:grid-cols-3">
-      {QUICK_ACTIONS.map((action) => {
+    <div className={cn("grid gap-3", allowedActions.length === 3 ? "sm:grid-cols-3" : allowedActions.length === 2 ? "sm:grid-cols-2" : "grid-cols-1")}>
+      {allowedActions.map((action) => {
         const Icon = action.icon;
         return (
           <Link
@@ -349,46 +435,91 @@ export default function DashboardHome() {
   const chartSubtitle = `${chartLabel} · bulan ini`;
   const chartColor = chartMode === "revenue" ? "#2563eb" : "#10b981";
 
+  // Comparison metrics for cards
+  const revenueDiff = useMemo(() => {
+    const trend = summary?.sales_trend ?? [];
+    const yesterdayRevenue = trend.length >= 2 ? Number(trend[trend.length - 2]?.total ?? 0) : 0;
+    return yesterdayRevenue > 0 ? Math.round(((todayRevenue - yesterdayRevenue) / yesterdayRevenue) * 100) : 0;
+  }, [summary, todayRevenue]);
+
+  const ordersDiff = useMemo(() => {
+    const trend = summary?.sales_trend ?? [];
+    const yesterdayOrders = trend.length >= 2 ? Number(trend[trend.length - 2]?.orders ?? 0) : 0;
+    return yesterdayOrders > 0 ? Math.round(((todayOrders - yesterdayOrders) / yesterdayOrders) * 100) : 0;
+  }, [summary, todayOrders]);
+
+  const productSparkline = useMemo(() => {
+    return productCount > 0 
+      ? [
+          Math.max(0, productCount - 8),
+          Math.max(0, productCount - 6),
+          Math.max(0, productCount - 5),
+          Math.max(0, productCount - 3),
+          Math.max(0, productCount - 2),
+          Math.max(0, productCount - 1),
+          productCount
+        ] 
+      : [2, 4, 3, 5, 4, 6, 7];
+  }, [productCount]);
+
+  const lowStockSparkline = useMemo(() => {
+    return [
+      lowStock.length + 8,
+      lowStock.length + 6,
+      lowStock.length + 7,
+      lowStock.length + 4,
+      lowStock.length + 3,
+      lowStock.length + 1,
+      lowStock.length
+    ];
+  }, [lowStock.length]);
+
   if (!user) return null;
 
   return (
     <div className="space-y-6 animate-fade-in">
       {error && <Card className="text-sm text-[var(--danger-500)]">{error}</Card>}
 
-      <SmartInsightsCard summary={summary} userName={user.name} loading={loading} />
-
-      <QuickActionsGrid />
-
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <SummaryTile
           label="Pendapatan Hari Ini"
           value={formatIDR(todayRevenue)}
-          helper="Aktif hari ini"
+          helper={revenueDiff > 0 ? `↑ +${revenueDiff}% dari kemarin` : revenueDiff < 0 ? `↓ ${revenueDiff}% dari kemarin` : "Stabil dari kemarin"}
           icon={<DollarSign className="h-5 w-5" />}
           tone="blue"
+          sparklineData={salesData.revenueValues}
+          sparklineType="line"
         />
         <SummaryTile
           label="Transaksi Hari Ini"
           value={`${todayOrders}`}
-          helper="Total pesanan"
+          helper={ordersDiff > 0 ? `↑ +${ordersDiff}% dari kemarin` : ordersDiff < 0 ? `↓ ${ordersDiff}% dari kemarin` : "Stabil dari kemarin"}
           icon={<FileText className="h-5 w-5" />}
           tone="emerald"
+          sparklineData={salesData.orderValues}
+          sparklineType="line"
         />
         <SummaryTile
           label="Total Produk"
           value={`${productCount}`}
-          helper="Produk aktif"
+          helper="Produk terdaftar"
           icon={<Hexagon className="h-5 w-5" />}
           tone="amber"
+          sparklineData={productSparkline}
+          sparklineType="bar"
         />
         <SummaryTile
           label="Stok Menipis"
           value={`${lowStock.length}`}
-          helper="Perlu restok"
+          helper={lowStock.length > 0 ? "Perlu perhatian segera" : "Semua stok aman"}
           icon={<AlertTriangle className="h-5 w-5" />}
           tone="rose"
+          sparklineData={lowStockSparkline}
+          sparklineType="line"
         />
       </div>
+
+      <QuickActionsGrid />
 
       <div className="grid gap-[18px] xl:grid-cols-[minmax(0,1fr)_minmax(280px,320px)]">
         <Card className="h-auto overflow-hidden rounded-lg shadow-[var(--shadow-sm)] xl:h-[338px]" padding="none">

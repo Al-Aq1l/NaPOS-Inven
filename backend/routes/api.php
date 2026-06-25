@@ -28,8 +28,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::middleware('role:superadmin')->prefix('admin')->group(function () {
         Route::get('/summary', [\App\Http\Controllers\Api\AdminController::class, 'summary']);
         Route::get('/tenants', [\App\Http\Controllers\Api\AdminController::class, 'tenants']);
+        Route::post('/tenants', [\App\Http\Controllers\Api\AdminController::class, 'storeTenant']);
+        Route::get('/tenants/{tenant}', [\App\Http\Controllers\Api\AdminController::class, 'showTenant']);
         Route::put('/tenants/{tenant}/subscription', [\App\Http\Controllers\Api\AdminController::class, 'updateSubscription']);
         Route::post('/tenants/{tenant}/toggle-active', [\App\Http\Controllers\Api\AdminController::class, 'toggleActive']);
+        Route::delete('/tenants/{tenant}', [\App\Http\Controllers\Api\AdminController::class, 'deleteTenant']);
     });
 
     // Protected routes requiring a tenant

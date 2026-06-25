@@ -17,7 +17,14 @@ class OtpController extends Controller
     {
         $request->validate([
             'email' => 'required|email|max:255',
+            'type'  => 'nullable|string|in:register,reset',
         ]);
+
+        if ($request->type === 'register' && \App\Models\User::where('email', $request->email)->exists()) {
+            return response()->json([
+                'message' => 'Email sudah terdaftar di sistem. Silakan masuk atau gunakan email lain.',
+            ], 422);
+        }
 
         $otp = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
 

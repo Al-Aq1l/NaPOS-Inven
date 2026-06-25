@@ -60,7 +60,7 @@ function SidebarContent({
   isCollapsed = false,
 }: {
   user: { name: string; tenant: { name: string; plan: string }; role: UserRole };
-  navItems: Array<{ href: string; label: string; icon: string }>;
+  navItems: Array<{ href: string; label: string; icon: string; badge?: string }>;
   pathname: string;
   currentHref: string;
   setSidebarOpen: React.Dispatch<React.SetStateAction<boolean>>;
@@ -81,8 +81,27 @@ function SidebarContent({
     }));
   };
 
+  const plan = user.tenant.plan?.toLowerCase() || 'starter';
+
+  const sidebarBgs: Record<string, string> = {
+    starter: "bg-gradient-to-b from-[#334155] to-[#0f172a]", // Slate
+    basic: "bg-gradient-to-b from-[#115e59] to-[#0f172a]", // Deep Teal
+    growth: "bg-gradient-to-b from-[#0f172a] via-[#1e293b] to-[#111827]", // Sleek Deep Blue / Charcoal
+    business: "bg-gradient-to-b from-[#2e1065] via-[#1e1b4b] to-[#090514]", // Premium Purple/Dark Violet
+  };
+
+  const badgeConfigs: Record<string, { label: string; dot: string; text: string; border: string; bg: string }> = {
+    starter: { label: "Starter", dot: "bg-slate-400", text: "text-slate-300", border: "border-slate-500/30", bg: "bg-slate-400/10" },
+    basic: { label: "Basic", dot: "bg-teal-400", text: "text-teal-200", border: "border-teal-500/30", bg: "bg-teal-500/10" },
+    growth: { label: "Growth", dot: "bg-sky-400", text: "text-sky-200", border: "border-sky-500/30", bg: "bg-sky-500/10" },
+    business: { label: "Business", dot: "bg-purple-400", text: "text-purple-200", border: "border-purple-500/40", bg: "bg-purple-500/15" },
+  };
+
+  const currentBg = sidebarBgs[plan] || sidebarBgs.starter;
+  const currentBadge = badgeConfigs[plan] || badgeConfigs.starter;
+
   return (
-    <div className="relative flex flex-col h-full bg-[#0a1321] text-slate-200 overflow-hidden select-none">
+    <div className={cn("relative flex flex-col h-full text-slate-200 overflow-hidden select-none transition-colors duration-500", currentBg)}>
       <div className={cn(
         "relative flex items-center justify-center transition-all duration-300 z-10 bg-[radial-gradient(circle_at_1px_1px,rgba(255,255,255,0.08)_1px,transparent_0)] [background-size:12px_12px]",
         isCollapsed ? "h-20 px-0" : "px-4 h-28"
@@ -94,7 +113,7 @@ function SidebarContent({
           >
             <Image
               src="/NaPOS LOGO.png"
-              alt="NaPOS"
+              alt="NaPS"
               width={40}
               height={44}
               priority
@@ -116,22 +135,10 @@ function SidebarContent({
       {!isCollapsed && (
         <div className="mx-3 mt-5 px-4 py-3 rounded-xl bg-white/[0.06] shadow-[0_10px_24px_-18px_rgba(0,0,0,0.85),inset_0_1px_0_rgba(255,255,255,0.06)] space-y-2 z-10">
           <p className="text-sm font-semibold text-white leading-snug break-words">{user.tenant.name}</p>
-          {(() => {
-            const plan = user.tenant.plan?.toLowerCase() || 'starter';
-            const cfg: Record<string, { label: string; dot: string; text: string; border: string; bg: string }> = {
-              starter: { label: "Starter", dot: "bg-slate-400", text: "text-slate-400", border: "border-slate-500/50", bg: "bg-slate-400/10" },
-              basic: { label: "Basic", dot: "bg-[var(--brand-400)]", text: "text-[var(--brand-200)]", border: "border-[var(--brand-500)]/30", bg: "bg-[var(--brand-500)]/15" },
-              growth: { label: "Growth", dot: "bg-[var(--brand-300)]", text: "text-[var(--brand-100)]", border: "border-[var(--brand-400)]/40", bg: "bg-[var(--brand-500)]/20" },
-              business: { label: "Business", dot: "bg-[var(--brand-200)]", text: "text-[var(--brand-50)]", border: "border-[var(--brand-300)]/60", bg: "bg-[var(--brand-600)]/25" },
-            };
-            const c = cfg[plan] || cfg.starter;
-            return (
-              <div className={cn("inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5", c.border, c.bg)}>
-                <span className={cn("h-1.5 w-1.5 rounded-full", c.dot)} />
-                <span className={cn("text-[11px] font-semibold uppercase tracking-wide", c.text)}>{c.label}</span>
-              </div>
-            );
-          })()}
+          <div className={cn("inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5", currentBadge.border, currentBadge.bg)}>
+            <span className={cn("h-1.5 w-1.5 rounded-full animate-pulse", currentBadge.dot)} />
+            <span className={cn("text-[11px] font-bold uppercase tracking-wide", currentBadge.text)}>{currentBadge.label}</span>
+          </div>
         </div>
       )}
 
@@ -204,10 +211,15 @@ function SidebarContent({
                       >
                         <Icon className="h-5 w-5 flex-shrink-0" />
                         {!isCollapsed && <span className="min-w-0 flex-1 truncate">{item.label}</span>}
+                        {!isCollapsed && item.badge && (
+                          <span className="shrink-0 rounded bg-white/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-slate-300">
+                            {item.badge}
+                          </span>
+                        )}
 
                         {isCollapsed && (
                           <div className="absolute left-full ml-3 px-2 py-1 bg-slate-900 text-white text-xs font-medium rounded opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none whitespace-nowrap shadow-md z-[70] border border-white/5">
-                            {item.label}
+                            {item.badge ? `${item.label} (${item.badge})` : item.label}
                           </div>
                         )}
                       </Link>

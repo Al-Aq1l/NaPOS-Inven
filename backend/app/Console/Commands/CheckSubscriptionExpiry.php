@@ -62,7 +62,7 @@ class CheckSubscriptionExpiry extends Command
         $adminPhone = config('services.whatsapp.admin_phone');
         if ($adminPhone && $totalSent > 0) {
             try {
-                $summaryMsg = "📊 *Laporan Harian Langganan NaPOS*\n\n"
+                $summaryMsg = "📊 *Laporan Harian Langganan NaPS*\n\n"
                     . "Tanggal: " . now()->timezone('Asia/Jakarta')->format('d M Y') . "\n"
                     . "Total notifikasi terkirim: {$totalSent}\n\n"
                     . "Sistem telah mengirim pengingat perpanjangan langganan ke tenant yang masa aktifnya akan berakhir dalam 7, 3, atau 1 hari.";
@@ -89,9 +89,9 @@ class CheckSubscriptionExpiry extends Command
 
         return "{$urgency}\n\n"
             . "Halo, *{$tenantName}*! 👋\n\n"
-            . "Langganan paket *{$planLabel}* Anda di NaPOS akan berakhir dalam *{$days} hari* ({$expiryDate}).\n\n"
+            . "Langganan paket *{$planLabel}* Anda di NaPS akan berakhir dalam *{$days} hari* ({$expiryDate}).\n\n"
             . "Untuk menghindari gangguan layanan, silakan perpanjang langganan Anda sebelum tanggal tersebut melalui menu:\n"
             . "📱 _Dashboard > Pengaturan > Tagihan & Langganan_\n\n"
-            . "Terima kasih telah menggunakan *NaPOS*! 🙏";
+            . "Terima kasih telah menggunakan *NaPS*! 🙏";
     }
 }

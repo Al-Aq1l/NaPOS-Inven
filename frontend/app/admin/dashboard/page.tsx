@@ -60,7 +60,7 @@ export default function AdminDashboardPage() {
       {/* Title */}
       <div>
         <h2 className="text-2xl font-bold text-[var(--text-primary)] tracking-tight">Ringkasan Sistem</h2>
-        <p className="text-sm text-[var(--text-secondary)] mt-1">Selamat datang kembali. Berikut adalah ringkasan performa NaPOS.</p>
+        <p className="text-sm text-[var(--text-secondary)] mt-1">Selamat datang kembali. Berikut adalah ringkasan performa NaPS.</p>
       </div>
 
       {/* Stats Grid */}
@@ -207,7 +207,7 @@ export default function AdminDashboardPage() {
             <Card padding="none" className="p-5 space-y-4 text-xs">
               <div className="flex justify-between border-b border-[var(--border)] pb-2">
                 <span className="text-[var(--text-secondary)]">Lisensi Sistem</span>
-                <span className="font-bold text-[var(--text-primary)]">NaPOS Enterprise</span>
+                <span className="font-bold text-[var(--text-primary)]">NaPS Enterprise</span>
               </div>
               <div className="flex justify-between border-b border-[var(--border)] pb-2">
                 <span className="text-[var(--text-secondary)]">Versi Core</span>

@@ -693,47 +693,47 @@ export default function StokBarangPage() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Card hover padding="sm">
+            <Card padding="none" className="min-h-[92px] rounded-lg p-5 border-none shadow-[var(--shadow-sm)] bg-gradient-to-br from-blue-500 to-blue-600 text-white hover:from-blue-600 hover:to-blue-700 transition-all duration-200 hover:-translate-y-0.5">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-50 text-blue-600 rounded-lg dark:bg-blue-900/30 dark:text-blue-400">
+                <div className="p-2 bg-white/15 text-white rounded-lg shrink-0">
                   <Package className="w-5 h-5" />
                 </div>
-                <div>
-                  <p className="text-2xl font-bold text-[var(--text-primary)]">{produk.length}</p>
-                  <p className="text-xs text-[var(--text-tertiary)]">Total produk</p>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[13px] font-medium text-white/80 leading-none">Total Produk</p>
+                  <p className="mt-2 text-[20px] sm:text-[22px] font-black leading-none tracking-tight truncate">{produk.length}</p>
                 </div>
               </div>
             </Card>
-            <Card hover padding="sm">
+            <Card padding="none" className="min-h-[92px] rounded-lg p-5 border-none shadow-[var(--shadow-sm)] bg-gradient-to-br from-emerald-500 to-emerald-600 text-white hover:from-emerald-600 hover:to-emerald-700 transition-all duration-200 hover:-translate-y-0.5">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-green-50 text-green-600 rounded-lg dark:bg-green-900/30 dark:text-green-400">
+                <div className="p-2 bg-white/15 text-white rounded-lg shrink-0">
                   <ArrowUpDown className="w-5 h-5" />
                 </div>
-                <div>
-                  <p className="text-2xl font-bold text-[var(--text-primary)]">{formatIDR(totalNilaiStok)}</p>
-                  <p className="text-xs text-[var(--text-tertiary)]">Nilai stok</p>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[13px] font-medium text-white/80 leading-none">Nilai Stok</p>
+                  <p className="mt-2 text-[19px] sm:text-[21px] xl:text-[22px] font-black leading-none tracking-tight truncate">{formatIDR(totalNilaiStok)}</p>
                 </div>
               </div>
             </Card>
-            <Card hover padding="sm">
+            <Card padding="none" className="min-h-[92px] rounded-lg p-5 border-none shadow-[var(--shadow-sm)] bg-gradient-to-br from-rose-500 to-rose-600 text-white hover:from-rose-600 hover:to-rose-700 transition-all duration-200 hover:-translate-y-0.5">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-amber-50 text-amber-600 rounded-lg dark:bg-amber-900/30 dark:text-amber-400">
+                <div className="p-2 bg-white/15 text-white rounded-lg shrink-0">
                   <AlertTriangle className="w-5 h-5" />
                 </div>
-                <div>
-                  <p className="text-2xl font-bold text-[var(--danger-500)]">{menipisStockCount}</p>
-                  <p className="text-xs text-[var(--text-tertiary)]">Di bawah ROP</p>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[13px] font-medium text-white/80 leading-none">Di Bawah ROP</p>
+                  <p className="mt-2 text-[20px] sm:text-[22px] font-black leading-none tracking-tight truncate">{menipisStockCount}</p>
                 </div>
               </div>
             </Card>
-            <Card hover padding="sm">
+            <Card padding="none" className="min-h-[92px] rounded-lg p-5 border-none shadow-[var(--shadow-sm)] bg-gradient-to-br from-amber-500 to-amber-600 text-white hover:from-amber-600 hover:to-amber-700 transition-all duration-200 hover:-translate-y-0.5">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-purple-50 text-purple-600 rounded-lg dark:bg-purple-900/30 dark:text-purple-400">
+                <div className="p-2 bg-white/15 text-white rounded-lg shrink-0">
                   <Filter className="w-5 h-5" />
                 </div>
-                <div>
-                  <p className="text-2xl font-bold text-[var(--text-primary)]">{kategori.length - 1}</p>
-                  <p className="text-xs text-[var(--text-tertiary)]">Kategori</p>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[13px] font-medium text-white/80 leading-none">Kategori</p>
+                  <p className="mt-2 text-[20px] sm:text-[22px] font-black leading-none tracking-tight truncate">{kategori.length - 1}</p>
                 </div>
               </div>
             </Card>

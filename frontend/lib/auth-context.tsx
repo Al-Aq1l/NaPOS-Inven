@@ -136,10 +136,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!roleAllowed) return false;
 
     if (feature.startsWith("settings")) return true;
+    if (feature === "channels") return true; // Omnichannel is an add-on accessible to all plans
 
     const plan = state.user.tenant?.plan ?? "starter";
     const planFeatures = PLAN_FEATURES[plan] ?? PLAN_FEATURES.starter;
-    return planFeatures.includes(feature) || planFeatures.some((item) => feature.startsWith(`${item}.`));
+
+    if (planFeatures.includes(feature)) return true;
+
+    // Premium features under inventory must be explicitly permitted
+    const isPremiumInventoryFeature = ["inventory.transfers", "inventory.opname", "inventory.optimization"].includes(feature);
+    if (isPremiumInventoryFeature) return false;
+
+    return planFeatures.some((item) => feature.startsWith(`${item}.`));
   }, [state.user]);
 
   const refreshUser = useCallback(async () => {

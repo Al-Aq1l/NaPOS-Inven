@@ -130,7 +130,7 @@ export interface NavItem {
 
 export const ADMIN_NAV: NavItem[] = [
   { label: "Dashboard", href: "/admin/dashboard", icon: "LayoutDashboard", roles: ["superadmin"] },
-  { label: "Daftar Tenant", href: "/admin/tenants", icon: "Building2", roles: ["superadmin"] },
+  { label: "Manajemen Akun", href: "/admin/tenants", icon: "Building2", roles: ["superadmin"] },
 ];
 
 export const DASHBOARD_NAV: NavItem[] = [
@@ -147,6 +147,7 @@ export const DASHBOARD_NAV: NavItem[] = [
   { label: "Cabang", href: "/dashboard/branches", icon: "Building2", roles: ["owner", "manager"] },
   { label: "Pengaturan", href: "/dashboard/settings", icon: "Settings", roles: ["owner"] },
 ];
+
 
 // ===== API =====
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";

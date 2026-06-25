@@ -371,3 +371,26 @@ export async function toggleTenantStatus(tenantId: number | string) {
   const res = await api.post<{ success: boolean; is_active: boolean; message: string }>(`/admin/tenants/${tenantId}/toggle-active`);
   return res.data;
 }
+
+export async function fetchAdminTenant(tenantId: number | string) {
+  const res = await api.get<AdminTenant>(`/admin/tenants/${tenantId}`);
+  return res.data;
+}
+
+export async function createTenant(data: {
+  business_name: string;
+  name: string;
+  email: string;
+  password: string;
+  phone: string;
+  plan: string;
+  billing_cycle: string;
+}) {
+  const res = await api.post<{ success: boolean; message: string; tenant: { id: number; name: string } }>("/admin/tenants", data);
+  return res.data;
+}
+
+export async function deleteTenant(tenantId: number | string) {
+  const res = await api.delete<{ success: boolean; message: string }>(`/admin/tenants/${tenantId}`);
+  return res.data;
+}
