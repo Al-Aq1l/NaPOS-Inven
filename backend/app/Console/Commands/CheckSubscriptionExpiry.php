@@ -43,7 +43,7 @@ class CheckSubscriptionExpiry extends Command
                 $message = $this->buildMessage($tenant->name, $planLabel, $days, $expiryDate);
 
                 try {
-                    $result = $whatsApp->sendMessage($tenant->phone, $message);
+                    $result = $whatsApp->sendMessage($tenant->phone, $message, 'superadmin');
                     if (isset($result['success']) && $result['success'] === false) {
                         $this->error("Failed to send to {$tenant->phone}: " . ($result['error'] ?? 'Unknown error'));
                         Log::error("SubscriptionExpiry: failed to send WhatsApp to {$tenant->phone}", $result);
@@ -67,7 +67,7 @@ class CheckSubscriptionExpiry extends Command
                     . "Total notifikasi terkirim: {$totalSent}\n\n"
                     . "Sistem telah mengirim pengingat perpanjangan langganan ke tenant yang masa aktifnya akan berakhir dalam 7, 3, atau 1 hari.";
 
-                $whatsApp->sendMessage($adminPhone, $summaryMsg);
+                $whatsApp->sendMessage($adminPhone, $summaryMsg, 'superadmin');
                 $this->info("✓ Admin summary sent to {$adminPhone}");
             } catch (\Exception $e) {
                 $this->warn("Failed to send admin summary: {$e->getMessage()}");
@@ -88,10 +88,10 @@ class CheckSubscriptionExpiry extends Command
         };
 
         return "{$urgency}\n\n"
-            . "Halo, *{$tenantName}*! 👋\n\n"
+            . "Halo, *{$tenantName}*!\n\n"
             . "Langganan paket *{$planLabel}* Anda di NaPS akan berakhir dalam *{$days} hari* ({$expiryDate}).\n\n"
             . "Untuk menghindari gangguan layanan, silakan perpanjang langganan Anda sebelum tanggal tersebut melalui menu:\n"
             . "📱 _Dashboard > Pengaturan > Tagihan & Langganan_\n\n"
-            . "Terima kasih telah menggunakan *NaPS*! 🙏";
+            . "Terima kasih telah menggunakan *NaPS*!";
     }
 }

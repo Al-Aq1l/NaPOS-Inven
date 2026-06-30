@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { Card, Button, Input, Avatar, Badge, Modal } from "@/components/ui";
 import { ROLES, type UserRole } from "@/lib/constants";
-import { Building2, Upload, Users, Bell, Shield, Mail, Phone, MapPin, Trash2, Eye, Pencil, ChevronDown, MessageSquare, QrCode, Percent } from "lucide-react";
+import { Building2, Upload, Users, Bell, Shield, Mail, Phone, MapPin, Trash2, Eye, Pencil, ChevronDown, MessageSquare, QrCode, Percent, AlertCircle } from "lucide-react";
 import Link from "next/link";
 import api from "@/lib/api";
 import { fetchBranches, type ApiBranch, fetchWhatsAppStatus, fetchWhatsAppQr, postWhatsAppLogout } from "@/lib/dashboard-api";
@@ -483,7 +483,7 @@ export default function PengaturanPage() {
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-2">
                 <MessageSquare className="w-5 h-5 text-[var(--brand-600)]" />
-                <h2 className="font-semibold text-[var(--text-primary)]">Integrasi WhatsApp Struk</h2>
+                <h2 className="font-semibold text-[var(--text-primary)]">WhatsApp Struk Toko</h2>
               </div>
               <Badge variant={waConnected ? "success" : "warning"}>
                 {waConnected ? "Terhubung" : "Belum Terhubung"}
@@ -497,58 +497,58 @@ export default function PengaturanPage() {
             )}
 
             {waLoading ? (
-              <div className="text-center py-6 text-sm text-[var(--text-secondary)]">
-                Memuat status integrasi...
+              <div className="text-center py-8 text-sm text-[var(--text-secondary)]">
+                Memuat status WhatsApp toko...
               </div>
             ) : waConnected ? (
               <div className="space-y-4">
                 <div className="rounded-lg bg-[var(--surface-raised)] p-4 border border-[var(--border)]">
-                  <p className="text-sm font-medium text-[var(--text-primary)]">WhatsApp Terkoneksi</p>
-                  <p className="text-xs text-[var(--text-secondary)] mt-1">
-                    Akun WhatsApp Anda telah aktif sebagai pengirim struk belanja otomatis.
+                  <p className="text-sm font-medium text-[var(--text-primary)]">WhatsApp Toko Aktif</p>
+                  <p className="text-xs text-[var(--text-secondary)] mt-1.5 leading-relaxed">
+                    Nomor WhatsApp toko Anda sudah terhubung. Struk belanja digital akan dikirim dari nomor ini ke pelanggan setelah transaksi kasir disimpan.
                   </p>
                   <div className="mt-3 flex items-center gap-2 text-sm text-[var(--text-primary)] font-bold">
                     <Phone className="w-4 h-4 text-[var(--brand-600)]" />
                     +{waPhone}
                   </div>
                 </div>
-                <div className="flex justify-end">
+                <div className="flex justify-end pt-1">
                   <Button
                     variant="outline"
+                    size="sm"
                     className="text-[var(--danger-600)] border-[var(--danger-200)] hover:bg-[var(--danger-50)]"
                     loading={waActionLoading}
                     onClick={handleWhatsAppLogout}
                   >
-                    Putuskan Sesi WhatsApp
+                    Putuskan Koneksi
                   </Button>
                 </div>
               </div>
             ) : (
-              <div className="space-y-6">
+              <div className="space-y-4">
                 <div className="text-sm text-[var(--text-secondary)] leading-relaxed">
-                  Pindai QR Code di bawah menggunakan WhatsApp Anda untuk mengaktifkan fitur kirim struk belanja otomatis ke pelanggan:
-                  <ol className="list-decimal list-inside mt-2 space-y-1 text-xs">
-                    <li>Buka aplikasi <b>WhatsApp</b> di HP Anda.</li>
-                    <li>Pilih <b>Pengaturan / Setelan</b> &gt; <b>Perangkat Tertaut (Linked Devices)</b>.</li>
-                    <li>Pilih <b>Tautkan Perangkat</b>, lalu arahkan kamera QR Code.</li>
+                  Hubungkan nomor WhatsApp toko Anda untuk mengaktifkan pengiriman struk digital otomatis ke pelanggan:
+                  <ol className="list-decimal list-inside mt-2.5 space-y-1 text-xs text-[var(--text-secondary)]">
+                    <li>Buka aplikasi <b>WhatsApp</b> di HP.</li>
+                    <li>Pilih <b>Pengaturan</b> &gt; <b>Perangkat Tertaut (Linked Devices)</b>.</li>
+                    <li>Pilih <b>Tautkan Perangkat</b>, lalu arahkan kamera ke QR Code di bawah.</li>
                   </ol>
                 </div>
 
                 <div className="flex flex-col items-center justify-center p-6 bg-[var(--surface-raised)] rounded-xl border border-[var(--border)]">
                   {waQr ? (
                     <div className="relative p-3 bg-white rounded-lg border shadow-sm">
-                      <img src={waQr} className="w-48 h-48" alt="WhatsApp QR Code" />
-                      <div className="absolute inset-0 flex items-center justify-center bg-black/5 rounded-lg pointer-events-none"></div>
+                      <img src={waQr} className="w-44 h-44" alt="WhatsApp QR Code" />
                     </div>
                   ) : (
-                    <div className="flex flex-col items-center justify-center w-48 h-48 bg-white border rounded-lg">
-                      <QrCode className="w-10 h-10 text-[var(--text-tertiary)] animate-pulse" />
+                    <div className="flex flex-col items-center justify-center w-44 h-44 bg-white border rounded-lg">
+                      <QrCode className="w-8 h-8 text-[var(--text-tertiary)] animate-pulse" />
                       <span className="text-[10px] text-[var(--text-tertiary)] mt-2">Menghasilkan QR...</span>
                     </div>
                   )}
-                  <p className="text-[10px] text-[var(--text-tertiary)] mt-4 flex items-center gap-1.5">
+                  <p className="text-[10px] text-[var(--text-tertiary)] mt-4 flex items-center gap-1.5 font-medium">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
-                    Status QR otomatis di-refresh berkala
+                    QR otomatis di-refresh berkala
                   </p>
                 </div>
               </div>

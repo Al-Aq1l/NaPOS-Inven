@@ -16,18 +16,42 @@ class WhatsAppService
     }
 
     /**
+     * Resolve the WhatsApp session ID based on the current context.
+     * - Super Admin uses 'superadmin' session (system-wide notifications).
+     * - Tenant users use 'tenant_{id}' session (per-store receipts).
+     */
+    public function resolveSessionId(?string $override = null): string
+    {
+        if ($override) {
+            return $override;
+        }
+
+        $user = auth()->user();
+
+        if (!$user || !$user->tenant_id) {
+            return 'superadmin';
+        }
+
+        return 'tenant_' . $user->tenant_id;
+    }
+
+    /**
      * Get the connection status from the microservice.
      */
-    public function getStatus(): array
+    public function getStatus(?string $sessionId = null): array
     {
+        $sessionId = $this->resolveSessionId($sessionId);
+
         try {
-            $response = Http::timeout(5)->get("{$this->baseUrl}/status");
+            $response = Http::timeout(5)->get("{$this->baseUrl}/status", [
+                'sessionId' => $sessionId,
+            ]);
             if ($response->successful()) {
                 return $response->json();
             }
             return ['connected' => false, 'error' => 'Gagal mengambil status dari microservice.'];
         } catch (\Exception $e) {
-            Log::error("WhatsAppService getStatus error: {$e->getMessage()}");
+            Log::error("WhatsAppService getStatus error [{$sessionId}]: {$e->getMessage()}");
             return ['connected' => false, 'error' => 'Layanan WhatsApp tidak merespon.'];
         }
     }
@@ -35,13 +59,17 @@ class WhatsAppService
     /**
      * Get the QR code base64 from the microservice.
      */
-    public function getQr(): array
+    public function getQr(?string $sessionId = null): array
     {
+        $sessionId = $this->resolveSessionId($sessionId);
+
         try {
-            $response = Http::timeout(5)->get("{$this->baseUrl}/qr");
+            $response = Http::timeout(10)->get("{$this->baseUrl}/qr", [
+                'sessionId' => $sessionId,
+            ]);
             return $response->json();
         } catch (\Exception $e) {
-            Log::error("WhatsAppService getQr error: {$e->getMessage()}");
+            Log::error("WhatsAppService getQr error [{$sessionId}]: {$e->getMessage()}");
             return ['error' => 'Gagal mendapatkan QR Code.'];
         }
     }
@@ -49,13 +77,17 @@ class WhatsAppService
     /**
      * Disconnect WhatsApp session.
      */
-    public function logout(): array
+    public function logout(?string $sessionId = null): array
     {
+        $sessionId = $this->resolveSessionId($sessionId);
+
         try {
-            $response = Http::timeout(10)->post("{$this->baseUrl}/logout");
+            $response = Http::timeout(10)->post("{$this->baseUrl}/logout", [
+                'sessionId' => $sessionId,
+            ]);
             return $response->json();
         } catch (\Exception $e) {
-            Log::error("WhatsAppService logout error: {$e->getMessage()}");
+            Log::error("WhatsAppService logout error [{$sessionId}]: {$e->getMessage()}");
             return ['success' => false, 'error' => 'Gagal memutuskan koneksi WhatsApp.'];
         }
     }
@@ -63,12 +95,15 @@ class WhatsAppService
     /**
      * Send a raw message to a phone number.
      */
-    public function sendMessage(string $phone, string $message): array
+    public function sendMessage(string $phone, string $message, ?string $sessionId = null): array
     {
+        $sessionId = $this->resolveSessionId($sessionId);
+
         try {
             $response = Http::timeout(15)->post("{$this->baseUrl}/send-message", [
                 'phone' => $phone,
                 'message' => $message,
+                'sessionId' => $sessionId,
             ]);
 
             if ($response->successful()) {
@@ -80,7 +115,7 @@ class WhatsAppService
                 'error' => $response->json('error') ?? 'Gagal mengirim pesan WhatsApp.'
             ];
         } catch (\Exception $e) {
-            Log::error("WhatsAppService sendMessage error: {$e->getMessage()}");
+            Log::error("WhatsAppService sendMessage error [{$sessionId}]: {$e->getMessage()}");
             return ['success' => false, 'error' => 'Gagal terhubung ke layanan pengirim WhatsApp.'];
         }
     }

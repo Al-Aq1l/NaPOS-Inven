@@ -3,7 +3,7 @@
 import React, { useEffect, useState, Suspense } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LayoutDashboard, Building2, Menu, LogOut, ChevronDown } from "lucide-react";
+import { LayoutDashboard, Building2, Menu, LogOut, ChevronDown, MessageSquare } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { Avatar, ConnectionStatus } from "@/components/ui";
 import { ADMIN_NAV } from "@/lib/constants";
@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 const ICONS: Record<string, React.ElementType> = {
   LayoutDashboard,
   Building2,
+  MessageSquare,
 };
 
 function AdminSidebarContent({

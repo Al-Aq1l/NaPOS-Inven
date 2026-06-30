@@ -33,6 +33,14 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/tenants/{tenant}/subscription', [\App\Http\Controllers\Api\AdminController::class, 'updateSubscription']);
         Route::post('/tenants/{tenant}/toggle-active', [\App\Http\Controllers\Api\AdminController::class, 'toggleActive']);
         Route::delete('/tenants/{tenant}', [\App\Http\Controllers\Api\AdminController::class, 'deleteTenant']);
+        Route::post('/tenants/{tenant}/send-expiry-warning', [\App\Http\Controllers\Api\AdminController::class, 'sendExpiryWarning']);
+    });
+
+    // WhatsApp admin operations (Owner & Super Admin)
+    Route::middleware('role:owner,superadmin')->group(function () {
+        Route::get('/whatsapp/qr', [\App\Http\Controllers\WhatsAppController::class, 'qr']);
+        Route::post('/whatsapp/logout', [\App\Http\Controllers\WhatsAppController::class, 'logout']);
+        Route::get('/whatsapp/status', [\App\Http\Controllers\WhatsAppController::class, 'status']);
     });
 
     // Protected routes requiring a tenant
@@ -108,13 +116,9 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::post('/users', [\App\Http\Controllers\UserController::class, 'store']);
             Route::put('/users/{user}', [\App\Http\Controllers\UserController::class, 'update']);
             Route::post('/billing/upgrade', [\App\Http\Controllers\BillingController::class, 'upgrade']);
-            
-            Route::get('/whatsapp/qr', [\App\Http\Controllers\WhatsAppController::class, 'qr']);
-            Route::post('/whatsapp/logout', [\App\Http\Controllers\WhatsAppController::class, 'logout']);
         });
 
         Route::middleware('role:owner,manager,cashier')->group(function () {
-            Route::get('/whatsapp/status', [\App\Http\Controllers\WhatsAppController::class, 'status']);
             Route::post('/whatsapp/send-receipt/{orderId}', [\App\Http\Controllers\WhatsAppController::class, 'sendReceipt']);
         });
     });

@@ -5,8 +5,8 @@ import {
   Users, DollarSign, Zap, AlertTriangle, MessageSquare, ArrowRight,
   CalendarDays, Loader2
 } from "lucide-react";
-import { Card, Badge, Button } from "@/components/ui";
-import { fetchAdminSummary, type AdminSummary } from "@/lib/dashboard-api";
+import { Card, Badge, Button, Toast } from "@/components/ui";
+import { fetchAdminSummary, sendTenantExpiryWarning, type AdminSummary } from "@/lib/dashboard-api";
 import { formatIDR } from "@/lib/constants";
 import Link from "next/link";
 
@@ -30,13 +30,36 @@ export default function AdminDashboardPage() {
     loadSummary();
   }, []);
 
-  function getWhatsAppLink(phone: string | null, tenantName: string, daysLeft: number) {
-    if (!phone) return "#";
-    const cleanPhone = phone.replace(/\D/g, "");
-    const formattedPhone = cleanPhone.startsWith("0") ? "62" + cleanPhone.slice(1) : cleanPhone;
-    const message = `Halo Kak ${tenantName},\n\nKami dari tim NAPS ingin menginfokan bahwa paket langganan Anda tersisa *${daysLeft} hari* lagi. Silakan lakukan perpanjangan melalui dashboard agar operasional kasir tetap berjalan lancar.\n\nTerima kasih!`;
-    return `https://wa.me/${formattedPhone}?text=${encodeURIComponent(message)}`;
-  }
+  // Toast states
+  const [toastMsg, setToastMsg] = useState("");
+  const [toastType, setToastType] = useState<"success" | "error" | "info" | "warning">("info");
+  const [toastVisible, setToastVisible] = useState(false);
+  const [sendingId, setSendingId] = useState<number | null>(null);
+
+  const showToast = (msg: string, type: "success" | "error" | "info" | "warning" = "info") => {
+    setToastMsg(msg);
+    setToastType(type);
+    setToastVisible(true);
+    setTimeout(() => setToastVisible(false), 4000);
+  };
+
+  const handleSendWhatsAppWarning = async (tenantId: number) => {
+    setSendingId(tenantId);
+    try {
+      const response = await sendTenantExpiryWarning(tenantId);
+      if (response.success) {
+        showToast(response.message || "Pesan WhatsApp berhasil dikirim.", "success");
+      } else {
+        showToast(response.message || "Gagal mengirim WhatsApp.", "error");
+      }
+    } catch (err: any) {
+      console.error(err);
+      const errMsg = err?.response?.data?.message || "Gagal menghubungi server WhatsApp Gateway.";
+      showToast(errMsg, "error");
+    } finally {
+      setSendingId(null);
+    }
+  };
 
   if (loading) {
     return (
@@ -57,6 +80,7 @@ export default function AdminDashboardPage() {
 
   return (
     <div className="space-y-6 animate-fade-in">
+      <Toast message={toastMsg} type={toastType} visible={toastVisible} />
       {/* Title */}
       <div>
         <h2 className="text-2xl font-bold text-[var(--text-primary)] tracking-tight">Ringkasan Sistem</h2>
@@ -164,15 +188,15 @@ export default function AdminDashboardPage() {
 
                     <div className="flex items-center gap-2">
                       {item.phone ? (
-                        <a
-                          href={getWhatsAppLink(item.phone, item.tenant_name, item.days_left)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center justify-center gap-1.5 h-8 px-3 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer transition-colors"
+                        <Button
+                          size="sm"
+                          className="bg-emerald-600 hover:bg-emerald-700 text-white border-none h-8 text-xs font-semibold"
+                          loading={sendingId === item.tenant_id}
+                          onClick={() => handleSendWhatsAppWarning(item.tenant_id)}
                         >
-                          <MessageSquare className="w-3.5 h-3.5" />
+                          <MessageSquare className="w-3.5 h-3.5 shrink-0" />
                           Kirim WA
-                        </a>
+                        </Button>
                       ) : (
                         <span className="text-[10px] text-[var(--text-tertiary)] italic">No WA</span>
                       )}

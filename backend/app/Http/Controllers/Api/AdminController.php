@@ -312,4 +312,64 @@ class AdminController extends Controller
             'message' => "Tenant {$tenant->name} berhasil dihapus dari sistem beserta seluruh datanya secara permanen.",
         ]);
     }
+
+    /**
+     * Send a manual WhatsApp subscription expiry warning to the tenant owner.
+     */
+    public function sendExpiryWarning(\App\Services\WhatsAppService $whatsAppService, $id)
+    {
+        $tenant = Tenant::findOrFail($id);
+
+        if (!$tenant->phone) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Tenant tidak memiliki nomor WhatsApp yang terkonfigurasi.'
+            ], 400);
+        }
+
+        // Get the latest active/settlement subscription
+        $sub = Subscription::where('tenant_id', $tenant->id)
+            ->where('status', 'settlement')
+            ->orderBy('expires_at', 'desc')
+            ->first();
+
+        if (!$sub || !$sub->expires_at) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Tenant tidak memiliki masa langganan aktif yang akan kedaluwarsa.'
+            ], 400);
+        }
+
+        $daysLeft = (int) ceil(now()->diffInDays($sub->expires_at, false));
+        $planLabel = ucfirst($sub->plan);
+        $expiryDate = $sub->expires_at->timezone('Asia/Jakarta')->format('d M Y');
+
+        $urgency = match ($daysLeft) {
+            1 => '🔴 *PENTING — BESOK BERAKHIR!*',
+            3 => '🟡 *Pengingat — 3 Hari Lagi*',
+            7 => '🟢 *Pengingat — 7 Hari Lagi*',
+            default => "📢 *Pengingat — {$daysLeft} Hari Lagi*",
+        };
+
+        $message = "{$urgency}\n\n"
+            . "Halo, *{$tenant->name}*!\n\n"
+            . "Langganan paket *{$planLabel}* Anda di NaPS akan berakhir dalam *{$daysLeft} hari* ({$expiryDate}).\n\n"
+            . "Untuk menghindari gangguan layanan, silakan perpanjang langganan Anda sebelum tanggal tersebut melalui menu:\n"
+            . "Dashboard > Pengaturan > Tagihan & Langganan.\n\n"
+            . "Terima kasih telah menggunakan *NaPS*!";
+
+        $result = $whatsAppService->sendMessage($tenant->phone, $message, 'superadmin');
+
+        if (isset($result['success']) && !$result['success']) {
+            return response()->json([
+                'success' => false,
+                'message' => $result['error'] ?? 'Gagal mengirim pesan WhatsApp.'
+            ], 400);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => "Peringatan kedaluwarsa berhasil dikirim ke {$tenant->name} via WhatsApp."
+        ]);
+    }
 }

@@ -394,3 +394,8 @@ export async function deleteTenant(tenantId: number | string) {
   const res = await api.delete<{ success: boolean; message: string }>(`/admin/tenants/${tenantId}`);
   return res.data;
 }
+
+export async function sendTenantExpiryWarning(tenantId: number | string) {
+  const res = await api.post<{ success: boolean; message: string }>(`/admin/tenants/${tenantId}/send-expiry-warning`);
+  return res.data;
+}

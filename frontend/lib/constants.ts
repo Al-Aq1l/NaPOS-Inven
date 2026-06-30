@@ -131,6 +131,7 @@ export interface NavItem {
 export const ADMIN_NAV: NavItem[] = [
   { label: "Dashboard", href: "/admin/dashboard", icon: "LayoutDashboard", roles: ["superadmin"] },
   { label: "Manajemen Akun", href: "/admin/tenants", icon: "Building2", roles: ["superadmin"] },
+  { label: "WhatsApp Gateway", href: "/admin/whatsapp", icon: "MessageSquare", roles: ["superadmin"] },
 ];
 
 export const DASHBOARD_NAV: NavItem[] = [
