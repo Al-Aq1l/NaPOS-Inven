@@ -24,7 +24,9 @@ return [
         'https://app.naps.web.id',
     ],
 
-    'allowed_origins_patterns' => [],
+    'allowed_origins_patterns' => [
+        '#^https://.*\.vercel\.app$#',
+    ],
 
     'allowed_headers' => ['*'],
 
